@@ -14,24 +14,13 @@ dataset_dir = paths.DEFAULT_DATA_DIR.parent / 'train'
 output_dir = Path("/home/crdavids/Trinity-Sync/av2-api/output/pickles/train")
 log_id = '00a6ffc1-6ce9-3bc3-a060-6006e9893a1a'
 log_dir = dataset_dir / log_id
-annotations_df = read_feather(log_dir / 'annotations_with_ego.feather')
+annotations_df = read_feather(log_dir / 'sm_annotations.feather')
 avm = get_map(log_dir)
 all_uuids = annotations_df['track_uuid'].unique()
-is_gt = True
+is_gt = False
 
 scenarios = [14,15,16,17]
 
-#for log_dir in dataset_dir.iterdir():
-    #if log_dir.is_dir():  # Only process directories
-
-#annotations_df = read_feather(log_dir / 'annotations_with_ego.feather')
-#avm = ArgoverseStaticMap.from_map_dir(log_dir / 'map')
-#all_uuids = annotations_df['track_uuid'].unique()
-
-#for i, log_dir in enumerate(dataset_dir.iterdir()):
-#    if log_dir.is_dir():
-#        print(i)
-#        create_old_gt_pkl(log_dir, Path('/home/crdavids/Trinity-Sync/av2-api/output/pickles/old'))
 
 
 #Secenario 1: accelerating_at_crosswalk
@@ -194,34 +183,3 @@ if 13 in scenarios:
                                               has_objects_in_relative_direction(motorcycle_in_lane_to_right, vehicles_right_of_motorcycle, log_dir, direction='right', within_distance=4, lateral_thresh=2)])
 
     output_scenario(lane_splitting_motorcycles, title, log_dir, output_dir)
-
-if 14 in scenarios:
-    title = 'objects the ego vehicle is facing'
-    ego_vehicle = get_objects_of_category(log_dir, category='EGO_VEHICLE')
-    all_objects = get_objects_of_category(log_dir, category='ANY')
-
-    ego_facing = reverse_relationship(facing_toward)(ego_vehicle, all_objects, log_dir)
-    output_scenario(ego_facing, title, log_dir, output_dir, relationship_edges=True)
-
-if 15 in scenarios:
-    title = 'objects the ego vehicle is heading toward'
-    ego_vehicle = get_objects_of_category(log_dir, category='EGO_VEHICLE')
-    all_objects = get_objects_of_category(log_dir, category='ANY')
-
-    ego_coming = heading_toward(ego_vehicle, all_objects, log_dir)
-    output_scenario(ego_facing, title, log_dir, output_dir, relationship_edges=True)
-
-if 16 in scenarios:
-    title = 'objects the ego vehicle is accelerating toward'
-    ego_vehicle = get_objects_of_category(log_dir, category='EGO_VEHICLE')
-    all_objects = get_objects_of_category(log_dir, category='ANY')
-
-    ego_coming = accelerating_toward(ego_vehicle, all_objects, log_dir)
-    output_scenario(ego_facing, title, log_dir, output_dir, relationship_edges=True)
-
-if 17 in scenarios:
-    title = 'pedestrians facing away from the vehicle nearest them'
-    peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
-    vehicles = get_objects_of_category(log_dir, category='VEHICLE')
-    peds_facing_away = facing_toward(peds, vehicles, log_dir, fov=180)
-    output_scenario(peds_facing_away, title, log_dir, output_dir, relationship_edges=True)

@@ -19,9 +19,6 @@ import scipy
 import sys
 from collections import OrderedDict
 
-sys.path.append('./av2-api/src')
-sys.path.append('./av2-api')
-
 from av2.structures.cuboid import Cuboid, CuboidList
 from av2.map.map_api import ArgoverseStaticMap
 from av2.map.lane_segment import LaneSegment
@@ -251,7 +248,7 @@ def remove_nonintersecting_timestamps(dict1:dict[str,list], dict2:dict[str,list]
 
 @cache_manager.create_cache('get_ego_uuid')
 def get_ego_uuid(log_dir):
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     ego_df = df[df['category'] == 'EGO_VEHICLE']
     return ego_df['track_uuid'].iloc[0]
 
@@ -405,7 +402,7 @@ def get_uuids_of_category(log_dir:Path, category:str):
         trucks = get_uuids_of_category(log_dir, category='TRUCK')
     """
 
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
 
     if category == 'ANY':
         uuids = df['track_uuid'].unique()
@@ -456,7 +453,7 @@ def is_category(track_uuid, log_dir, category):
 @composable
 def get_object(track_uuid, log_dir):
 
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     track_df = df[df['track_uuid'] == track_uuid]
 
     if track_df.empty:
@@ -469,7 +466,7 @@ def get_object(track_uuid, log_dir):
     
 def get_timestamps(track_uuid, log_dir):
 
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     track_df = df[df['track_uuid'] == track_uuid]
 
     if track_df.empty:
@@ -1135,6 +1132,8 @@ def append_cf_mesh(combined_cfs:pv.PolyData, cuboid:Cuboid, transform:SE3=None):
     return combined_cfs
 
 
+
+
 @cache_manager.create_cache('get_nth_pos_deriv')
 def get_nth_pos_deriv(
     track_uuid, 
@@ -1146,7 +1145,7 @@ def get_nth_pos_deriv(
     """Returns the nth positional derivative of the track at all timestamps 
     with respect to city coordinates. """
 
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     ego_poses = read_city_SE3_ego(log_dir)
 
     # Filter the DataFrame
@@ -1509,7 +1508,7 @@ def get_nth_yaw_deriv(track_uuid, n, log_dir, coordinate_frame=None, in_degrees=
     The returned angle is yaw measured from the x-axis of the track coordinate frame to the x-axis
     of the source coordinate frame"""
 
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     ego_poses = read_city_SE3_ego(log_dir)
 
     # Filter the DataFrame
@@ -1761,6 +1760,15 @@ def get_map(log_dir: Path):
         
     return avm
 
+def get_ego_SE3(log_dir:Path):
+    """Returns list of ego_to_city SE3 transformation matrices"""
+    try:
+        ego_poses = read_city_SE3_ego(log_dir / 'map')
+    except:
+        ego_poses = read_city_SE3_ego(DEFAULT_DATA_DIR / log_dir.name / 'map')
+
+    return ego_poses
+
 
 def dilate_convex_polygon(points, distance):
     """
@@ -1817,7 +1825,7 @@ def dilate_convex_polygon(points, distance):
     
 
 def get_cuboid_from_uuid(track_uuid, log_dir, timestamp = None):
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     
     track_df = df[df["track_uuid"] == track_uuid]
 
@@ -1842,7 +1850,7 @@ def to_scenario_dict(object_datastructure, log_dir)->dict:
         object_dict = {object_datastructure: unwrap_func(get_object)(object_datastructure, log_dir)}
     elif isinstance(object_datastructure, int):
         timestamp = object_datastructure
-        df = read_feather(log_dir / 'annotations_with_ego.feather')
+        df = read_feather(log_dir / 'sm_annotations.feather')
         timestamp_df = df[df['timestamp_ns'] == timestamp]
 
         if timestamp_df.empty:
@@ -1854,7 +1862,7 @@ def to_scenario_dict(object_datastructure, log_dir)->dict:
               timestamp, or dict[timestamp:list[timestamp]]')
         print('Comparing to all objects in the log.')
 
-        df = read_feather(log_dir / 'annotations_with_ego.feather')
+        df = read_feather(log_dir / 'sm_annotations.feather')
         all_uuids = df['track_uuid'].unique()
         object_dict, _ = parallelize_uuids(get_object, all_uuids, log_dir)
     
@@ -2219,7 +2227,7 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     related_dict = key_by_timestamps(relationship_dict)
 
     ego_uuid = get_ego_uuid(log_dir)
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     ego_df = df[df['track_uuid'] == ego_uuid]
     timestamps = sorted(ego_df['timestamp_ns'])
 
@@ -2363,7 +2371,7 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
      
 
 def append_relationship_edges(relationship_edge_mesh:pv.PolyData, track_uuid, related_uuids, log_dir, timestamp, transform:SE3):
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     track_df = df[df['track_uuid'] == track_uuid]
     timestamped_track = track_df[track_df['timestamp_ns'] == timestamp]
     track_pos = timestamped_track[['tx_m', 'ty_m', 'tz_m']].to_numpy()
@@ -2435,7 +2443,7 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
     related_transforms = []
 
     ego_poses = read_city_SE3_ego(log_dir)
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
 
     for track_uuid, timestamp in track_first_appearences.items():
         track_df = df[df['track_uuid'] == track_uuid]
@@ -2681,7 +2689,7 @@ def at_stop_sign(track_candidates:Union[list,dict], log_dir:Path, forward_thresh
 @composable
 def occluded(track_uuid, log_dir):
 
-    annotations_df = read_feather(log_dir / 'annotations_with_ego.feather')
+    annotations_df = read_feather(log_dir / 'sm_annotations.feather')
     track_df = annotations_df[annotations_df['track_uuid'] == track_uuid]
     track_when_occluded = track_df[track_df['num_interior_pts'] == 0]
 
@@ -3230,17 +3238,7 @@ def print_indented_dict(d:dict, indent=0):
             print(" " * (indent + 4) + str(value))
 
 
-def extract_pkl_log(filename, log_id, output_dir='output', is_gt=False):
-    sequences = load(filename)
-    extracted_sequence = {log_id: sequences[log_id]}
-
-    if is_gt:
-        save(extracted_sequence, output_dir / f'{log_id}_gt_annotations.pkl')
-    else:
-        save(extracted_sequence, output_dir / f'{log_id}_extracted.pkl')
-
-
-def output_scenario(scenario, description, log_dir:Path, output_dir, is_gt=True, **kwargs):
+def output_scenario(scenario, description, log_dir:Path, output_dir, is_gt=False, **kwargs):
     
     if not dict_empty(scenario):
         Path(output_dir/log_dir.name).mkdir(exist_ok=True)
@@ -3276,7 +3274,7 @@ def get_related_objects(relationship_dict):
     return all_related_objects
 
 
-def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, is_gt=True):
+def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, is_gt=False):
     """
     Generates both a pkl file for evaluation and annotations for the scenario mining challenge.
     """
@@ -3288,7 +3286,7 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, is_g
     log_id = log_dir.name
     (output_dir / log_id).mkdir(exist_ok=True)
 
-    annotations = read_feather(log_dir / 'annotations_with_ego.feather')
+    annotations = read_feather(log_dir / 'sm_annotations.feather')
     log_timestamps = np.sort(annotations['timestamp_ns'].unique())
     all_uuids = list(annotations['track_uuid'].unique())
     ego_poses = read_city_SE3_ego(log_dir)

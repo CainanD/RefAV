@@ -1,2 +1,5 @@
-
+pyvista
+anthropic
+vtk
+pathos
 git+https://github.com/CainanD/av2-api-sm.git
