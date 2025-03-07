@@ -1,5 +1,12 @@
-pyvista
 anthropic
-vtk
 pathos
+pycocotools
+tabulate
+pyvista
+vtk
+imageio
+imageio-ffmpeg
+--extra-index-url https://wheels.vtk.org vtk-egl
 git+https://github.com/CainanD/av2-api-sm.git
+git+https://github.com/JonathonLuiten/TrackEval.git
+

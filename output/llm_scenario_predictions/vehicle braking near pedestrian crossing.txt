@@ -1,0 +1,16 @@
+description = 'vehicle braking near pedestrian crossing'
+
+# Get all vehicles and filter to only moving vehicles (to exclude parked cars)
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are braking (negative acceleration less than -1.0 m/s^2)
+braking_vehicles = accelerating(moving_vehicles, log_dir, thresh=-1.0)
+
+# Find vehicles near pedestrian crossings
+vehicles_at_crossing = at_pedestrian_crossing(braking_vehicles, log_dir)
+
+# Combine conditions - vehicles must be both braking and at a pedestrian crossing
+braking_at_crossing = scenario_and([braking_vehicles, vehicles_at_crossing])
+
+output_scenario(braking_at_crossing, description, log_dir, output_dir, is_gt=False)

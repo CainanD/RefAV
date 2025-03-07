@@ -1,0 +1,14 @@
+description = 'motorcyclist braking hard'
+
+# Get all motorcycles
+motorcycles = get_objects_of_category(log_dir, category='MOTORCYCLE')
+
+# Find motorcycles that are moving (not stationary)
+moving_motorcycles = scenario_not(stationary)(motorcycles, log_dir)
+
+# Find motorcycles that are braking hard
+# Using accelerating() with a negative threshold to identify braking
+# -1.0 is a reliable threshold for identifying braking behavior
+braking_motorcycles = accelerating(moving_motorcycles, log_dir, thresh=-1.0)
+
+output_scenario(braking_motorcycles, description, log_dir, output_dir, is_gt=False)

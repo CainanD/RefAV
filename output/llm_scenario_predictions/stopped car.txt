@@ -1,0 +1,16 @@
+description = 'stopped car'
+# Get all regular vehicles (cars, SUVs, vans, etc.)
+regular_vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
+
+# Get vehicles that are in a drivable area (to exclude parked cars)
+vehicles_in_drivable_area = in_drivable_area(regular_vehicles, log_dir)
+
+# A stopped vehicle should have very low velocity (between 0-0.5 m/s)
+# but not be completely stationary (parked)
+# We use scenario_not(stationary) to exclude parked vehicles
+stopped_vehicles = scenario_and([
+    has_velocity(vehicles_in_drivable_area, log_dir, min_velocity=0, max_velocity=0.5),
+    scenario_not(stationary)(vehicles_in_drivable_area, log_dir)
+])
+
+output_scenario(stopped_vehicles, description, log_dir, output_dir, is_gt=False)

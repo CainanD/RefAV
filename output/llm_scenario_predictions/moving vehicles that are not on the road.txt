@@ -1,0 +1,21 @@
+description = 'moving vehicles that are not on the road'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+
+# Get vehicles that are moving (not stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Get vehicles that are not on the road
+# Using scenario_not() with on_road() gives us vehicles that are off the road
+vehicles_off_road = scenario_not(on_road)(moving_vehicles, log_dir)
+
+# This will return vehicles that are:
+# 1. Moving (not parked/stationary)
+# 2. Not on a road or bike lane
+# Examples could include:
+# - Vehicles driving through parking lots
+# - Vehicles driving on sidewalks
+# - Vehicles driving through construction areas
+# - Vehicles driving through private property
+output_scenario(vehicles_off_road, description, log_dir, output_dir, is_gt=False)

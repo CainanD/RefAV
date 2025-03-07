@@ -1,0 +1,10 @@
+description = 'object that has not moved'
+
+# Get all objects in the scene 
+all_objects = get_objects_of_category(log_dir, category="ANY")
+
+# Find objects that are stationary (moved less than 2m over their observation period)
+# This is useful for identifying parked cars, construction barriers, signs, etc.
+non_moving_objects = stationary(all_objects, log_dir)
+
+output_scenario(non_moving_objects, description, log_dir, output_dir)

@@ -1,0 +1,40 @@
+description = 'ego vehicle with vehicles on both sides'
+
+# Get ego vehicle and all other vehicles
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find vehicles within 5m to the left and right of ego vehicle
+# Using small lateral_thresh to ensure vehicles are directly beside ego
+vehicles_left = get_objects_in_relative_direction(
+    ego, 
+    vehicles, 
+    log_dir,
+    direction='left',
+    min_number=1,
+    within_distance=5,
+    lateral_thresh=2
+)
+
+vehicles_right = get_objects_in_relative_direction(
+    ego,
+    vehicles,
+    log_dir, 
+    direction='right',
+    min_number=1,
+    within_distance=5,
+    lateral_thresh=2
+)
+
+# Ego must have vehicles on both sides simultaneously
+ego_with_vehicles_both_sides = has_objects_in_relative_direction(
+    vehicles_left,
+    vehicles_right,
+    log_dir,
+    direction='right',
+    min_number=1,
+    within_distance=5,
+    lateral_thresh=2
+)
+
+output_scenario(ego_with_vehicles_both_sides, description, log_dir, output_dir, is_gt=False)

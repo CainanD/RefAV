@@ -1,0 +1,28 @@
+description = 'bicycle traveling alongside parked vehicles'
+
+# Get all bicycles and vehicles from the scenario
+bicycles = get_objects_of_category(log_dir, category='BICYCLE')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find parked vehicles by identifying stationary ones
+parked_vehicles = stationary(vehicles, log_dir)
+
+# Find bicycles that have parked vehicles to their side
+# Using right direction since bicycles typically travel on the right side of the road
+# Setting within_distance=3 to ensure bicycle is close to the parked vehicles
+# Setting lateral_thresh=2 to ensure reasonable side-by-side alignment
+# Setting min_number=1 to require at least one parked vehicle alongside
+bicycles_near_parked = has_objects_in_relative_direction(
+    bicycles, 
+    parked_vehicles, 
+    log_dir,
+    direction='right',
+    within_distance=3,
+    lateral_thresh=2,
+    min_number=1
+)
+
+# Ensure the bicycle is actually moving (not just parked next to cars)
+moving_bicycles = scenario_not(stationary)(bicycles_near_parked, log_dir)
+
+output_scenario(moving_bicycles, description, log_dir, output_dir, is_gt=False)

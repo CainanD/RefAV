@@ -66,7 +66,6 @@ def extract_and_save_code_blocks(message, title=None,output_dir:Path=Path('.'))-
                     # Execute the line to get the title value
                     exec(line, {}, local_vars)
                     title = local_vars['description'].lower()
-                    print(title)
                     break
                 except:
                     print(f"Could not extract description from line: {line}")
@@ -148,8 +147,8 @@ def predict_scenario_from_description(natural_language_description, output_dir: 
         ]
     )
 
-    output_dir = output_dir / 'predicted_scenarios'
     definition_filename = extract_and_save_code_blocks(message, output_dir=output_dir, title=natural_language_description)[0]
+    print(f'{natural_language_description} definition saved to {output_dir}')
     return definition_filename
 
 

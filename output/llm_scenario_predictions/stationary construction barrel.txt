@@ -1,0 +1,10 @@
+description = 'stationary construction barrel'
+
+# Get all construction barrels from the scenario
+construction_barrels = get_objects_of_category(log_dir, category='CONSTRUCTION_BARREL')
+
+# Filter to only include stationary barrels
+# This will exclude any barrels that have been moved/knocked over during the scenario
+stationary_barrels = stationary(construction_barrels, log_dir)
+
+output_scenario(stationary_barrels, description, log_dir, output_dir, is_gt=False)

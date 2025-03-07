@@ -1,0 +1,13 @@
+description = 'jaywalking pedestrian'
+
+# Get all pedestrians in the scene
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find pedestrians that are on a road lane (not sidewalk/crosswalk)
+peds_on_road = on_road_lane(peds, log_dir)
+
+# A jaywalking pedestrian is one that is on the road but not at a designated crossing
+# Use scenario_not to exclude pedestrians at crossings
+jaywalking_peds = scenario_not(at_pedestrian_crossing)(peds_on_road, log_dir)
+
+output_scenario(jaywalking_peds, description, log_dir, output_dir, is_gt=False)

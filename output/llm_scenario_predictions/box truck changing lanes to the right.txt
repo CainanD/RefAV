@@ -1,0 +1,10 @@
+description = 'box truck changing lanes to the right'
+
+# Get all box trucks from the scenario
+box_trucks = get_objects_of_category(log_dir, category='BOX_TRUCK')
+
+# Find box trucks that are changing lanes to the right
+# This will identify box trucks during the lane change maneuver
+box_trucks_changing_right = changing_lanes(box_trucks, log_dir, direction='right')
+
+output_scenario(box_trucks_changing_right, description, log_dir, output_dir, is_gt=False)

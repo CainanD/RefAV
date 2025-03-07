@@ -1,0 +1,9 @@
+description = 'ego vehicle changing lanes to the left'
+
+# Get the ego vehicle 
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+
+# Find instances where ego vehicle is changing lanes to the left
+ego_left_lane_changes = changing_lanes(ego, log_dir, direction='left')
+
+output_scenario(ego_left_lane_changes, description, log_dir, output_dir, is_gt=False)

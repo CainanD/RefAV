@@ -1,0 +1,35 @@
+description = 'wheeled rider crossing between moving vehicles'
+
+# Get wheeled riders and vehicles
+wheeled_riders = get_objects_of_category(log_dir, category='WHEELED_RIDER')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for moving vehicles only
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find wheeled riders that are crossing between vehicles
+# First find riders that are crossing any moving vehicle
+riders_crossing = reverse_relationship(being_crossed_by)(moving_vehicles, wheeled_riders, log_dir)
+
+# Then ensure there are vehicles on both sides of the crossing rider
+# Look for vehicles within 10m laterally and 5m forward/backward of the rider
+riders_with_vehicle_left = has_objects_in_relative_direction(
+    riders_crossing, 
+    moving_vehicles, 
+    log_dir, 
+    direction='left',
+    within_distance=10,
+    lateral_thresh=5
+)
+
+# Final scenario requires vehicles on both sides while crossing
+riders_crossing_between = has_objects_in_relative_direction(
+    riders_with_vehicle_left,
+    moving_vehicles,
+    log_dir,
+    direction='right', 
+    within_distance=10,
+    lateral_thresh=5
+)
+
+output_scenario(riders_crossing_between, description, log_dir, output_dir, is_gt=False)

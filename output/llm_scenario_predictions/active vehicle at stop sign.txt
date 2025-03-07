@@ -1,0 +1,15 @@
+description = 'active vehicle at stop sign'
+
+# Get all vehicles (including buses, trucks, etc.)
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter out parked/stationary vehicles since they may just be 
+# parked near a stop sign rather than actively stopping
+active_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Get vehicles that are at a stop sign
+# The default forward_thresh of 10m means the vehicle must be within 
+# 10m of the stop sign in the direction the stop sign is facing
+vehicles_at_stop = at_stop_sign(active_vehicles, log_dir)
+
+output_scenario(vehicles_at_stop, description, log_dir, output_dir, is_gt=False)

@@ -1,0 +1,14 @@
+description = 'vehicle moving at crawling speed'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for vehicles that are moving (not stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Define crawling speed as between 0.5 m/s (to exclude completely stopped vehicles)
+# and 2 m/s (about 4.5 mph, a very slow walking pace)
+# 0.5 m/s lower bound helps avoid annotation jitter from stationary vehicles
+crawling_vehicles = has_velocity(moving_vehicles, log_dir, min_velocity=0.5, max_velocity=2.0)
+
+output_scenario(crawling_vehicles, description, log_dir, output_dir, is_gt=False)

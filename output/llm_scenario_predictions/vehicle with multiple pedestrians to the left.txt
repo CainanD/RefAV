@@ -1,0 +1,19 @@
+description = 'vehicle with multiple pedestrians to the left'
+
+# Get all vehicles and pedestrians from the scenario
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Filter for vehicles that have at least 2 pedestrians within 10 meters to their left
+# The lateral threshold of 5m prevents counting pedestrians that are too far forward/backward
+vehicles_with_peds_left = has_objects_in_relative_direction(
+    vehicles, 
+    peds,
+    log_dir,
+    direction='left',
+    min_number=2,  # Require at least 2 pedestrians
+    within_distance=10,  # Within 10 meters laterally
+    lateral_thresh=5  # Within 5 meters forward/backward
+)
+
+output_scenario(vehicles_with_peds_left, description, log_dir, output_dir, is_gt=False)

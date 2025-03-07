@@ -1,0 +1,14 @@
+# Description: passenger vehicle near stroller in road
+# First get regular vehicles (passenger vehicles) and strollers
+regular_vehicles = get_objects_of_category(log_dir, category="REGULAR_VEHICLE")
+strollers = get_objects_of_category(log_dir, category="STROLLER")
+
+# Find strollers that are on the road
+strollers_on_road = on_road(strollers, log_dir)
+
+# Find vehicles that are near strollers on the road
+# Using 10m as default distance threshold for "near"
+vehicles_near_stroller = near_objects(regular_vehicles, strollers_on_road, log_dir)
+
+# Output the scenario focusing on the vehicles near strollers
+output_scenario(vehicles_near_stroller, description, log_dir, output_dir, is_gt=False)

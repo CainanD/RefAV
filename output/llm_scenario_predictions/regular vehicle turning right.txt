@@ -1,0 +1,10 @@
+description = 'regular vehicle turning right'
+
+# Get all regular vehicles from the scenario
+regular_vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
+
+# Filter to only get vehicles that are turning right
+# The turning() function will identify vehicles making a right turn based on their trajectory
+turning_right_vehicles = turning(regular_vehicles, log_dir, direction='right')
+
+output_scenario(turning_right_vehicles, description, log_dir, output_dir, is_gt=False)

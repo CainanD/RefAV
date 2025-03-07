@@ -1,0 +1,16 @@
+# Get all buses and pedestrians from the scenario
+buses = get_objects_of_category(log_dir, category="BUS") 
+pedestrians = get_objects_of_category(log_dir, category="PEDESTRIAN")
+
+# Find buses that have at least 3 pedestrians within 5 meters
+# near_objects() checks if the tracked object (bus) has the minimum number 
+# of related objects (pedestrians) within the distance threshold
+buses_near_peds = near_objects(
+    buses,
+    pedestrians, 
+    log_dir,
+    distance_thresh=5,  # 5 meter threshold
+    min_objects=3  # Require at least 3 pedestrians
+)
+
+output_scenario(buses_near_peds, description, log_dir, output_dir, is_gt=False)

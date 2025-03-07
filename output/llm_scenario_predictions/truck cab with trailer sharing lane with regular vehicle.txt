@@ -1,0 +1,26 @@
+description = 'truck cab with trailer sharing lane with regular vehicle'
+
+# Get truck cabs and regular vehicles
+truck_cabs = get_objects_of_category(log_dir, category='TRUCK_CAB')
+regular_vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
+
+# Get trailers
+trailers = get_objects_of_category(log_dir, category='VEHICULAR_TRAILER')
+
+# Find truck cabs that have a trailer behind them within 5m
+# Using a small lateral threshold to ensure trailer is directly behind
+truck_cabs_with_trailers = has_objects_in_relative_direction(
+    truck_cabs, 
+    trailers, 
+    log_dir,
+    direction='backward',
+    min_number=1,
+    max_number=1,
+    within_distance=5,
+    lateral_thresh=1
+)
+
+# Find truck-trailer combinations that are in the same lane as a regular vehicle
+truck_trailer_sharing_lane = in_same_lane(truck_cabs_with_trailers, regular_vehicles, log_dir)
+
+output_scenario(truck_trailer_sharing_lane, description, log_dir, output_dir, is_gt=False)

@@ -1,0 +1,25 @@
+description = 'pedestrian crossing between moving vehicles'
+
+# Get all pedestrians and vehicles
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for moving vehicles only
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find pedestrians that are crossing in front of moving vehicles
+# Using being_crossed_by to identify when pedestrians cross the front half-plane of vehicles
+peds_crossing_vehicles = reverse_relationship(being_crossed_by)(moving_vehicles, peds, log_dir)
+
+# For these crossing events, check if there are vehicles behind within 20m
+# This identifies situations where a pedestrian is crossing between two moving vehicles
+vehicles_behind_crossing = get_objects_in_relative_direction(moving_vehicles, moving_vehicles, log_dir, 
+                                                           direction='backward', 
+                                                           max_number=1,
+                                                           within_distance=20)
+
+# Get the pedestrians who are crossing in these specific situations
+# where there are vehicles both in front and behind
+peds_crossing_between = being_crossed_by(vehicles_behind_crossing, peds_crossing_vehicles, log_dir)
+
+output_scenario(peds_crossing_between, description, log_dir, output_dir, is_gt=False)

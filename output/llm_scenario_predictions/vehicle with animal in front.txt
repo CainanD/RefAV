@@ -1,0 +1,22 @@
+description = 'vehicle with animal in front'
+
+# Get all vehicles and dogs (currently the only animal category)
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+dogs = get_objects_of_category(log_dir, category='DOG')
+
+# Only consider moving vehicles since parked vehicles with dogs nearby 
+# aren't as relevant for autonomous vehicle planning
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that have a dog in front of them within 10 meters
+# Using a relatively small distance since dogs are small and harder to see from far away
+vehicles_with_dog_ahead = has_objects_in_relative_direction(
+    moving_vehicles, 
+    dogs,
+    log_dir,
+    direction='forward',
+    min_number=1,
+    within_distance=10
+)
+
+output_scenario(vehicles_with_dog_ahead, description, log_dir, output_dir, is_gt=False)

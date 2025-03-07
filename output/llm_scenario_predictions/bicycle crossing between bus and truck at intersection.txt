@@ -1,0 +1,80 @@
+description = 'bicycle crossing between bus and truck at intersection'
+
+# Get the relevant object categories
+bicycles = get_objects_of_category(log_dir, category='BICYCLE')
+buses = get_objects_of_category(log_dir, category='BUS') 
+trucks = get_objects_of_category(log_dir, category='TRUCK')
+
+# Only consider moving bicycles, buses and trucks
+moving_bicycles = scenario_not(stationary)(bicycles, log_dir)
+moving_buses = scenario_not(stationary)(buses, log_dir)
+moving_trucks = scenario_not(stationary)(trucks, log_dir)
+
+# Find bicycles that are at an intersection
+bicycles_at_intersection = on_intersection(moving_bicycles, log_dir)
+
+# Find buses and trucks that are at an intersection
+buses_at_intersection = on_intersection(moving_buses, log_dir)
+trucks_at_intersection = on_intersection(moving_trucks, log_dir)
+
+# Find bicycles that are crossing between a bus and truck
+# First find bicycles that have a bus behind them within 10m
+bicycles_with_bus_behind = has_objects_in_relative_direction(
+    bicycles_at_intersection, 
+    buses_at_intersection,
+    log_dir,
+    direction='backward',
+    within_distance=10
+)
+
+# Then find which of those bicycles also have a truck in front within 10m
+bicycles_between_vehicles = has_objects_in_relative_direction(
+    bicycles_with_bus_behind,
+    trucks_at_intersection, 
+    log_dir,
+    direction='forward',
+    within_distance=10
+)
+
+output_scenario(bicycles_between_vehicles, description, log_dir, output_dir, is_gt=False)
+
+description = 'bicycle crossing between bus and truck at intersection'
+
+# Get all buses, trucks, and bicycles
+buses = get_objects_of_category(log_dir, category='BUS') 
+trucks = get_objects_of_category(log_dir, category='TRUCK')
+bicycles = get_objects_of_category(log_dir, category='BICYCLE')
+
+# Only consider moving bicycles to avoid parked bikes
+moving_bicycles = scenario_not(stationary)(bicycles, log_dir)
+
+# Find bicycles that are on an intersection
+bicycles_on_intersection = on_intersection(moving_bicycles, log_dir)
+
+# Find buses and trucks near the intersection
+# Using 10m threshold to ensure they're close enough to be relevant
+buses_near_intersection = near_intersection(buses, log_dir, threshold=10)
+trucks_near_intersection = near_intersection(trucks, log_dir, threshold=10)
+
+# Find bicycles that have both a bus and truck nearby (within 15m)
+# The bicycle should be between them, so we look for:
+# - A bus on one side (either left or right)
+# - A truck on the opposite side
+bicycles_with_bus_left = has_objects_in_relative_direction(bicycles_on_intersection, buses_near_intersection, 
+                                                         log_dir, direction='left', min_number=1, 
+                                                         max_number=1, within_distance=15)
+bicycles_with_truck_right = has_objects_in_relative_direction(bicycles_with_bus_left, trucks_near_intersection,
+                                                            log_dir, direction='right', min_number=1,
+                                                            max_number=1, within_distance=15)
+
+bicycles_with_truck_left = has_objects_in_relative_direction(bicycles_on_intersection, trucks_near_intersection,
+                                                           log_dir, direction='left', min_number=1,
+                                                           max_number=1, within_distance=15) 
+bicycles_with_bus_right = has_objects_in_relative_direction(bicycles_with_truck_left, buses_near_intersection,
+                                                          log_dir, direction='right', min_number=1,
+                                                          max_number=1, within_distance=15)
+
+# Combine cases where bicycle has bus on left/truck on right OR truck on left/bus on right
+bicycles_between_vehicles = scenario_or([bicycles_with_truck_right, bicycles_with_bus_right])
+
+output_scenario(bicycles_between_vehicles, description, log_dir, output_dir, is_gt=True)

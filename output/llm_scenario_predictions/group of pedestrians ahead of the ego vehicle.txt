@@ -1,0 +1,29 @@
+description = 'group of pedestrians ahead of the ego vehicle'
+
+# Get ego vehicle and pedestrians from the scenario
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find pedestrians that are ahead of the ego vehicle
+# Using forward_thresh=30 to look up to 30m ahead
+# Using lateral_thresh=10 to look for pedestrians within 10m to either side
+peds_ahead = get_objects_in_relative_direction(
+    ego, 
+    peds, 
+    log_dir,
+    direction='forward',
+    within_distance=30,
+    lateral_thresh=10
+)
+
+# Find groups of 3 or more pedestrians from those ahead
+# Using near_objects with min_objects=3 ensures at least 3 pedestrians are within 5m of each other
+ped_groups = near_objects(
+    peds_ahead,
+    peds_ahead, 
+    log_dir,
+    distance_thresh=5,
+    min_objects=3
+)
+
+output_scenario(ped_groups, description, log_dir, output_dir, is_gt=False)

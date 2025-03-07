@@ -1,0 +1,13 @@
+description = 'braking vehicle'
+# Get all vehicles from the scenario
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find vehicles that are moving (not parked/stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles with negative acceleration (braking)
+# Using -1.0 as threshold since this reliably indicates braking behavior
+# Negative acceleration means the vehicle is slowing down
+braking_vehicles = accelerating(moving_vehicles, log_dir, thresh=-1.0)
+
+output_scenario(braking_vehicles, description, log_dir, output_dir, is_gt=False)

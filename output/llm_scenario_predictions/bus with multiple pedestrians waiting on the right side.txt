@@ -1,0 +1,23 @@
+description = 'bus with multiple pedestrians waiting on the right side'
+
+# Get all buses and pedestrians
+buses = get_objects_of_category(log_dir, category='BUS') 
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find moving buses (to exclude parked buses)
+moving_buses = scenario_not(stationary)(buses, log_dir)
+
+# Find buses that have at least 2 pedestrians within 5 meters on their right side
+# Using small lateral_thresh to ensure peds are close to the side of the bus
+# rather than far ahead/behind it
+buses_with_waiting_peds = has_objects_in_relative_direction(
+    moving_buses,
+    peds, 
+    log_dir,
+    direction='right',
+    min_number=2,  # At least 2 pedestrians
+    within_distance=5,  # Within 5 meters
+    lateral_thresh=2  # Close to the side of the bus
+)
+
+output_scenario(buses_with_waiting_peds, description, log_dir, output_dir, is_gt=False)

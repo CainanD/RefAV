@@ -1,0 +1,21 @@
+description = 'vehicle turning left while pedestrian crosses at crosswalk'
+
+# Get all vehicles and pedestrians
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find vehicles that are turning left
+left_turning_vehicles = turning(vehicles, log_dir, direction='left')
+
+# Find pedestrians at crosswalks
+peds_at_crosswalk = at_pedestrian_crossing(peds, log_dir)
+
+# Find pedestrians that are crossing in front of left turning vehicles
+# Using being_crossed_by with forward direction to identify when pedestrians 
+# cross the vehicle's forward path
+crossing_peds = being_crossed_by(left_turning_vehicles, peds_at_crosswalk, log_dir, 
+                               direction='forward',
+                               forward_thresh=10, # Look 10m ahead of vehicle
+                               lateral_thresh=5)  # Allow 5m lateral distance
+
+output_scenario(crossing_peds, description, log_dir, output_dir, is_gt=False)

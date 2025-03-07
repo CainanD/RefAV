@@ -1,0 +1,16 @@
+# Description: Vehicle stopped at a stop sign
+# First get all vehicles from the scenario
+vehicles = get_objects_of_category(log_dir, category="VEHICLE") 
+
+# Find vehicles that are stopped (velocity near 0)
+# Using has_velocity with max_velocity=0.5 since stationary objects may have small velocity due to annotation jitter
+stopped_vehicles = has_velocity(vehicles, log_dir, min_velocity=0, max_velocity=0.5)
+
+# Find vehicles that are at a stop sign
+# at_stop_sign() identifies vehicles in lanes corresponding to a stop sign within 10m
+vehicles_at_stop = at_stop_sign(stopped_vehicles, log_dir)
+
+# Combine the conditions - vehicles must be stopped AND at a stop sign
+stopped_at_stop_sign = scenario_and([stopped_vehicles, vehicles_at_stop])
+
+output_scenario(stopped_at_stop_sign, description, log_dir, output_dir, is_gt=False)

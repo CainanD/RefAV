@@ -1,0 +1,10 @@
+description = 'bicyclist changing lanes to the right'
+
+# Get all bicyclists (people actively riding bikes)
+bicyclists = get_objects_of_category(log_dir, category='BICYCLIST')
+
+# Find bicyclists that are changing lanes to the right
+# This will identify timestamps where the bicyclist crosses from one lane to another
+bicyclist_lane_changes = changing_lanes(bicyclists, log_dir, direction='right')
+
+output_scenario(bicyclist_lane_changes, description, log_dir, output_dir, is_gt=False)

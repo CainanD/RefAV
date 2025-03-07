@@ -1,0 +1,12 @@
+description = 'moving wheelchair within 5 meters of an intersection'
+
+# Get all wheelchairs in the scene
+wheelchairs = get_objects_of_category(log_dir, category='WHEELCHAIR')
+
+# Filter to only moving wheelchairs by removing stationary ones
+moving_wheelchairs = scenario_not(stationary)(wheelchairs, log_dir)
+
+# Find wheelchairs that are within 5m of an intersection
+wheelchairs_near_intersection = near_intersection(moving_wheelchairs, log_dir, threshold=5)
+
+output_scenario(wheelchairs_near_intersection, description, log_dir, output_dir, is_gt=False)

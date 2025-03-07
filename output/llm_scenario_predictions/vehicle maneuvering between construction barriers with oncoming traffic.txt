@@ -1,0 +1,32 @@
+description = 'vehicle maneuvering between construction barriers with oncoming traffic'
+
+# Get relevant objects
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+cones = get_objects_of_category(log_dir, category='CONSTRUCTION_CONE') 
+barrels = get_objects_of_category(log_dir, category='CONSTRUCTION_BARREL')
+
+# Combine construction barriers into one scenario
+barriers = scenario_or([cones, barrels])
+
+# Get moving vehicles (not parked)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that have barriers on both sides within 5m laterally
+vehicles_with_barriers_left = has_objects_in_relative_direction(moving_vehicles, barriers, log_dir, 
+                                                              direction='left', min_number=1,
+                                                              within_distance=5, lateral_thresh=2)
+vehicles_with_barriers_right = has_objects_in_relative_direction(moving_vehicles, barriers, log_dir,
+                                                               direction='right', min_number=1, 
+                                                               within_distance=5, lateral_thresh=2)
+vehicles_between_barriers = scenario_and([vehicles_with_barriers_left, vehicles_with_barriers_right])
+
+# Find vehicles that have oncoming traffic within 10m in front of them
+vehicles_with_oncoming = has_objects_in_relative_direction(vehicles_between_barriers, moving_vehicles, log_dir,
+                                                         direction='forward', min_number=1,
+                                                         within_distance=10)
+
+# Since we want vehicles actively maneuvering, add requirement for lateral acceleration
+maneuvering_vehicles = has_lateral_acceleration(vehicles_with_oncoming, log_dir, 
+                                              min_accel=-5, max_accel=5)
+
+output_scenario(maneuvering_vehicles, description, log_dir, output_dir, is_gt=False)

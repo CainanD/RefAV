@@ -1,0 +1,17 @@
+description = 'passenger vehicle turning left at intersection'
+
+# Get regular vehicles (passenger vehicles)
+vehicles = get_objects_of_category(log_dir, category="REGULAR_VEHICLE")
+
+# Find vehicles that are near an intersection
+# Using 5m threshold to ensure vehicle is close enough to intersection
+vehicles_near_intersection = near_intersection(vehicles, log_dir, threshold=5)
+
+# Find vehicles that are actively turning left
+# Combine vehicles near intersection that are turning left
+turning_left_at_intersection = scenario_and([
+    vehicles_near_intersection,
+    turning(vehicles, log_dir, direction='left')
+])
+
+output_scenario(turning_left_at_intersection, description, log_dir, output_dir, is_gt=False)

@@ -1,0 +1,15 @@
+description = 'vehicle stopped at intersection'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for vehicles that are on an intersection
+vehicles_on_intersection = on_intersection(vehicles, log_dir)
+
+# Filter for vehicles that are not moving
+# Note: has_velocity with max_velocity=0.5 is used instead of stationary() 
+# because we only care if the vehicle is stopped at that moment,
+# not if it remains stationary for the entire scenario
+stopped_vehicles = has_velocity(vehicles_on_intersection, log_dir, min_velocity=0, max_velocity=0.5)
+
+output_scenario(stopped_vehicles, description, log_dir, output_dir, is_gt=False)

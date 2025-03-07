@@ -1,9 +1,10 @@
 from av2.evaluation.scenario_mining.eval import evaluate
 from av2.datasets.sensor.splits import TEST, TRAIN, VAL
 from av2.datasets.sensor.constants import AnnotationCategories
+from paths import AV2_DATA_DIR, SM_PRED_DIR, LLM_DEF_DIR, SM_DATA_DIR
 
 from utils import *
-from refAV.scenario_prediction import predict_scenario_from_description
+from scenario_prediction import predict_scenario_from_description
 import pickle
 import random
 import json
@@ -28,7 +29,7 @@ def evaluate_baseline(description,
     if not pred_pkl.exists():
         pred_pkl = create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_pred_dir)
 
-    evaluate(pred_pkl, gt_pkl, objective_metric='HOTA', max_range_m=200, dataset_dir=None, out=str(log_dir/'eval'))
+    evaluate(pred_pkl, gt_pkl, objective_metric='HOTA', max_range_m=200, dataset_dir=AV2_DATA_DIR, out=str('eval'))
 
 
 def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_pred_dir):
@@ -38,18 +39,24 @@ def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_
     output_dir = baseline_pred_dir 
     log_dir:Path = baseline_pred_dir / log_id
     
-    scenario_filename = scenario_pred_dir / 'predicted_scenarios' / f'{description}.txt'
-    print(scenario_filename)
-    if scenario_filename.exists():
-        print('Cached scenario prediction found')
-    else:
-        scenario_filename = predict_scenario_from_description(description, output_dir=scenario_pred_dir)
-    
-    with open(scenario_filename, 'r') as f:
-        scenario = f.read()
-        exec(scenario)
+    try:
+        scenario_filename = scenario_pred_dir / f'{description}.txt'
+        print(scenario_filename)
+        if scenario_filename.exists():
+            print('Cached scenario prediction found')
+        else:
+            scenario_filename = predict_scenario_from_description(description, output_dir=scenario_pred_dir)
+        
+        with open(scenario_filename, 'r') as f:
+            scenario = f.read()
+            exec(scenario)
 
-    pred_path = baseline_pred_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl'
+        pred_path = baseline_pred_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl'
+    except:
+        # Sometimes Claude will generate with bugs
+        # In this case, output the default prediction of no referred tracks
+        pred_path = create_default_prediction(description, log_id, baseline_pred_dir)
+
     return pred_path
 
 def create_default_prediction(description, log_id, baseline_pred_dir):
@@ -70,7 +77,7 @@ def create_default_prediction(description, log_id, baseline_pred_dir):
 
 
 def evaluate_pkls(pred_pkl, gt_pkl):
-    evaluate(pred_pkl, gt_pkl, objective_metric='HOTA', max_range_m=100, dataset_dir=None, out='output/eval')
+    evaluate(pred_pkl, gt_pkl, objective_metric='HOTA', max_range_m=100, dataset_dir=AV2_DATA_DIR, out='output/eval')
 
 
 def clear_pkl_files(dir:Path):
@@ -172,14 +179,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Example script with arguments")
     parser.add_argument("--split", type=str, help="An optional argument", default='val')
     parser.add_argument("--start_log_index", type=int, help="An optional argument", default=0)
-    parser.add_argument("--end_log_index", type=int, help="An optional argument", default=1000)
-    parser.add_argument("--min_tp_descriptions_per_log", type=int, default=2)
+    parser.add_argument("--end_log_index", type=int, help="An optional argument", default=700)
     args = parser.parse_args()
     split = args.split
 
     faulthandler.enable()
     logging.basicConfig(
-    filename='/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/generation_errors.log',
+    filename='output/evaluation_errors.log',
     level=logging.ERROR,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
@@ -193,38 +199,19 @@ if __name__ == '__main__':
     else:
         print('--split must be one of train, test, or val.')
 
-    output_dir = Path(f'/home/crdavids/Trinity-Sync/av2-api/output/pickles/{split}')
-    gt_pkl_dir = output_dir
-    baseline_pred_dir = Path(f'/home/crdavids/Trinity-Sync/av2-api/output/tracker_predictions/{split}')
-    dataset_dir = Path(f'/data3/crdavids/refAV/dataset/{split}')
+    log_prompt_input_path = Path('av2_sm_downloads/log_prompt_pairs_val.json')
+    eval_output_dir = Path(f'output/evaluation/{split}')
 
-    existing_description_path = Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/existing_descriptions.txt')
-    scenario_def_dir = Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/gt_scenarios')
-    scenario_pred_dir = Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation')
-    eval_dir = Path('/home/crdavids/Trinity-Sync/av2-api/output/eval')
+    with open(log_prompt_input_path, 'rb') as f:
+        log_prompts = json.load(f)
 
-    cache_stats_path = Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/cache_stats.json')
-    log_stats_path = Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/log_stats.json')
-    description_stats_path = Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/description_stats.json')
+    for log_id, prompts in log_prompts.items():
+        for prompt in prompts:
+            create_baseline_prediction(prompt, log_id, SM_PRED_DIR, LLM_DEF_DIR)
     
-    logs_to_eval = sorted(list(baseline_pred_dir.iterdir()))[args.start_log_index:args.end_log_index]
-    for log_dir in tqdm(logs_to_eval):
-        if log_dir.is_dir() and log_dir.name:
-            for scenario_description in Path(gt_pkl_dir/log_dir.name).iterdir():
-                if "_ref_gt.pkl" in scenario_description.name:
-                    try:
-                        description = scenario_description.stem.split('_',1)[0]
-                        if not file_contains_string(baseline_pred_dir/log_dir.name, description):
-                            create_baseline_prediction(description, log_dir.name, baseline_pred_dir, scenario_pred_dir)
-                        else:
-                            print(f'Prediction pkl already found for {description}')
-                    except:
-                        logging.exception("An error occurred")
-                        print(f'Evaluation of {scenario_description.stem} failed for log {log_dir.name}')
-                        create_default_prediction(description, log_dir.name, baseline_pred_dir)
+    #combine_matching_pkls(SM_DATA_DIR, SM_PRED_DIR, eval_output_dir)
+    #evaluate_pkls(eval_output_dir / split / 'combined_predictions.pkl', eval_output_dir / split 'combined_gt.pkl')
 
-        evaluate_pkls(f'/home/crdavids/Trinity-Sync/av2-api/output/eval/{split}/combined_predictions.pkl',f'output/eval/{split}/combined_gt.pkl')
-
-   #Do not use Trinity-1-4 or Trinity-1-34 to generate scenario visualizations. Nvidia drivers incompatible with Pyvista
+#Do not use Trinity-1-4 or Trinity-1-34 to generate scenario visualizations. Nvidia drivers incompatible with Pyvista
 
     

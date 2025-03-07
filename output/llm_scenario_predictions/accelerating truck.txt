@@ -1,0 +1,14 @@
+description = 'accelerating truck'
+
+# Get all trucks (including box trucks, truck cabs, etc)
+trucks = get_objects_of_category(log_dir, category='TRUCK')
+box_trucks = get_objects_of_category(log_dir, category='BOX_TRUCK') 
+truck_cabs = get_objects_of_category(log_dir, category='TRUCK_CAB')
+
+# Combine all truck types into one scenario
+all_trucks = scenario_or([trucks, box_trucks, truck_cabs])
+
+# Find trucks that are accelerating (threshold of 1.0 m/s² reliably indicates acceleration)
+accelerating_trucks = accelerating(all_trucks, log_dir, thresh=1.0)
+
+output_scenario(accelerating_trucks, description, log_dir, output_dir, is_gt=False)

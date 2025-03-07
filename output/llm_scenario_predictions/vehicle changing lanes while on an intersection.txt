@@ -1,0 +1,19 @@
+description = 'vehicle changing lanes while on an intersection'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find vehicles that are changing lanes (any direction)
+lane_changing_vehicles = changing_lanes(vehicles, log_dir)
+
+# Find vehicles that are on an intersection
+vehicles_on_intersection = on_intersection(vehicles, log_dir)
+
+# Combine the conditions - vehicles must be both changing lanes AND on an intersection
+# Using scenario_and since we want vehicles that satisfy both conditions simultaneously
+changing_lanes_on_intersection = scenario_and([
+    lane_changing_vehicles,
+    vehicles_on_intersection
+])
+
+output_scenario(changing_lanes_on_intersection, description, log_dir, output_dir, is_gt=False)

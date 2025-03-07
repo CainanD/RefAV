@@ -1,6 +1,10 @@
 from pathlib import Path
 from av2.utils.io import read_feather, read_city_SE3_ego
 from av2.evaluation.tracking.utils import save, load
+from av2.structures.cuboid import CuboidList
+
+import multiprocessing as mp
+from functools import partial
 from tqdm import tqdm
 import pyarrow.feather as feather
 import pandas as pd
@@ -17,13 +21,13 @@ import re
 import uuid
 from eval import combine_matching_pkls
 from av2.datasets.sensor.splits import TEST, TRAIN, VAL
-from paths import EGO_VEHICLE_UUIDS
 import os
 import pandas as pd
 import argparse
 from pathlib import Path
 import random
-
+from paths import *
+from utils import get_ego_SE3
 
 
 def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir):
@@ -50,7 +54,7 @@ def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir
     print(f"Found {len(unique_log_ids)} unique log IDs")
     
     # Columns to exclude
-    exclude_columns = ['log_id', 'description', 'mining_category']
+    exclude_columns = ['log_id', 'prompt', 'mining_category']
     
     # Process each log_id
     for log_id in unique_log_ids:
@@ -248,27 +252,210 @@ def pickle_to_feather(dataset_dir, input_pickle_path, base_output_dir="output"):
             df.to_feather(output_path)
             print(f"Created feather file: {output_path}")
 
+            add_ego_to_annotation(output_path.parent, output_path.parent)
+            output_path.unlink()
+
+
+def add_ego_to_annotation(log_dir:Path, output_dir:Path=Path('output')):
+
+    annotations_df = read_feather(log_dir / 'annotations.feather')
+    ego_df = read_feather(AV2_DATA_DIR / log_dir.name / 'city_SE3_egovehicle.feather')
+    ego_df['track_uuid'] = 'ego'
+    ego_df['category'] = 'EGO_VEHICLE'
+    ego_df['length_m'] = 4.877
+    ego_df['width_m'] = 2
+    ego_df['height_m'] = 1.473
+    ego_df['qw'] = 1
+    ego_df['qx'] = 0
+    ego_df['qy'] = 0
+    ego_df['qz'] = 0
+    ego_df['tx_m'] = 0
+    ego_df['ty_m'] = 0
+    ego_df['tz_m'] = 0
+    ego_df['num_interior_pts'] = 1
+
+    if 'score' in annotations_df.columns:
+        ego_df['score'] = 1
+
+    synchronized_timestamps = annotations_df['timestamp_ns'].unique()
+    ego_df = ego_df[ego_df['timestamp_ns'].isin(synchronized_timestamps)]
+
+    combined_df = pd.concat([annotations_df, ego_df], ignore_index=True)
+    feather.write_feather(combined_df, output_dir / 'sm_annotations.feather')
+    print(f'Successfully added ego to annotations for log {log_dir.name}.')
+
+
+def feather_to_csv(feather_path, output_dir):
+    df:pd.DataFrame = feather.read_feather(feather_path)
+    output_filename = output_dir + '/output.csv'
+    df.to_csv('output.csv', index=False)
+    print(f'Successfully saved to {output_filename}')
+
+
+def mining_category_from_df(df:pd.DataFrame, mining_category:str):
+    
+    log_timestamps = np.sort(df['timestamp_ns'].unique())
+    category_df = df[df['mining_category'] == mining_category]
+
+    #Keys timestamps, values list of track_uuids
+    category_objects = {}
+
+    for timestamp in log_timestamps:
+        timestamp_uuids = category_df[category_df['timestamp_ns'] == timestamp]['track_uuid'].unique()
+        category_objects[timestamp] = list(timestamp_uuids)
+
+    return category_objects
+    
+def process_log_prompt(log_id, prompt, sm_annotations, output_dir, SM_DATA_DIR, read_feather, mining_category_from_df, get_ego_SE3, CuboidList, Rotation, save):
+    """Process a single log_id and prompt combination."""
+    log_df = sm_annotations[sm_annotations['log_id'] == log_id]
+    lpp_df = log_df[log_df['prompt'] == prompt]
+    
+    frames = []
+    
+    log_dir = SM_DATA_DIR / log_id 
+    (output_dir / log_id).mkdir(exist_ok=True)
+    
+    annotations = read_feather(log_dir / 'sm_annotations.feather')
+    log_timestamps = np.sort(annotations['timestamp_ns'].unique())
+    all_uuids = list(annotations['track_uuid'].unique())
+    ego_poses = get_ego_SE3(log_dir)
+    
+    referred_objects = mining_category_from_df(lpp_df, 'REFERRED_OBJECT')
+    related_objects = mining_category_from_df(lpp_df, 'RELATED_OBJECT')
+    
+    for timestamp in log_timestamps:
+        frame = {}
+        timestamp_annotations = annotations[annotations['timestamp_ns'] == timestamp]
+        
+        timestamp_uuids = list(timestamp_annotations['track_uuid'].unique())
+        ego_to_city = ego_poses[timestamp]
+        
+        frame['seq_id'] = (log_id, prompt)
+        frame['timestamp_ns'] = timestamp
+        frame['ego_translation_m'] = list(ego_to_city.translation)
+        frame['description'] = prompt
+        
+        n = len(timestamp_uuids)
+        frame['translation_m'] = np.zeros((n, 3))
+        frame['size'] = np.zeros((n,3), dtype=np.float32)
+        frame['yaw'] = np.zeros(n, dtype=np.float32)
+        frame['velocity_m_per_s'] = np.zeros((n,3))
+        frame['label'] = np.zeros(n, dtype=np.int32)
+        frame['name'] = np.zeros(n, dtype='<U31')
+        frame['track_id'] = np.zeros(n, dtype=np.int32)
+        
+        for i, track_uuid in enumerate(timestamp_uuids):
+            track_df = timestamp_annotations[timestamp_annotations['track_uuid'] == track_uuid]
+            cuboid = CuboidList.from_dataframe(track_df)[0]
+            
+            if track_df.empty:
+                continue
+                
+            ego_coords = track_df[['tx_m', 'ty_m', 'tz_m']].to_numpy()
+            size = track_df[['length_m', 'width_m', 'height_m']].to_numpy()
+            translation_m = ego_to_city.transform_from(ego_coords)
+            yaw = Rotation.from_matrix(ego_to_city.compose(cuboid.dst_SE3_object).rotation).as_euler('zxy')[0]
+            
+            if timestamp in referred_objects and track_uuid in referred_objects[timestamp]:
+                category = "REFERRED_OBJECT"
+                label = 0
+            elif timestamp in related_objects and track_uuid in related_objects[timestamp]:
+                category = "RELATED_OBJECT"
+                label = 1
+            else:
+                category = "OTHER_OBJECT"
+                label = 2
+                
+            frame['translation_m'][i,:] = translation_m
+            frame['size'][i,:] = size
+            frame['yaw'][i] = yaw
+            frame['velocity_m_per_s'][i,:] = np.zeros(3)
+            frame['label'][i] = label
+            frame['name'][i] = category
+            frame['track_id'][i] = all_uuids.index(track_uuid)
+            
+        frames.append(frame)
+        
+    EVALUATION_SAMPLING_FREQUENCY = 5   
+    frames = frames[::EVALUATION_SAMPLING_FREQUENCY]
+    
+    sequences = {(log_id, prompt): frames}
+    
+    output_path = output_dir / log_id / f'{prompt}_{log_id[:8]}_ref_gt.pkl'
+    save(sequences, output_path)
+    return f'Scenario pkl file for {prompt}_{log_id[:8]} saved successfully.'
+
+def create_gt_mining_pkls_parallel(scenario_mining_annotations_path, output_dir: Path, num_processes=None):
+    """
+    Generates both a pkl file for evaluation in parallel.
+    
+    Args:
+        scenario_mining_annotations_path: Path to annotations
+        output_dir: Path to output directory
+        num_processes: Number of CPU cores to use (None = use all available)
+    """
+    
+    sm_annotations = read_feather(scenario_mining_annotations_path)
+    log_ids = sm_annotations['log_id'].unique()
+    
+    # Create a list of (log_id, prompt) tuples to process
+    tasks = []
+    for log_id in log_ids:
+        log_df = sm_annotations[sm_annotations['log_id'] == log_id]
+        prompts = log_df['prompt'].unique()
+        for prompt in prompts:
+            tasks.append((log_id, prompt))
+    
+    # If num_processes is not specified, use all available cores
+    if num_processes is None:
+        num_processes = mp.cpu_count()
+    
+    # The number of processes shouldn't exceed the number of tasks
+    num_processes = min(num_processes, len(tasks))
+    
+    # Create output directories first to avoid race conditions
+    for log_id in log_ids:
+        (output_dir / log_id).mkdir(exist_ok=True)
+    
+    # Define the worker function with partial to fix most parameters
+    worker_func = partial(
+        process_log_prompt,
+        sm_annotations=sm_annotations,
+        output_dir=output_dir,
+        SM_DATA_DIR=SM_DATA_DIR,  # Make sure this is defined in the global scope
+        read_feather=read_feather,
+        mining_category_from_df=mining_category_from_df,
+        get_ego_SE3=get_ego_SE3,
+        CuboidList=CuboidList,
+        Rotation=Rotation,
+        save=save
+    )
+    
+    # Display a progress bar for the overall process
+    print(f"Processing {len(tasks)} log-prompt combinations using {num_processes} processes")
+    
+    # Use a Pool of workers to process in parallel
+    with mp.Pool(processes=num_processes) as pool:
+        # Use imap to get results as they complete and to allow for a progress bar
+        results = list(tqdm(
+            pool.starmap(worker_func, tasks),
+            total=len(tasks),
+            desc="Processing log-prompt pairs"
+        ))
+    
+    # Print summary
+    print(f"Completed processing {len(results)} log-prompt combinations")
+    return results
 
 if __name__ == "__main__":
+    tracking_val_predictions = Path('tracker_predictions/class_tracking_predictions_val.pkl')
+    sm_val_feather = Path('av2_sm_downloads/scenario_mining_val_annotations.feather')
 
-    feather_file = '/home/crdavids/Downloads/av2_annotations/av2_annotations/test_annotations.feather'
-    log_parent_dir = Path('/home/crdavids/Trinity-Sync/av2-api/output/dataset/test')
-    output_path = '/home/crdavids/Trinity-Sync/av2-api/output/dataset/test/0c6e62d7-bdfa-3061-8d3d-03b13aa21f68'
-    tracker_predictions_path = Path('/home/crdavids/Trinity-Sync/av2-api/output/misc/predpkls')
-    tracker_predictions_dir = Path('/home/crdavids/Trinity-Sync/av2-api/output/tracker_predictions/val')
-    trinity_dataset_dir = Path('/data3/shared/datasets/ArgoVerse2/Sensor/val')
-    dataset_base_dir = Path('/data3/crdavids/refAV/dataset/val')
-    dataset_dir = Path(f'/data3/crdavids/refAV/dataset/val')
-    gt_pickle_dir=  Path('/home/crdavids/Trinity-Sync/av2-api/output/misc/gtpkls')
-    #convert_seq_ids('/home/crdavids/Trinity-Sync/av2-api/output/tracker_predictions/test', backup=False)
-    #create_scenario_mining_dataset_feather(Path('/home/crdavids/Trinity-Sync/av2-api/output/eval/test/combined_gt.pkl'), dataset_dir)
-    #create_refAV_annotations(trinity_dataset_dir, dataset_base_dir)
-    #pickle_to_feather(dataset_dir, tracker_predictions_path, tracker_predictions_dir)
-    #dataset_annotations_to_log_annotations(feather_file, log_parent_dir)
-    #create_refAV_annotations(dataset_dir, tracker_predictions_dir)
-    #combine_and_enrich_feather_files(gt_pickle_dir, dataset_base_dir, 'output/misc/scenario_mining_val_annotations.feather')
-    combine_matching_pkls(gt_pickle_dir, tracker_predictions_dir, Path('/home/crdavids/Trinity-Sync/av2-api/output/misc'))
-    #feather_to_csv('/home/crdavids/Trinity-Sync/av2-api/output/eval/val/scenario_mining_val_annotations.feather','/home/crdavids/Trinity-Sync/av2-api/output/eval/val')
+    separate_scenario_mining_annotations(sm_val_feather, SM_DATA_DIR)
+    pickle_to_feather(AV2_DATA_DIR, tracking_val_predictions, SM_PRED_DIR)
+    create_gt_mining_pkls_parallel(sm_val_feather, SM_DATA_DIR, num_processes=max(1, int(.5*os.cpu_count())))
+
 
 
 

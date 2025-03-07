@@ -1,6 +1,10 @@
 from pathlib import Path
 
 AV2_DATA_DIR = Path('/data3/crdavids/refAV/dataset/val')
-REFAV_CONTEXT = Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/prompting/refAV_standard_context.txt')
-PREDICTION_EXAMPLES = Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/prompting/prediction_examples.txt')
+SM_DATA_DIR = Path('output/sm_dataset/val')
+SM_PRED_DIR = Path('output/sm_predictions/val')
+LLM_DEF_DIR = Path('output/llm_scenario_predictions')
+
+REFAV_CONTEXT = Path('refAV/llm_prompting/refAV_standard_context.txt')
+PREDICTION_EXAMPLES = Path('refAV/llm_prompting/prediction_examples.txt')
 

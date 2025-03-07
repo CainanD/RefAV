@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Union, Callable, Any, Literal
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -30,8 +31,7 @@ import av2.geometry.polyline_utils as polyline_utils
 import av2.rendering.vector as vector_plotting_utils
 from av2.structures.sweep import Sweep
 from av2.evaluation.tracking.utils import save, load
-from paths import DEFAULT_DATA_DIR
-
+from paths import AV2_DATA_DIR
 
 class CacheManager:
     def __init__(self):
@@ -438,7 +438,9 @@ def get_objects_of_category(log_dir, category)->dict:
     Example:
         trucks = get_objects_of_category(log_dir, category='TRUCK')
     """
-    return to_scenario_dict(get_uuids_of_category(log_dir, category), log_dir)
+    objects_of_category = to_scenario_dict(get_uuids_of_category(log_dir, category), log_dir)
+    print(len(objects_of_category))
+    return objects_of_category
 
 
 @composable
@@ -1005,8 +1007,8 @@ def polygons_overlap(poly1, poly2):
     return True
 
 
-def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE3], color='red', opacity=.25, do_fast = True,
-    with_cf = False) -> list[vtk.vtkActor]:
+def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE3], color='red', 
+                 opacity=.25, with_cf = False) -> list[vtk.vtkActor]:
     """
     Plot a cuboid using its vertices from the Cuboid class pattern
     
@@ -1046,17 +1048,6 @@ def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE
         else:
             vertices = transforms[i].transform_from(cuboid.vertices_m)
 
-        track_uuid = cuboid.track_uuid
-
-        if not do_fast:
-            front_face = [4,0, 1, 2, 3],  # front
-
-            if not combined_front:
-                combined_front = pv.PolyData(vertices, front_face)
-            else:
-                front_surface = pv.PolyData(vertices, front_face)
-                combined_front = combined_front.append_polydata(front_surface)
-
         # Create faces using the vertex indices
         faces = [
             [4,4, 5, 6, 7],     # back
@@ -1072,38 +1063,17 @@ def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE
         else:
             surface = pv.PolyData(vertices, faces)
             combined_mesh = combined_mesh.append_polydata(surface)
-
-        if (not do_fast):
-            center = vertices.mean(axis=0)
-            # Create a point at the center
-            point = pv.PolyData(center)
-            point.point_data['label'] = 'hi'
-            # Add the category as a label
-            labels = plotter.add_point_labels(
-                point, 
-                [str(track_uuid)], 
-                point_size=10,  # Make the point invisible
-                font_size=10,
-                always_visible=False,  # Only show on hoverF
-                shape_opacity=0.3,     # Semi-transparent background
-                font_family='arial'
-            )
-            actors.append(labels)
         
         if with_cf:
             combined_cfs = append_cf_mesh(combined_cfs, cuboid, transforms[i])
 
 
-    all_cuboids_actor = plotter.add_mesh(combined_mesh, color=color, opacity=opacity, pickable=(not do_fast), lighting=False)
+    all_cuboids_actor = plotter.add_mesh(combined_mesh, color=color, opacity=opacity, pickable=False, lighting=False)
     actors.append(all_cuboids_actor)
 
     if with_cf:
-        all_cfs_actor = plotter.add_mesh(combined_cfs, color='black', line_width=3,opacity=opacity, pickable=(not do_fast), lighting=False)
+        all_cfs_actor = plotter.add_mesh(combined_cfs, color='black', line_width=3,opacity=opacity, pickable=False, lighting=False)
         actors.append(all_cfs_actor)
-
-    if not do_fast:
-        all_fronts_actor = plotter.add_mesh(combined_front, color='yellow', opacity=opacity, pickable=(not do_fast), lighting=False)
-        actors.append(all_fronts_actor)
     
     return actors
 
@@ -1146,7 +1116,7 @@ def get_nth_pos_deriv(
     with respect to city coordinates. """
 
     df = read_feather(log_dir / 'sm_annotations.feather')
-    ego_poses = read_city_SE3_ego(log_dir)
+    ego_poses = get_ego_SE3(log_dir)
 
     # Filter the DataFrame
     cuboid_df = df[df['track_uuid'] == track_uuid]
@@ -1509,7 +1479,7 @@ def get_nth_yaw_deriv(track_uuid, n, log_dir, coordinate_frame=None, in_degrees=
     of the source coordinate frame"""
 
     df = read_feather(log_dir / 'sm_annotations.feather')
-    ego_poses = read_city_SE3_ego(log_dir)
+    ego_poses = get_ego_SE3(log_dir)
 
     # Filter the DataFrame
     cuboid_df = df[df['track_uuid'] == track_uuid]
@@ -1634,17 +1604,17 @@ def at_pedestrian_crossing(
     ped_crossings = avm.get_scenario_ped_crossings()
 
     timestamps = get_timestamps(track_uuid, log_dir)
-    ego_poses = read_city_SE3_ego(log_dir)
+    ego_poses = get_ego_SE3(log_dir)
 
     timestamps_at_object = []
     for timestamp in timestamps:
         track_cuboid = get_cuboid_from_uuid(track_uuid, log_dir, timestamp=timestamp)
         city_vertices = ego_poses[timestamp].transform_from(track_cuboid.vertices_m) 
-        track_poly = np.array([city_vertices[2],city_vertices[6],city_vertices[7],city_vertices[3],city_vertices[2]])
+        track_poly = np.array([city_vertices[2],city_vertices[6],city_vertices[7],city_vertices[3],city_vertices[2]])[:,:2]
 
         for ped_crossing in ped_crossings:
             pc_poly = ped_crossing.polygon
-            pc_poly = dilate_convex_polygon(pc_poly, distance=within_distance)
+            pc_poly = dilate_convex_polygon(pc_poly[:,:2], distance=within_distance)
             ped_crossings = get_pedestrian_crossings(avm, track_poly)
 
             if polygons_overlap(track_poly, pc_poly):
@@ -1756,16 +1726,16 @@ def get_map(log_dir: Path):
     try:
         avm = ArgoverseStaticMap.from_map_dir(log_dir / 'map')
     except:
-        avm = ArgoverseStaticMap.from_map_dir(DEFAULT_DATA_DIR / log_dir.name / 'map')
+        avm = ArgoverseStaticMap.from_map_dir(AV2_DATA_DIR / log_dir.name / 'map')
         
     return avm
 
 def get_ego_SE3(log_dir:Path):
     """Returns list of ego_to_city SE3 transformation matrices"""
     try:
-        ego_poses = read_city_SE3_ego(log_dir / 'map')
+        ego_poses = read_city_SE3_ego(log_dir)
     except:
-        ego_poses = read_city_SE3_ego(DEFAULT_DATA_DIR / log_dir.name / 'map')
+        ego_poses = read_city_SE3_ego(AV2_DATA_DIR / log_dir.name)
 
     return ego_poses
 
@@ -2184,8 +2154,7 @@ def plot_map_pv(avm:ArgoverseStaticMap, plotter:pv.Plotter) -> list[vtk.vtkActor
 
 
 def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=True, description='scenario visualization',
-                        with_map=True, with_cf=False, with_lidar=False, relationship_edges=False, stride=1, av2_log_dir=None,
-                        colorful_cuboids=True,):
+                        with_map=True, with_cf=False, with_lidar=False, relationship_edges=False, stride=1):
     """
     Generate a birds-eye-view video of a series of LiDAR scans.
     
@@ -2203,10 +2172,7 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     plotter = pv.Plotter(off_screen=True)
     plotter.open_movie(output_file, framerate=FPS)
 
-    if av2_log_dir is None:
-        av2_log_dir = log_dir
-
-    dataset = AV2SensorDataLoader(data_dir=av2_log_dir.parent, labels_dir=av2_log_dir.parent)
+    dataset = AV2SensorDataLoader(data_dir=AV2_DATA_DIR, labels_dir=AV2_DATA_DIR)
     log_id = log_dir.name
 
     set_camera_position_pv(plotter, scenario_dict, relationship_dict, log_dir)
@@ -2232,7 +2198,6 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     timestamps = sorted(ego_df['timestamp_ns'])
 
     frequency = 1/((timestamps[1] - timestamps[0])/1E9)
-    print(f'FPS: {frequency}')
 
     for i in range(0, len(timestamps), stride):
         print(f'{i}/{len(timestamps)}', end='\r')
@@ -2294,10 +2259,10 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
             timestamp_actors.append(scan_actor)
         
         # Add new cuboids
-        scenario_actors = plot_cuboids(scenario_cuboids, plotter, ego_to_city, do_fast=True, color='lime', opacity=1, with_cf=with_cf)
-        related_actors = plot_cuboids(related_cuboids, plotter, ego_to_city, do_fast=True, color='blue', opacity=1, with_cf=with_cf)
-        other_actors = plot_cuboids(other_cuboids, plotter, ego_to_city, do_fast=True, color='red', opacity=1,  with_cf=with_cf)
-        ego_actor = plot_cuboids(ego_cuboid, plotter, ego_to_city, do_fast=True, color='orange', opacity=1, with_cf=with_cf)
+        scenario_actors = plot_cuboids(scenario_cuboids, plotter, ego_to_city, color='lime', opacity=1, with_cf=with_cf)
+        related_actors = plot_cuboids(related_cuboids, plotter, ego_to_city, color='blue', opacity=1, with_cf=with_cf)
+        other_actors = plot_cuboids(other_cuboids, plotter, ego_to_city, color='red', opacity=1,  with_cf=with_cf)
+        ego_actor = plot_cuboids(ego_cuboid, plotter, ego_to_city, color='orange', opacity=1, with_cf=with_cf)
 
         timestamp_actors.extend(scenario_actors)
         timestamp_actors.extend(related_actors)
@@ -2431,6 +2396,9 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
     related_first_appearances = {}
     for track_uuid, related_objects in related_dict.items():
         for related_uuid, timestamps in related_objects.items():
+            if related_uuid in scenario_dict:
+                timestamps = list(set(timestamps) - set(scenario_dict[related_uuid]))
+
             if timestamps and related_uuid in related_first_appearances:
                 related_first_appearances[related_uuid] = min(min(timestamps),related_first_appearances[related_uuid])
             elif timestamps and (
@@ -2442,7 +2410,7 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
     related_cuboids = []
     related_transforms = []
 
-    ego_poses = read_city_SE3_ego(log_dir)
+    ego_poses = get_ego_SE3(log_dir)
     df = read_feather(log_dir / 'sm_annotations.feather')
 
     for track_uuid, timestamp in track_first_appearences.items():
@@ -2660,6 +2628,7 @@ def __at_stop_signs(track_uuid, stop_sign_uuids, log_dir, forward_thresh=10) -> 
                 if timestamps[i] not in stop_sign_timestamps:
                     stop_sign_timestamps.append(timestamps[i])
 
+    print(stop_signs)
     return stop_sign_timestamps, stop_signs
 
 
@@ -3082,7 +3051,7 @@ def reverse_relationship(func):
     Wraps relational functions to switch the top level tracked objects and relationships formed by the function. 
 
     Args:
-        relational_func: Any function that takes track_candidated and related_candidates as its first and second arguements
+        relational_func: Any function that takes track_candidates and related_candidates as its first and second arguements
 
     Returns:
         dict:
@@ -3104,6 +3073,7 @@ def reverse_relationship(func):
                 print('Reverse relationship must be used with a composable_relational function!')
 
             for related_uuid, related_grandchildren in related_objects.items():
+
                 if related_uuid not in reversed_scenario_dict:
                     reversed_scenario_dict[related_uuid] = {}
                     reversed_scenario_dict[related_uuid][track_uuid] = get_scenario_timestamps(related_objects)
@@ -3175,7 +3145,9 @@ def reconstruct_track_dict(scenario_dict):
 
     for track_uuid, related_objects in scenario_dict.items():
         if isinstance(related_objects, dict):
-            track_dict[track_uuid] = get_scenario_timestamps(related_objects)
+            timestamps = get_scenario_timestamps(related_objects)
+            if len(timestamps) > 0:
+                track_dict[track_uuid] = get_scenario_timestamps(related_objects)
         else:
             if len(related_objects) > 0:
                 track_dict[track_uuid] = related_objects
@@ -3238,17 +3210,17 @@ def print_indented_dict(d:dict, indent=0):
             print(" " * (indent + 4) + str(value))
 
 
-def output_scenario(scenario, description, log_dir:Path, output_dir, is_gt=False, **kwargs):
+def output_scenario(scenario, description, log_dir:Path, output_dir, visualize=True, is_gt=False, **kwargs):
     
-    if not dict_empty(scenario):
-        Path(output_dir/log_dir.name).mkdir(exist_ok=True)
+    if visualize:
         log_scenario_visualization_path = Path(output_dir/log_dir.name/'scenario visualizations')
-        log_scenario_visualization_path.mkdir(exist_ok=True)
+        log_scenario_visualization_path.mkdir(parents=True, exist_ok=True)
         visualize_scenario(scenario, log_dir, log_scenario_visualization_path, description=description, **kwargs)
-    else:
+    
+    if dict_empty(scenario):
         print(f'No {description} in log id {log_dir.name},')
 
-    create_mining_pkl(description, scenario, log_dir, output_dir, is_gt)
+    create_mining_pkl(description, scenario, log_dir, output_dir, is_gt=False)
 
 
 def get_related_objects(relationship_dict):
@@ -3289,7 +3261,7 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, is_g
     annotations = read_feather(log_dir / 'sm_annotations.feather')
     log_timestamps = np.sort(annotations['timestamp_ns'].unique())
     all_uuids = list(annotations['track_uuid'].unique())
-    ego_poses = read_city_SE3_ego(log_dir)
+    ego_poses = get_ego_SE3(log_dir)
 
     referred_objects = swap_keys_and_listed_values(reconstruct_track_dict(scenario))
     relationships = reconstruct_relationship_dict(scenario)
@@ -3350,8 +3322,8 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, is_g
             frame['name'][i] = category
             frame['track_id'][i] = all_uuids.index(track_uuid)
             
-            if not is_gt:
-                frame['score'][i] = track_df['score']
+            if not is_gt and 'score' in track_df:
+                    frame['score'][i] = track_df['score']
 
             all_data.append([log_id, description, track_uuid, category, timestamp])
 

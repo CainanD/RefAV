@@ -1,0 +1,12 @@
+description = 'a group of people'
+# Get all pedestrians from the scenario
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find pedestrians that have at least 2 other pedestrians nearby (within 3 meters)
+# This creates a group of 3 or more pedestrians close to each other
+pedestrian_groups = near_objects(pedestrians, pedestrians, log_dir, 
+                               distance_thresh=3,  # 3 meters is close enough to be considered a group
+                               min_objects=2)      # need at least 2 other pedestrians nearby
+
+# Output the scenario containing groups of pedestrians
+output_scenario(pedestrian_groups, description, log_dir, output_dir, is_gt=False)

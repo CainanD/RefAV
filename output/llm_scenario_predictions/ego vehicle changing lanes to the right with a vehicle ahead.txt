@@ -1,0 +1,34 @@
+description = 'ego vehicle changing lanes to the right with a vehicle ahead'
+
+# Get ego vehicle and all other vehicles
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find ego vehicle instances that are changing lanes to the right
+ego_right_lane_changes = changing_lanes(ego, log_dir, direction='right')
+
+# Find vehicles that are in front of the ego vehicle during lane changes
+# Using 30m as a reasonable distance to consider a vehicle "ahead"
+vehicles_ahead = get_objects_in_relative_direction(
+    ego_right_lane_changes, 
+    vehicles, 
+    log_dir,
+    direction='forward',
+    max_number=1,
+    within_distance=30
+)
+
+# Final scenario is ego vehicle instances that are both:
+# 1. Changing lanes to the right
+# 2. Have a vehicle ahead of them
+ego_lane_change_with_vehicle_ahead = has_objects_in_relative_direction(
+    ego_right_lane_changes,
+    vehicles,
+    log_dir,
+    direction='forward',
+    min_number=1,
+    max_number=1,
+    within_distance=30
+)
+
+output_scenario(ego_lane_change_with_vehicle_ahead, description, log_dir, output_dir, is_gt=False)

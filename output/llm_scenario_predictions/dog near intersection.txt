@@ -1,0 +1,12 @@
+# Description: Find dogs that are near an intersection
+description = 'dog near intersection'
+
+# Get all dogs from the scenario
+dogs = get_objects_of_category(log_dir, category='DOG')
+
+# Find dogs within 5 meters of an intersection
+# Using a relatively small threshold since dogs are typically on leashes
+# and we want to capture dogs that are actually close to crossing
+dogs_near_intersection = near_intersection(dogs, log_dir, threshold=5)
+
+output_scenario(dogs_near_intersection, description, log_dir, output_dir, is_gt=False)
