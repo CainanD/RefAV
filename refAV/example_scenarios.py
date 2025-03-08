@@ -12,7 +12,7 @@ annotations_df = read_feather(log_dir / 'sm_annotations.feather')
 avm = get_map(log_dir)
 all_uuids = annotations_df['track_uuid'].unique()
 
-scenarios = [9]
+scenarios = [4,9,10,11,12,13]
 
 if 0 in scenarios:
     description = 'all av2 objects'
@@ -61,6 +61,13 @@ if 4 in scenarios:
     vehicles_near_peds = near_objects(vehicles, peds, log_dir, min_objects=2)
     output_scenario(vehicles_near_peds, description, log_dir, output_dir,relationship_edges=True)
 
+    description='multiple pedestrians near a vehicle'
+    vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+    peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+    vehicles_near_peds = reverse_relationship(near_objects)(vehicles, peds, log_dir, min_objects=2)
+    output_scenario(vehicles_near_peds, description, log_dir, output_dir,relationship_edges=True)
+
 
 #Scenario 5: turning_left
 
@@ -105,7 +112,6 @@ if 8 in scenarios:
     jaywalking_peds = scenario_not(at_pedestrian_crossing)(peds_on_road, log_dir)
     output_scenario(jaywalking_peds, description, log_dir, output_dir,relationship_edges=True)
 
-
 #Scenario 9: The vehicle behind another vehicle being crossed by a jaywalking pedestrian
 
 if 9 in scenarios:
@@ -119,7 +125,7 @@ if 9 in scenarios:
     vehicles = get_objects_of_category(log_dir, category='VEHICLE')
     moving_vehicles = scenario_and([in_drivable_area(vehicles, log_dir), scenario_not(stationary)(vehicles, log_dir)])
     crossed_vehicles = being_crossed_by(moving_vehicles, jaywalking_peds, log_dir)
-    behind_crossed_vehicle = has_objects_in_relative_direction(crossed_vehicles, moving_vehicles, log_dir,
+    behind_crossed_vehicle = get_objects_in_relative_direction(crossed_vehicles, moving_vehicles, log_dir,
                                                 direction='backward', max_number=1, within_distance=25)
 
     output_scenario(behind_crossed_vehicle, description, log_dir, output_dir,relationship_edges=True)
@@ -141,7 +147,6 @@ if 10 in scenarios:
     peds_beween_vehicles = scenario_and([peds_in_front, peds_in_front])
     output_scenario(peds_beween_vehicles, description, log_dir, output_dir,relationship_edges=True)
 
-
 if 11 in scenarios:
     description = 'vehicle with another vehicle in their lane'
     vehicles = get_objects_of_category(log_dir, category='VEHICLE')
@@ -152,7 +157,7 @@ if 12 in scenarios:
     description = 'vehicle being overtaken on their right'
     vehicles = get_objects_of_category(log_dir, category='VEHICLE')
     moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
-    overtaken_on_left = being_crossed_by(moving_vehicles, moving_vehicles, log_dir, direction='right', forward_thresh=5, lateral_thresh=10)
+    overtaken_on_left = being_crossed_by(moving_vehicles, moving_vehicles, log_dir, direction='right', in_direciton='counterclockwise', forward_thresh=5, lateral_thresh=10)
     visualize_scenario(overtaken_on_left, log_dir, Path('.'), description=description, relationship_edges=True)
 
 

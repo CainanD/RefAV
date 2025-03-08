@@ -224,8 +224,8 @@ def scenario_at_timestamps(scenario_dict:dict, kept_timestamps):
 
     keys_to_remove = []
     for uuid, relationship in scenario_with_timestamps.items():
-        if isinstance(relationship, dict):
-            relationship = scenario_at_timestamps(relationship, kept_timestamps)
+        relationship = scenario_at_timestamps(relationship, kept_timestamps)
+        scenario_with_timestamps[uuid] = relationship
         
         if len(relationship) == 0:
             keys_to_remove.append(uuid)
@@ -3045,6 +3045,19 @@ def reverse_relationship(relationship_dict:dict[str,dict[str,list]]):
     return reversed_relationship_dict
 """
 
+def remove_empty_branches(scenario_dict):
+    
+    if isinstance(scenario_dict, dict):
+        track_uuids = list(scenario_dict.keys())
+        for track_uuid in track_uuids:
+            children = scenario_dict[track_uuid]
+            timestamps = get_scenario_timestamps(children)
+            if len(timestamps) == 0:
+                print(f'{children} popped from dict')
+                scenario_dict.pop(track_uuid)
+            else:
+                remove_empty_branches(children)
+
 
 def reverse_relationship(func):
     """
@@ -3064,54 +3077,44 @@ def reverse_relationship(func):
 
         track_dict = to_scenario_dict(track_candidates, log_dir)
         related_dict = to_scenario_dict(related_candidates, log_dir)
+        remove_empty_branches(track_dict)
+        remove_empty_branches(related_dict)
 
         scenario_dict:dict = func(track_dict, related_dict, log_dir, *args, **kwargs)
-        reversed_scenario_dict = {}
+        remove_empty_branches(scenario_dict)
 
+        #Look for new relationships
+        tc_uuids = list(track_dict.keys())
+        rc_uuids = list(related_dict.keys())
+
+        new_relationships = []
         for track_uuid, related_objects in scenario_dict.items():
-            if isinstance(related_objects, list):
-                print('Reverse relationship must be used with a composable_relational function!')
+            for related_uuid in related_objects.keys():
+                if track_uuid in tc_uuids and related_uuid in rc_uuids \
+                or track_uuid in rc_uuids and related_uuid in tc_uuids:
+                    new_relationships.append((track_uuid, related_uuid))
 
-            for related_uuid, related_grandchildren in related_objects.items():
+        #Reverese the scenario dict using these new relationships
+        reversed_scenario_dict = {}
+        for track_uuid, related_uuid in new_relationships:
+            related_timestamps = get_scenario_timestamps(scenario_dict[track_uuid][related_uuid])
+            removed_related:dict = deepcopy(scenario_dict[track_uuid])
 
-                if related_uuid not in reversed_scenario_dict:
-                    reversed_scenario_dict[related_uuid] = {}
-                    reversed_scenario_dict[related_uuid][track_uuid] = get_scenario_timestamps(related_objects)
+            # I need a new data structure
+            for track_uuid2, related_uuid2 in new_relationships:
+                if track_uuid2 == track_uuid:
+                    removed_related.pop(related_uuid2)
 
-                    if isinstance(related_grandchildren, list):
-                        continue
-                    else:
-                        for grandchild_uuid, relationships in related_grandchildren.items():
-                            reversed_scenario_dict[related_uuid][grandchild_uuid] = relationships
-                else:
-                    if track_uuid in reversed_scenario_dict[related_uuid]:
-                        if isinstance(reversed_scenario_dict[related_uuid][track_uuid], list):
-                            reversed_scenario_dict[related_uuid][track_uuid] = \
-                            sorted(list(set(reversed_scenario_dict[related_uuid][track_uuid]).union(get_scenario_timestamps(related_objects))))
-                        else:
-                            reversed_scenario_dict[related_uuid][track_uuid][track_uuid] = get_scenario_timestamps(track_uuid)
-                    else:
-                        reversed_scenario_dict[related_uuid][track_uuid] = get_scenario_timestamps(related_objects)
+            if len(removed_related) == 0 or len(get_scenario_timestamps(removed_related)) == 0:
+                removed_related = related_timestamps
 
-                    if isinstance(related_grandchildren, list):
-                        if related_uuid in reversed_scenario_dict[related_uuid]:
-                            reversed_scenario_dict[related_uuid][related_uuid] = sorted(
-                                list(set(related_grandchildren).union(reversed_scenario_dict[related_uuid][related_uuid])))
-                        else:
-                            reversed_scenario_dict[related_uuid][related_uuid] = related_grandchildren
-                    else:
-                        for grandchild_uuid, relationships in related_grandchildren.items():
-                            if grandchild_uuid in reversed_scenario_dict[related_uuid]:
-                                if isinstance(relationships, dict):
-                                    reversed_scenario_dict[related_uuid][grandchild_uuid] = scenario_or([reversed_scenario_dict[related_uuid][grandchild_uuid], relationships])
-                                else:
-                                    try:
-                                        reversed_scenario_dict[related_uuid][grandchild_uuid][grandchild_uuid] = relationships
-                                    except:
-                                        reversed_scenario_dict[related_uuid][grandchild_uuid] = sorted(
-                                            list(set(relationships).union(reversed_scenario_dict[related_uuid][grandchild_uuid])))
-                            else:
-                                reversed_scenario_dict[related_uuid][grandchild_uuid] = relationships
+            filtered_removed_related = scenario_at_timestamps(removed_related, related_timestamps)
+            filtered_removed_related = {track_uuid : filtered_removed_related}
+
+            if related_uuid not in reversed_scenario_dict:
+                reversed_scenario_dict[related_uuid] = filtered_removed_related
+            else:
+                reversed_scenario_dict[related_uuid] = scenario_or([filtered_removed_related, reversed_scenario_dict[related_uuid]])
 
         return reversed_scenario_dict
     return wrapper
@@ -3184,12 +3187,12 @@ def get_objects_and_timestamps(scenario_dict: dict) -> dict:
                 if child_uuid not in track_dict:
                     track_dict[child_uuid] = timestamps
                 else:
-                    track_dict[child_uuid] = sorted(list(set(track_dict[child_uuid].extend(timestamps))))
+                    track_dict[child_uuid] = sorted(list(set(track_dict[child_uuid] + timestamps)))
         else:
             if uuid not in track_dict:
                 track_dict[uuid] = related_children
             else:
-                track_dict[uuid] = sorted(list(set(track_dict[uuid].extend(related_children))))
+                track_dict[uuid] = sorted(list(set(track_dict[uuid] + related_children)))
 
     return track_dict
 

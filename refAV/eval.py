@@ -29,11 +29,15 @@ def evaluate_baseline(description,
     if not pred_pkl.exists():
         pred_pkl = create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_pred_dir)
 
-    evaluate(pred_pkl, gt_pkl, objective_metric='HOTA', max_range_m=200, dataset_dir=AV2_DATA_DIR, out=str('eval'))
+    evaluate(pred_pkl, gt_pkl, objective_metric='HOTA', max_range_m=100, dataset_dir=AV2_DATA_DIR, out=str('eval'))
 
 
 def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_pred_dir):
-    
+
+    pred_path = baseline_pred_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl'
+    if pred_path.exists():
+        return pred_path
+
     #Used in exec(scenario) code
     is_gt = False
     output_dir = baseline_pred_dir 
@@ -51,9 +55,8 @@ def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_
             scenario = f.read()
             exec(scenario)
 
-        pred_path = baseline_pred_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl'
     except:
-        # Sometimes Claude will generate with bugs
+        # Sometimes Claude will generate scenario definitions with bugs
         # In this case, output the default prediction of no referred tracks
         pred_path = create_default_prediction(description, log_id, baseline_pred_dir)
 
@@ -77,7 +80,13 @@ def create_default_prediction(description, log_id, baseline_pred_dir):
 
 
 def evaluate_pkls(pred_pkl, gt_pkl):
-    evaluate(pred_pkl, gt_pkl, objective_metric='HOTA', max_range_m=100, dataset_dir=AV2_DATA_DIR, out='output/eval')
+    with open(pred_pkl, 'rb') as f:
+        predictions = pickle.load(f)
+
+    with open(gt_pkl, 'rb') as f:
+        labels = pickle.load(f)
+
+    evaluate(predictions, labels, objective_metric='HOTA', max_range_m=100, dataset_dir=AV2_DATA_DIR, out='output/evaluation')
 
 
 def clear_pkl_files(dir:Path):
@@ -205,12 +214,13 @@ if __name__ == '__main__':
     with open(log_prompt_input_path, 'rb') as f:
         log_prompts = json.load(f)
 
+    """
     for log_id, prompts in log_prompts.items():
         for prompt in prompts:
             create_baseline_prediction(prompt, log_id, SM_PRED_DIR, LLM_DEF_DIR)
-    
-    #combine_matching_pkls(SM_DATA_DIR, SM_PRED_DIR, eval_output_dir)
-    #evaluate_pkls(eval_output_dir / split / 'combined_predictions.pkl', eval_output_dir / split 'combined_gt.pkl')
+    """
+    combine_matching_pkls(SM_DATA_DIR, SM_PRED_DIR, eval_output_dir)
+    evaluate_pkls(str(eval_output_dir / 'combined_predictions.pkl'), str(eval_output_dir / 'combined_gt.pkl'))
 
 #Do not use Trinity-1-4 or Trinity-1-34 to generate scenario visualizations. Nvidia drivers incompatible with Pyvista
 
