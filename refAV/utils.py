@@ -835,7 +835,6 @@ def changing_lanes(
     turning_timestamps = unwrap_func(turning)(track_uuid, log_dir)
     return sorted(list(set(lane_changing_timestamps).difference(set(turning_timestamps))))
     
-
 @composable
 @cache_manager.create_cache('has_lateral_acceleration')
 def has_lateral_acceleration(
@@ -1100,8 +1099,6 @@ def append_cf_mesh(combined_cfs:pv.PolyData, cuboid:Cuboid, transform:SE3=None):
         combined_cfs = combined_cfs.append_polydata(pv_yline)
 
     return combined_cfs
-
-
 
 
 @cache_manager.create_cache('get_nth_pos_deriv')

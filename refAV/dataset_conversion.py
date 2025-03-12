@@ -48,6 +48,7 @@ def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir
     # Read the input feather file
     print(f"Reading input feather file: {input_feather_path}")
     df = pd.read_feather(input_feather_path)
+
     
     # Get unique log_ids
     unique_log_ids = df['log_id'].unique()
@@ -452,8 +453,9 @@ if __name__ == "__main__":
     tracking_val_predictions = Path('tracker_predictions/class_tracking_predictions_val.pkl')
     sm_val_feather = Path('av2_sm_downloads/scenario_mining_val_annotations.feather')
 
+    #feather_to_csv(sm_val_feather, 'output.csv')
     separate_scenario_mining_annotations(sm_val_feather, SM_DATA_DIR)
-    pickle_to_feather(AV2_DATA_DIR, tracking_val_predictions, SM_PRED_DIR)
+    #pickle_to_feather(AV2_DATA_DIR, tracking_val_predictions, SM_PRED_DIR)
     create_gt_mining_pkls_parallel(sm_val_feather, SM_DATA_DIR, num_processes=max(1, int(.5*os.cpu_count())))
 
 

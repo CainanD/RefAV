@@ -3,7 +3,7 @@ import paths
 from pathlib import Path
 
 client = anthropic.Anthropic(
-    # defaults to os.environ.get("ANTHROPIC_API_KEY")
+    api_key = paths.ANTRHOPIC_API_KEY
 )
 
 

@@ -14,10 +14,6 @@ all_uuids = annotations_df['track_uuid'].unique()
 
 scenarios = [4,9,10,11,12,13]
 
-if 0 in scenarios:
-    description = 'all av2 objects'
-    all_objects = get_objects_of_category(log_dir, 'ANY')
-    output_scenario(all_objects, description, log_dir, output_dir)
 
 #Secenario 1: accelerating_at_crosswalk
 
@@ -38,21 +34,12 @@ if 1 in scenarios:
 if 2 in scenarios:
     
     description = 'vehicles changing lanes'
-    peds = get_objects_of_category(log_dir, "PEDESTRIAN")
     vehicles = get_objects_of_category(log_dir, category='VEHICLE')
     lane_changes = changing_lanes(vehicles, log_dir)
     output_scenario(lane_changes, description, log_dir, output_dir,relationship_edges=True)
 
-#Scenario 3: high_lateral_acceleration
-
-if 3 in scenarios:
-    description = 'high lateral acceleration'
-    accel_dict = scenario_not(has_lateral_acceleration)(all_uuids, log_dir, min_accel=-1, max_accel=1)
-    output_scenario(accel_dict, description, log_dir, output_dir,relationship_edges=True)
-
 
 #Scenario 4: near_multiple_pedestrians
-
 if 4 in scenarios:
     description='vehicle_near_multiple_pedestrians'
     vehicles = get_objects_of_category(log_dir, category='VEHICLE')
@@ -70,7 +57,6 @@ if 4 in scenarios:
 
 
 #Scenario 5: turning_left
-
 if 5 in scenarios:
 
     description='turning left'
@@ -92,7 +78,6 @@ if 6 in scenarios:
 
 
 #Scenario 7: at_stop_sign
-
 if 7 in scenarios:
 
     description='active vehicle at stop sign'
@@ -112,8 +97,8 @@ if 8 in scenarios:
     jaywalking_peds = scenario_not(at_pedestrian_crossing)(peds_on_road, log_dir)
     output_scenario(jaywalking_peds, description, log_dir, output_dir,relationship_edges=True)
 
-#Scenario 9: The vehicle behind another vehicle being crossed by a jaywalking pedestrian
 
+#Scenario 9: The vehicle behind another vehicle being crossed by a jaywalking pedestrian
 if 9 in scenarios:
 
     description = 'moving vehicle behind another vehicle being crossed by a jaywalking pedestrian'

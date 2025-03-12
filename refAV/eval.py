@@ -214,13 +214,13 @@ if __name__ == '__main__':
     with open(log_prompt_input_path, 'rb') as f:
         log_prompts = json.load(f)
 
-    """
+    
     for log_id, prompts in log_prompts.items():
         for prompt in prompts:
             create_baseline_prediction(prompt, log_id, SM_PRED_DIR, LLM_DEF_DIR)
-    """
+    
     combine_matching_pkls(SM_DATA_DIR, SM_PRED_DIR, eval_output_dir)
-    evaluate_pkls(str(eval_output_dir / 'combined_predictions.pkl'), str(eval_output_dir / 'combined_gt.pkl'))
+    evaluate_pkls(eval_output_dir / 'combined_predictions.pkl', eval_output_dir / 'combined_gt.pkl')
 
 #Do not use Trinity-1-4 or Trinity-1-34 to generate scenario visualizations. Nvidia drivers incompatible with Pyvista
 
