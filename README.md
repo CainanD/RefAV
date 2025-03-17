@@ -32,16 +32,16 @@ It also includes some basic tutorials about how to define and visualize a scenar
 
 ### Benchmark Evaluation
 
-This challenge is evaluated across four benchmarks.
-1. HOTA-Temporal
-2. HOTA
-3. Timestamp F1
-4. Scenario F1:
+This challenge uses four metrics for evaluation at different spatial and temporal granularities.
+1. HOTA-Temporal: 
+2. HOTA: 
+3. Timestamp F1: 
+4. Scenario F1: 
 
 ### Submission Format
 
 The evaluation expects a dictionary of lists of dictionaries
-
+```json
 {
       <(log_id,prompt)>: [
             {
@@ -56,6 +56,8 @@ The evaluation expects a dictionary of lists of dictionaries
             }
       ]
 }
+```
+
 log_id: Log id associated with the track, also called seq_id.
 prompt: The prompt/description string that describes the scenario associated with the log.
 timestamp_ns: Timestamp associated with the detections.
@@ -69,9 +71,8 @@ yaw: Object heading rotation along the z axis.
 velocity_m_per_s: Object veloicty along the x,y,z axes.
 An example looks like this:
 
-Example
-
-# (1). Example tracks.
+### Example Submission
+```json
 example_tracks = {
   ('02678d04-cc9f-3148-9f95-1ba66347dff9','vehicle turning left'): [
     {
@@ -100,7 +101,7 @@ example_tracks = {
   ],
   ...
 }
-
+```
 
 ### Contact 
 
