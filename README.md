@@ -41,7 +41,7 @@ This challenge uses four metrics for evaluation at different spatial and tempora
 ### Submission Format
 
 The evaluation expects a dictionary of lists of dictionaries
-```json
+```python
 {
       <(log_id,prompt)>: [
             {
@@ -68,11 +68,10 @@ name: Object class name.
 translation_m: xyz-components of the object translation in the city reference frame, in meters.
 size: Object extent along the x,y,z axes in meters.
 yaw: Object heading rotation along the z axis.
-velocity_m_per_s: Object veloicty along the x,y,z axes.
 An example looks like this:
 
 ### Example Submission
-```json
+```python
 example_tracks = {
   ('02678d04-cc9f-3148-9f95-1ba66347dff9','vehicle turning left'): [
     {
