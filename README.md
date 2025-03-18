@@ -20,8 +20,7 @@ s5cmd --no-sign-request cp "s3://argoverse/datasets/av2/$DATASET_NAME/*" $TARGET
 ```
 It also requies downloading the scenario-mining add on. 
 ```
-export DATASET_NAME="scenario_mining"  # sensor, lidar, motion_forecasting or tbv.
-s5cmd --no-sign-request cp "s3://argoverse/datasets/av2/$DATASET_NAME/*" $TARGET_DIR
+s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
 ```
 
 ### Running the Code
@@ -32,11 +31,12 @@ It also includes some basic tutorials about how to define and visualize a scenar
 
 ### Benchmark Evaluation
 
-This challenge uses four metrics for evaluation at different spatial and temporal granularities.
-1. HOTA-Temporal: 
-2. HOTA: 
-3. Timestamp F1: 
-4. Scenario F1: 
+| **Metric** | **Description** |
+|------------|-----------------|
+| HOTA-Temporal | HOTA on temporally localized tracks. |
+| HOTA | HOTA on the full length of a track |
+| Timestamp F1 | Timestamp level classification metric |
+| Scenario F1 | Scenario level classification metric. |
 
 ### Submission Format
 
