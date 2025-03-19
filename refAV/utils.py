@@ -4,9 +4,7 @@ import os
 from pathlib import Path
 from typing import Union, Callable, Any, Literal
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pathos.multiprocessing import ProcessingPool as Pool
 import scipy.ndimage
 import scipy.signal
@@ -18,7 +16,9 @@ import pandas as pd
 import inspect
 import scipy
 import sys
+import json
 from collections import OrderedDict
+from refAV.paths import AV2_DATA_DIR
 
 from av2.structures.cuboid import Cuboid, CuboidList
 from av2.map.map_api import ArgoverseStaticMap
@@ -31,13 +31,18 @@ import av2.geometry.polyline_utils as polyline_utils
 import av2.rendering.vector as vector_plotting_utils
 from av2.structures.sweep import Sweep
 from av2.evaluation.tracking.utils import save, load
-from paths import AV2_DATA_DIR
+from av2.datasets.sensor.splits import TEST, TRAIN, VAL
+
 
 class CacheManager:
     def __init__(self):
         self.caches = {}
         self.stats = {}
+        self.num_processes = max(int(0.9 * os.cpu_count()), 1)
     
+    def set_num_processes(self, num):
+        self.num_processes = max(min(os.cpu_count(), num), 1)
+
     def make_hashable(self, obj):
         if isinstance(obj, (list, tuple, set)):
             return tuple(self.make_hashable(x) for x in obj)
@@ -54,7 +59,7 @@ class CacheManager:
         else:
             return obj
 
-    def create_cache(self, name, maxsize=128):
+    def create_cache(self, name, maxsize=1024):
         if name not in self.caches:
             self.caches[name] = OrderedDict()
             self.stats[name] = {'hits': 0, 'misses': 0}
@@ -252,7 +257,6 @@ def get_ego_uuid(log_dir):
     ego_df = df[df['category'] == 'EGO_VEHICLE']
     return ego_df['track_uuid'].iloc[0]
 
-
 @composable_relational
 @cache_manager.create_cache('has_objects_in_relative_direction')
 def has_objects_in_relative_direction(
@@ -324,17 +328,19 @@ def has_objects_in_relative_direction(
     for timestamp, objects in in_direction_dict.items():
         sorted_objects = sorted(objects, key=lambda row: row[1])
 
-        if len(sorted_objects) >= min_number:
-            count = 0
-            for candidate_uuid, distance in sorted_objects:
-                if distance <= within_distance and count < max_number:
-                    timestamps_with_objects.append(timestamp)
-                    if not objects_in_relative_direction.get(candidate_uuid, None):
-                        objects_in_relative_direction[candidate_uuid] = []
-                    objects_in_relative_direction[candidate_uuid].append(timestamp)
-                    count += 1
+        count = 0
+        for candidate_uuid, distance in sorted_objects:
+            if distance <= within_distance and count < max_number:
+                timestamps_with_objects.append(timestamp)
+                if not objects_in_relative_direction.get(candidate_uuid, None):
+                    objects_in_relative_direction[candidate_uuid] = []
+                objects_in_relative_direction[candidate_uuid].append(timestamp)
+                count += 1
 
-    return timestamps_with_objects, objects_in_relative_direction
+    if len(list(objects_in_relative_direction.keys())) >= min_number:
+        return timestamps_with_objects, objects_in_relative_direction
+    else:
+        return [], {}
 
 
 @cache_manager.create_cache('get_objects_in_relative_direction')
@@ -409,7 +415,7 @@ def get_uuids_of_category(log_dir:Path, category:str):
     elif category == 'VEHICLE':
 
         uuids = []
-        vehicle_superclass = ["EGO_VEHICLE","ARTICULATED_BUS","BICYCLE","BOX_TRUCK","BUS","LARGE_VEHICLE",
+        vehicle_superclass = ["EGO_VEHICLE","ARTICULATED_BUS","BOX_TRUCK","BUS","LARGE_VEHICLE",
                               "MOTORCYCLE","RAILED_VEHICLE","REGULAR_VEHICLE","SCHOOL_BUS","TRUCK","TRUCK_CAB"]
         
         for vehicle_category in vehicle_superclass:
@@ -420,6 +426,17 @@ def get_uuids_of_category(log_dir:Path, category:str):
         uuids = category_df['track_uuid'].unique()
 
     return uuids
+
+def has_free_will(track_uuid, log_dir):
+
+    df = read_feather(log_dir / 'sm_annotations.feather')
+    category = df[df['track_uuid'] == track_uuid]['category'].iloc[0]
+    if category in ['ANIMAL','OFFICIAL_SIGNALER','RAILED_VEHICLE','ARTICULATED_BUS','WHEELED_RIDER','SCHOOL_BUS',
+                    'MOTORCYCLIST','TRUCK_CAB','VEHICULAR_TRAILER','BICYCLIST','MOTORCYCLE','TRUCK','BOX_TRUCK','BUS',
+                    'LARGE_VEHICLE','PEDESTRIAN','REGULAR_VEHICLE']:
+        return True
+    else:
+        return False
 
 
 def get_objects_of_category(log_dir, category)->dict:
@@ -438,9 +455,7 @@ def get_objects_of_category(log_dir, category)->dict:
     Example:
         trucks = get_objects_of_category(log_dir, category='TRUCK')
     """
-    objects_of_category = to_scenario_dict(get_uuids_of_category(log_dir, category), log_dir)
-    print(len(objects_of_category))
-    return objects_of_category
+    return to_scenario_dict(get_uuids_of_category(log_dir, category), log_dir)
 
 
 @composable
@@ -451,6 +466,7 @@ def is_category(track_uuid, log_dir, category):
         return non_composable_get_object(track_uuid, log_dir)
     else:
         return []
+
 
 @composable
 def get_object(track_uuid, log_dir):
@@ -569,6 +585,15 @@ def get_semantic_lane(ls: LaneSegment, log_dir, avm=None) -> list[LaneSegment]:
         avm = get_map(log_dir)
     lane_segments = avm.vector_lane_segments
 
+    try:
+        with open('/home/crdavids/Trinity-Sync/av2-api/output/misc/semantic_lane_cache.json', 'rb') as file:
+            semantic_lane_cache = json.load(file)
+            semantic_lanes = semantic_lane_cache[log_dir.name][ls.id]
+            all_lanes = avm.vector_lane_segments
+            return [all_lanes[ls_id] for ls_id in semantic_lanes]
+    except:
+        pass
+
     semantic_lane = [ls]
 
     if not ls.is_intersection or get_turn_direction(ls) == 'straight':
@@ -596,7 +621,7 @@ def get_semantic_lane(ls: LaneSegment, log_dir, avm=None) -> list[LaneSegment]:
                     best_similarity = similarity
                     most_likely_pred = ppred_ls
 
-        if most_likely_pred:
+        if most_likely_pred and most_likely_pred not in semantic_lane:
             semantic_lane.append(most_likely_pred)
             predecessors.append(most_likely_pred)
 
@@ -619,7 +644,7 @@ def get_semantic_lane(ls: LaneSegment, log_dir, avm=None) -> list[LaneSegment]:
                     best_similarity = similarity
                     most_likely_pred = ppred_ls
 
-        if most_likely_pred:
+        if most_likely_pred and most_likely_pred not in semantic_lane:
             semantic_lane.append(most_likely_pred)
             sucessors.append(most_likely_pred)
     
@@ -657,7 +682,6 @@ def get_lane_orientation(ls: LaneSegment, avm: ArgoverseStaticMap) -> tuple:
     centerline = avm.get_lane_segment_centerline(ls.id)
     orientation  = centerline[-1] - centerline[0]
     return orientation
-
 
 @composable
 @cache_manager.create_cache('turning')
@@ -731,7 +755,6 @@ def turning(
         return turn_dict[direction]
     else:
         return turn_dict['left'] + turn_dict['right']    
-
 
 @composable
 @cache_manager.create_cache('changing_lanes')
@@ -871,11 +894,17 @@ def has_lateral_acceleration(
     return hla_timestamps
         
 
-def unwrap_func(decorated_func: Callable) -> Callable:
+def unwrap_func(decorated_func: Callable, n=1) -> Callable:
     """Get the original function from a decorated function."""
-    if hasattr(decorated_func, '__wrapped__'):
-        return decorated_func.__wrapped__
-    return decorated_func
+
+    unwrapped_func = decorated_func
+    for _ in range(n):
+        if hasattr(unwrapped_func, '__wrapped__'):
+            unwrapped_func = unwrapped_func.__wrapped__
+        else:
+            break
+    
+    return unwrapped_func
 
 def parallelize_uuids(
     func: Callable,
@@ -907,7 +936,7 @@ def parallelize_uuids(
         return uuid, timestamps, related
 
     # Initialize the pool
-    num_processes = max(int(0.9 * os.cpu_count()), 1)
+    num_processes = cache_manager.num_processes
     with Pool(nodes=num_processes) as pool:
         # Map work to the pool - this will wait for completion
         results = pool.map(worker_func, all_uuids)
@@ -1006,8 +1035,8 @@ def polygons_overlap(poly1, poly2):
     return True
 
 
-def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE3], color='red', 
-                 opacity=.25, with_cf = False) -> list[vtk.vtkActor]:
+def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE3], color='red', opacity=.25, with_front = False,
+    with_cf = False, with_label=False) -> list[vtk.vtkActor]:
     """
     Plot a cuboid using its vertices from the Cuboid class pattern
     
@@ -1047,6 +1076,15 @@ def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE
         else:
             vertices = transforms[i].transform_from(cuboid.vertices_m)
 
+        if with_front:
+            front_face = [4,0, 1, 2, 3],  # front
+
+            if not combined_front:
+                combined_front = pv.PolyData(vertices, front_face)
+            else:
+                front_surface = pv.PolyData(vertices, front_face)
+                combined_front = combined_front.append_polydata(front_surface)
+
         # Create faces using the vertex indices
         faces = [
             [4,4, 5, 6, 7],     # back
@@ -1062,6 +1100,23 @@ def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE
         else:
             surface = pv.PolyData(vertices, faces)
             combined_mesh = combined_mesh.append_polydata(surface)
+
+        if with_label:
+            category = cuboid.category
+            center = vertices.mean(axis=0)
+            # Create a point at the center
+            point = pv.PolyData(center)
+            # Add the category as a label
+            labels = plotter.add_point_labels(
+                point, 
+                [str(category)], 
+                point_size=.1,  # Make the point invisible
+                font_size=10,
+                show_points=False,
+                shape_opacity=0.3,     # Semi-transparent background
+                font_family='arial'
+            )
+            actors.append(labels)
         
         if with_cf:
             combined_cfs = append_cf_mesh(combined_cfs, cuboid, transforms[i])
@@ -1073,6 +1128,10 @@ def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE
     if with_cf:
         all_cfs_actor = plotter.add_mesh(combined_cfs, color='black', line_width=3,opacity=opacity, pickable=False, lighting=False)
         actors.append(all_cfs_actor)
+
+    if with_front:
+        all_fronts_actor = plotter.add_mesh(combined_front, color='yellow', opacity=opacity, pickable=False, lighting=False)
+        actors.append(all_fronts_actor)
     
     return actors
 
@@ -1223,18 +1282,17 @@ def get_nth_radial_deriv(track_uuid, n, log_dir,
 
     return radial_deriv, timestamps
 
-
 @composable_relational
 @cache_manager.create_cache('facing_toward')
 def facing_toward(
     track_candidates:Union[list,dict],
     related_candidates:Union[list,dict],
     log_dir:Path,
-    fov:float=45,
+    within_angle:float=22.5,
     max_distance:float=np.inf)->dict:
     """
     Identifies objects in track_candidates that are facing toward objects in related candidates.
-    The related candidate must lie within a region lying within fov/2 degrees on either side the track-candidate's forward axis.
+    The related candidate must lie within a region lying within within_angle degrees on either side the track-candidate's forward axis.
 
     Args:
         track_candidates: The tracks that could be heading toward another tracks
@@ -1242,13 +1300,13 @@ def facing_toward(
         log_dir:  Path to the directory containing scenario logs and data.
         fov: The field of view of the track_candidates. The related candidate must lie within a region lying 
             within fov/2 degrees on either side the track-candidate's forward axis.
-        max_distance: The maximum distanec a related_candidate can be away to be considered by 
+        max_distance: The maximum distance a related_candidate can be away to be considered by 
 
     Returns:
-        A filted scenario dict that contains the subset of track candidates heading toward at least one of the related candidates.
+        A filtered scenario dict that contains the subset of track candidates heading toward at least one of the related candidates.
 
     Example:
-        pedestrian_facing_away = scenario_not(facing_toward)(pedestrian, ego_vehicle, log_dir, fov=180)
+        pedestrian_facing_away = scenario_not(facing_toward)(pedestrian, ego_vehicle, log_dir, within_angle=180)
     """
 
     track_uuid = track_candidates
@@ -1265,7 +1323,7 @@ def facing_toward(
             angle = np.rad2deg(np.arctan2(traj[i, 1],  traj[i,0]))
             dist = np.linalg.norm(traj[i])
 
-            if np.abs(angle) <=fov/2 and dist <= max_distance:
+            if np.abs(angle) <= within_angle and dist <= max_distance:
                 facing_toward_timestamps.append(timestamp)
 
                 if candidate_uuid not in facing_toward_objects:
@@ -1274,14 +1332,13 @@ def facing_toward(
 
     return facing_toward_timestamps, facing_toward_objects
     
-
 @composable_relational
 @cache_manager.create_cache('heading_toward')
 def heading_toward(
     track_candidates:Union[list,dict],
     related_candidates:Union[list,dict],
     log_dir:Path,
-    angle_threshold:float=45,
+    angle_threshold:float=22.5,
     minimum_speed:float=.5,
     max_distance:float=np.inf)->dict:
     """
@@ -1336,14 +1393,13 @@ def heading_toward(
 
     return heading_toward_timestamps, heading_toward_objects
 
-
 @composable_relational
 @cache_manager.create_cache('accelerating_toward')
 def accelerating_toward(
     track_candidates:Union[list,dict],
     related_candidates:Union[list,dict],
     log_dir:Path,
-    angle_threshold:float=30,
+    angle_threshold:float=22.5,
     min_accel:float=1,
     max_distance:float=30)->dict:
     """
@@ -1436,6 +1492,7 @@ def accelerating(
             acc_timestamps.append(timestamps[i])
     return acc_timestamps
 
+
 @composable
 @cache_manager.create_cache('has_velocity')
 def has_velocity(
@@ -1461,7 +1518,7 @@ def has_velocity(
     track_uuid = track_candidates
 
     vel_timestamps = []
-    vels, timestamps = get_nth_pos_deriv(track_uuid, 0, log_dir, coordinate_frame='self')
+    vels, timestamps = get_nth_pos_deriv(track_uuid, 1, log_dir)
     for i, vel in enumerate(vels):
         if min_velocity <= np.linalg.norm(vel) <= max_velocity: #m/s
             vel_timestamps.append(timestamps[i])
@@ -1578,7 +1635,7 @@ def get_nth_yaw_deriv(track_uuid, n, log_dir, coordinate_frame=None, in_degrees=
 def at_pedestrian_crossing(
     track_candidates:Union[list,dict],
     log_dir:Path,
-    within_distance:float=0)->dict:
+    within_distance:float=1)->dict:
     """
     Identifies objects that within a certain distance from a pedestrian crossing. A distance of zero indicates
     that the object is within the boundaries of the pedestrian crossing.
@@ -1619,6 +1676,7 @@ def at_pedestrian_crossing(
         
     return timestamps_at_object
 
+
 @composable
 @cache_manager.create_cache('on_lane_type')
 def on_lane_type(
@@ -1644,6 +1702,7 @@ def on_lane_type(
     scenario_lanes = get_scenario_lanes(track_uuid, log_dir, traj=traj, timestamps=timestamps)
 
     return [timestamp for timestamp in timestamps if scenario_lanes[timestamp] and scenario_lanes[timestamp].lane_type == lane_type]
+
 
 @composable
 @cache_manager.create_cache('near_intersection')
@@ -1721,18 +1780,31 @@ def on_intersection(track_candidates:Union[list,dict], log_dir:Path):
 def get_map(log_dir: Path):
 
     try:
-        avm = ArgoverseStaticMap.from_map_dir(log_dir / 'map')
+        avm = ArgoverseStaticMap.from_map_dir(log_dir / 'map', build_raster=True)
     except:
-        avm = ArgoverseStaticMap.from_map_dir(AV2_DATA_DIR / log_dir.name / 'map')
+        split = get_log_split(log_dir)
+        avm = ArgoverseStaticMap.from_map_dir(AV2_DATA_DIR / split / log_dir.name / 'map', build_raster=True)
         
     return avm
+
+def get_log_split(log_dir: Path):
+
+    if log_dir.name in TEST:
+        split = 'test'
+    elif log_dir.name in TRAIN:
+        split = 'train'
+    elif log_dir.name in VAL:
+        split = 'val'
+
+    return split
 
 def get_ego_SE3(log_dir:Path):
     """Returns list of ego_to_city SE3 transformation matrices"""
     try:
         ego_poses = read_city_SE3_ego(log_dir)
     except:
-        ego_poses = read_city_SE3_ego(AV2_DATA_DIR / log_dir.name)
+        split = get_log_split(log_dir)
+        ego_poses = read_city_SE3_ego(AV2_DATA_DIR / split / log_dir.name)
 
     return ego_poses
 
@@ -1902,8 +1974,8 @@ def being_crossed_by(
                 end_index = i
                 updated = True
                 
-                if (direction == 1 and in_direction == 'counterclockwise'
-                or direction == -1 and in_direction == 'clockwise'):
+                if (direction == 1 and in_direction == 'clockwise'
+                or direction == -1 and in_direction == 'counterclockwise'):
                     #The object is not moving in the specified crossing direction
                     continue
         
@@ -2081,7 +2153,7 @@ def near_objects(
     candidate_uuids:Union[list,dict], 
     log_dir:Path,
     distance_thresh:float=10, 
-    min_objects:float=None)->dict:
+    min_objects:float=1)->dict:
     """
     Identifies timestamps when a tracked object is near a specified set of related objects.
 
@@ -2151,7 +2223,7 @@ def plot_map_pv(avm:ArgoverseStaticMap, plotter:pv.Plotter) -> list[vtk.vtkActor
 
 
 def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=True, description='scenario visualization',
-                        with_map=True, with_cf=False, with_lidar=False, relationship_edges=False, stride=1):
+                        with_map=True, with_cf=False, with_lidar=False, relationship_edges=True, stride=1, av2_log_dir=None):
     """
     Generate a birds-eye-view video of a series of LiDAR scans.
     
@@ -2163,13 +2235,17 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     scenario_dict = reconstruct_track_dict(scenario)
     relationship_dict = reconstruct_relationship_dict(scenario)
 
+    pv.start_xvfb() #
     FPS = 10
-    pv.start_xvfb()
     output_file = output_dir / (description + '_n' + str(len(scenario_dict)) + '.mp4')
     plotter = pv.Plotter(off_screen=True)
     plotter.open_movie(output_file, framerate=FPS)
 
-    dataset = AV2SensorDataLoader(data_dir=AV2_DATA_DIR, labels_dir=AV2_DATA_DIR)
+    if av2_log_dir is None:
+        split = get_log_split(log_dir)
+        av2_log_dir = AV2_DATA_DIR / split / log_dir.name
+
+    dataset = AV2SensorDataLoader(data_dir=av2_log_dir.parent, labels_dir=av2_log_dir.parent)
     log_id = log_dir.name
 
     set_camera_position_pv(plotter, scenario_dict, relationship_dict, log_dir)
@@ -2193,11 +2269,10 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     df = read_feather(log_dir / 'sm_annotations.feather')
     ego_df = df[df['track_uuid'] == ego_uuid]
     timestamps = sorted(ego_df['timestamp_ns'])
-
     frequency = 1/((timestamps[1] - timestamps[0])/1E9)
 
     for i in range(0, len(timestamps), stride):
-        print(f'{i}/{len(timestamps)}', end='\r')
+        #print(f'{i}/{len(timestamps)}', end='\r')
         # Load LiDAR scan
         timestamp = timestamps[i]
         ego_to_city = dataset.get_city_SE3_ego(log_id, timestamp)
@@ -2252,14 +2327,14 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
             sweep = Sweep.from_feather(lidar_paths[i])
             scan = sweep.xyz
             scan_city = ego_to_city.transform_from(scan)
-            scan_actor = plotter.add_mesh(scan_city, color='pink', point_size=1)
+            scan_actor = plotter.add_mesh(scan_city, color='gray', point_size=1)
             timestamp_actors.append(scan_actor)
         
         # Add new cuboids
-        scenario_actors = plot_cuboids(scenario_cuboids, plotter, ego_to_city, color='lime', opacity=1, with_cf=with_cf)
-        related_actors = plot_cuboids(related_cuboids, plotter, ego_to_city, color='blue', opacity=1, with_cf=with_cf)
+        scenario_actors = plot_cuboids(scenario_cuboids, plotter, ego_to_city, with_label=True, color='lime', opacity=1, with_cf=with_cf)
+        related_actors = plot_cuboids(related_cuboids, plotter, ego_to_city, with_label=True, color='blue', opacity=1, with_cf=with_cf)
         other_actors = plot_cuboids(other_cuboids, plotter, ego_to_city, color='red', opacity=1,  with_cf=with_cf)
-        ego_actor = plot_cuboids(ego_cuboid, plotter, ego_to_city, color='orange', opacity=1, with_cf=with_cf)
+        ego_actor = plot_cuboids(ego_cuboid, plotter, ego_to_city, color='red', with_label=True, opacity=1, with_cf=with_cf)
 
         timestamp_actors.extend(scenario_actors)
         timestamp_actors.extend(related_actors)
@@ -2288,8 +2363,8 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
 
     #Ego vehicle should always be in the camera's view
     ego_pos, timestamps = get_nth_pos_deriv(get_ego_uuid(log_dir), 0, log_dir)
-    bl_corner = np.min(ego_pos[:,:2], axis=0)
-    tr_corner = np.max(ego_pos[:,:2], axis=0)
+    bl_corner = np.array([min(ego_pos[:,0]),min(ego_pos[:,1])])
+    tr_corner = np.array([max(ego_pos[:,0]),max(ego_pos[:,1])])
     scenario_height = max(ego_pos[:,2])
 
     for track_uuid, scenario_timestamps in scenario_dict.items():
@@ -2328,7 +2403,7 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
     scenario_center = np.concatenate(((tr_corner+bl_corner)/2, [scenario_height]))
     height_above_scenario = 1.1*(np.linalg.norm(tr_corner-bl_corner))/(2*np.tan(np.deg2rad(plotter.camera.view_angle)/2))
 
-    camera_height = min(max(scenario_height+height_above_scenario, scenario_height+100), scenario_height+500)
+    camera_height = min(max(scenario_height+height_above_scenario, scenario_height+100), scenario_height+400)
     plotter.camera_position = [tuple(scenario_center+[0,0,camera_height]), (scenario_center), (0, 1, 0)]
      
 
@@ -2393,9 +2468,6 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
     related_first_appearances = {}
     for track_uuid, related_objects in related_dict.items():
         for related_uuid, timestamps in related_objects.items():
-            if related_uuid in scenario_dict:
-                timestamps = list(set(timestamps) - set(scenario_dict[related_uuid]))
-
             if timestamps and related_uuid in related_first_appearances:
                 related_first_appearances[related_uuid] = min(min(timestamps),related_first_appearances[related_uuid])
             elif timestamps and (
@@ -2450,6 +2522,7 @@ def swap_keys_and_listed_values(dict:dict[float,list])->dict[float,list]:
             swapped_dict[timestamp].append(key)
 
     return swapped_dict
+
 
 def key_by_timestamps(dict:dict[str,dict[str,list[float]]]) -> dict[float,dict[str,list[str]]]:
     if not dict:
@@ -2518,7 +2591,7 @@ def following(
         if candidate == track_uuid:
             continue
 
-        print(f'{j}/{len(candidate_uuids)}', end='\r')
+        #print(f'{j}/{len(candidate_uuids)}', end='\r')
         candidate_pos, _ = get_nth_pos_deriv(candidate, 0, log_dir, coordinate_frame=track_uuid)
         candidate_vel, _ = get_nth_pos_deriv(candidate, 1, log_dir, coordinate_frame=track_uuid) 
         candidate_yaw, timestamps = get_nth_yaw_deriv(candidate, 0, log_dir, coordinate_frame=track_uuid)
@@ -2563,6 +2636,83 @@ def following(
                 lead_timestamps.append(timestamps[i]) 
         
     return lead_timestamps, leads
+
+@composable_relational
+@cache_manager.create_cache('traveling_in_relative_direction_as')
+def heading_in_relative_direction_to(track_candidates, related_candidates, log_dir, direction:Literal['same', 'opposite', 'perpendicular']):
+    """Returns the subset of track candidates that are traveling in the given direction compared to the related canddiates.
+
+    Arguements:
+        track_candidates: The set of objects that could be traveling in the given direction
+        related_candidates: The set of objects that the direction is relative to
+        log_dir: The path to the log data
+        direction: The direction that the positive tracks are traveling in relative to the related candidates
+            "opposite" indicates the track candidates are traveling in a direction 135-180 degrees from the direction the related candidates
+            are heading toward.
+            "same" indicates the track candidates that are traveling in a direction 0-45 degrees from the direction the related candiates
+            are heading toward.
+            "same" indicates the track candidates that are traveling in a direction 45-135 degrees from the direction the related candiates
+            are heading toward.
+
+    Returns:
+        the subset of track candidates that are traveling in the given direction compared to the related candidates.
+
+    Example:
+        oncoming_traffic = traveling_relative_direction(vehicles, ego_vehicle, log_dir, direction='opposite')    
+    """
+    track_uuid = track_candidates
+
+    track_pos, _ = get_nth_pos_deriv(track_uuid, 0, log_dir)
+    track_vel, track_timestamps = get_nth_pos_deriv(track_uuid, 1, log_dir)
+
+    traveling_in_direction_timestamps = []
+    traveling_in_direction_objects = {}
+    ego_to_city = get_ego_SE3(log_dir)
+
+    for related_uuid in related_candidates:
+        if track_uuid == related_uuid:
+            continue
+        
+        related_pos, _ = get_nth_pos_deriv(related_uuid, 0, log_dir)
+        related_vel, related_timestamps = get_nth_pos_deriv(related_uuid, 1, log_dir)
+        for i, timestamp in enumerate(track_timestamps):
+
+            if timestamp in related_timestamps:
+
+                track_dir = track_vel[i]
+                related_dir = related_vel[list(related_timestamps).index(timestamp)]
+
+                if np.linalg.norm(track_dir) < 1 and has_free_will(track_uuid,log_dir) and np.linalg.norm(related_dir) > 1:
+                    track_cuboid = get_cuboid_from_uuid(track_uuid, log_dir, timestamp=timestamp)
+                    track_self_dir = np.array([1,0,0])
+
+                    timestamp_track_pos = track_pos[i]
+                    timestamp_track_posx = ego_to_city[timestamp].compose(track_cuboid.dst_SE3_object).transform_from(track_self_dir)
+                    track_dir = timestamp_track_posx - timestamp_track_pos
+
+                elif np.linalg.norm(related_dir) < 1 and has_free_will(related_uuid,log_dir) and np.linalg.norm(track_dir) > .5:
+                    related_cuboid = get_cuboid_from_uuid(related_uuid, log_dir, timestamp=timestamp)
+                    related_x_dir = np.array([1,0,0])
+                    timestamp_related_pos = related_pos[list(related_timestamps).index(timestamp)]
+                    timestamp_related_posx = ego_to_city[timestamp].compose(related_cuboid.dst_SE3_object).transform_from(related_x_dir)
+                    related_dir = timestamp_related_posx - timestamp_related_pos
+                elif np.linalg.norm(track_dir) < 1 or np.linalg.norm(related_dir) < 1:
+                    continue
+                
+                track_dir = track_dir/np.linalg.norm(track_dir)
+                related_dir = related_dir/np.linalg.norm(related_dir)
+                angle = np.rad2deg(np.arccos(np.dot(track_dir, related_dir)))
+
+                if (angle <= 45 and direction == 'same'
+                or 45 < angle < 135 and direction == 'perpendicular'
+                or 135 <= angle < 180 and direction == 'opposite'):
+                    if related_uuid not in traveling_in_direction_objects:
+                        traveling_in_direction_objects[related_uuid] = []
+                    traveling_in_direction_objects[related_uuid].append(timestamp)
+                    traveling_in_direction_timestamps.append(timestamp)
+
+    return traveling_in_direction_timestamps, traveling_in_direction_objects
+                
 
 
 @composable
@@ -2625,7 +2775,6 @@ def __at_stop_signs(track_uuid, stop_sign_uuids, log_dir, forward_thresh=10) -> 
                 if timestamps[i] not in stop_sign_timestamps:
                     stop_sign_timestamps.append(timestamps[i])
 
-    print(stop_signs)
     return stop_sign_timestamps, stop_signs
 
 
@@ -2890,6 +3039,59 @@ def in_same_lane(
 
     return same_lane_timestamps, sharing_lanes
 
+@composable
+def in_region_of_interest(track_uuid, log_dir):
+
+    in_roi_timestamps = []
+
+    avm = get_map(log_dir)
+    timestamps = get_timestamps(track_uuid, log_dir)
+    ego_poses = get_ego_SE3(log_dir)
+
+    for timestamp in timestamps:
+        cuboid = get_cuboid_from_uuid(track_uuid, log_dir, timestamp=timestamp)
+        ego_to_city = ego_poses[timestamp]
+        city_cuboid = cuboid.transform(ego_to_city)
+        city_vertices = city_cuboid.vertices_m
+        city_vertices = city_vertices.reshape(-1, 3)[:,:2]
+        is_within_roi = avm.get_raster_layer_points_boolean(city_vertices, layer_name="ROI")
+        if is_within_roi.any():
+            in_roi_timestamps.append(timestamp)
+
+    return in_roi_timestamps
+
+
+def stopping(track_candidates, log_dir):
+
+    track_uuid = track_candidates
+    stopping_timestamps = []
+
+    INITIAL_VEL_THRESH = 1.5 #m/s
+    STOPPING_THRESH = .5 #m/s
+    track_vel, _ = get_nth_pos_deriv(track_uuid, 1, log_dir)
+    track_accel, timestamps = get_nth_pos_deriv(track_uuid, 2, log_dir)
+
+    left = 0
+    right = 0
+    for i, timestamp in enumerate(timestamps):
+
+        if track_vel[i] < STOPPING_THRESH:
+
+            seg_timestamps = []
+            while track_accel[right] < 0 and right >= left:
+                seg_timestamps.append(timestamp)
+                right -= 1
+            right += 1
+
+            if track_vel[right] > INITIAL_VEL_THRESH:
+                stopping_timestamps.extend(seg_timestamps)
+
+            left = i+1
+            right = i+1
+        right += 1
+
+    return stopping_timestamps
+
 
 def scenario_not(func):
     """
@@ -2916,7 +3118,11 @@ def scenario_not(func):
             raise ValueError("The function does not have 'log_dir' as a parameter.")
 
         log_dir = args[log_dir_index]
-        track_dict = to_scenario_dict(track_candidates, log_dir)
+
+        if func.__name__ == 'get_objects_in_relative_direction':
+            track_dict = to_scenario_dict(args[0], log_dir)
+        else:
+            track_dict = to_scenario_dict(track_candidates, log_dir)
 
         if log_dir_index == 0:
             scenario_dict = func(track_candidates, log_dir, *args[1:], **kwargs)
@@ -2924,12 +3130,15 @@ def scenario_not(func):
             #composable_relational function
             scenario_dict = func(track_candidates, args[0], log_dir, *args[2:], **kwargs)
 
+        remove_empty_branches(scenario_dict)
         not_dict = {track_uuid: [] for track_uuid in track_dict.keys()}
 
         for uuid in not_dict:
             if uuid in scenario_dict:
-                not_dict[uuid] = list(set(
+                not_timestamps = list(set(
                     get_scenario_timestamps(track_dict[uuid])).difference(get_scenario_timestamps(scenario_dict[uuid])))
+                
+                not_dict[uuid] = scenario_at_timestamps(track_dict[uuid], not_timestamps)
             else:
                 not_dict[uuid] = track_dict[uuid]
 
@@ -3024,23 +3233,6 @@ def scenario_or(scenario_dicts:list[dict]):
 
     return composed_dict
 
-"""
-def reverse_relationship(relationship_dict:dict[str,dict[str,list]]):
-
-    if not isinstance(relationship_dict, dict) or not isinstance(relationship_dict[relationship_dict.keys()[0]], dict):
-        print("No relationship to reverse! reverse_relationship action will be ignored.")
-
-    reversed_relationship_dict = {}
-
-    for track_uuid, related_children in relationship_dict.items():
-        for related_uuid, related_grandchildren in related_children.items():
-            if related_uuid not in reversed_relationship_dict:
-                reversed_relationship_dict[related_uuid] = {track_uuid: related_grandchildren}
-            else:
-                reversed_relationship_dict[related_uuid][track_uuid] = related_grandchildren
-
-    return reversed_relationship_dict
-"""
 
 def remove_empty_branches(scenario_dict):
     
@@ -3050,7 +3242,6 @@ def remove_empty_branches(scenario_dict):
             children = scenario_dict[track_uuid]
             timestamps = get_scenario_timestamps(children)
             if len(timestamps) == 0:
-                print(f'{children} popped from dict')
                 scenario_dict.pop(track_uuid)
             else:
                 remove_empty_branches(children)
@@ -3072,6 +3263,9 @@ def reverse_relationship(func):
     """
     def wrapper(track_candidates, related_candidates, log_dir, *args, **kwargs):
 
+        if func.__name__ == 'get_objects_in_relative_direction':
+            return has_objects_in_relative_direction(track_candidates, related_candidates, log_dir, *args, **kwargs)
+
         track_dict = to_scenario_dict(track_candidates, log_dir)
         related_dict = to_scenario_dict(related_candidates, log_dir)
         remove_empty_branches(track_dict)
@@ -3088,7 +3282,8 @@ def reverse_relationship(func):
         for track_uuid, related_objects in scenario_dict.items():
             for related_uuid in related_objects.keys():
                 if track_uuid in tc_uuids and related_uuid in rc_uuids \
-                or track_uuid in rc_uuids and related_uuid in tc_uuids:
+                or track_uuid in rc_uuids and related_uuid in tc_uuids \
+                and track_uuid != related_uuid:
                     new_relationships.append((track_uuid, related_uuid))
 
         #Reverese the scenario dict using these new relationships
@@ -3184,12 +3379,12 @@ def get_objects_and_timestamps(scenario_dict: dict) -> dict:
                 if child_uuid not in track_dict:
                     track_dict[child_uuid] = timestamps
                 else:
-                    track_dict[child_uuid] = sorted(list(set(track_dict[child_uuid] + timestamps)))
+                    track_dict[child_uuid] = sorted(list(set(track_dict[child_uuid] + list(timestamps))))
         else:
             if uuid not in track_dict:
                 track_dict[uuid] = related_children
             else:
-                track_dict[uuid] = sorted(list(set(track_dict[uuid] + related_children)))
+                track_dict[uuid] = sorted(list(set(track_dict[uuid] + list(related_children))))
 
     return track_dict
 
@@ -3210,17 +3405,27 @@ def print_indented_dict(d:dict, indent=0):
             print(" " * (indent + 4) + str(value))
 
 
-def output_scenario(scenario, description, log_dir:Path, output_dir, visualize=True, is_gt=False, **kwargs):
+def output_scenario(
+    scenario,
+    description, 
+    log_dir:Path, 
+    output_dir, 
+    is_gt=False, 
+    visualize=True, 
+    **kwargs):
     
+    Path(output_dir/log_dir.name).mkdir(exist_ok=True)
+    create_mining_pkl(description, scenario, log_dir, output_dir)
+
     if visualize:
         log_scenario_visualization_path = Path(output_dir/log_dir.name/'scenario visualizations')
-        log_scenario_visualization_path.mkdir(parents=True, exist_ok=True)
-        visualize_scenario(scenario, log_dir, log_scenario_visualization_path, description=description, **kwargs)
-    
-    if dict_empty(scenario):
-        print(f'No {description} in log id {log_dir.name},')
+        log_scenario_visualization_path.mkdir(exist_ok=True)
 
-    create_mining_pkl(description, scenario, log_dir, output_dir, is_gt=False)
+        for file in log_scenario_visualization_path.iterdir():
+            if file.is_file() and file.stem.split(sep='_')[0] == description:
+                file.unlink()
+
+        visualize_scenario(scenario, log_dir, log_scenario_visualization_path, description=description, **kwargs)
 
 
 def get_related_objects(relationship_dict):
@@ -3246,7 +3451,7 @@ def get_related_objects(relationship_dict):
     return all_related_objects
 
 
-def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, is_gt=False):
+def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
     """
     Generates both a pkl file for evaluation and annotations for the scenario mining challenge.
     """
@@ -3287,9 +3492,7 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, is_g
         frame['label'] = np.zeros(n, dtype=np.int32)
         frame['name'] = np.zeros(n, dtype='<U31')
         frame['track_id'] = np.zeros(n, dtype=np.int32)
-
-        if not is_gt:
-            frame['score'] = np.zeros(n, dtype=np.float32)
+        frame['score'] = np.zeros(n, dtype=np.float32)
 
         for i, track_uuid in enumerate(timestamp_uuids):
             track_df = timestamp_annotations[timestamp_annotations['track_uuid'] == track_uuid]
@@ -3321,40 +3524,22 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, is_g
             frame['label'][i] = label
             frame['name'][i] = category
             frame['track_id'][i] = all_uuids.index(track_uuid)
-            
-            if not is_gt and 'score' in track_df:
-                    frame['score'][i] = track_df['score']
+
+            if 'score' in track_df:
+                frame['score'][i] = track_df['score']
+            else:
+                frame['score'][i] = 1
 
             all_data.append([log_id, description, track_uuid, category, timestamp])
 
         frames.append(frame)
 
-
-    EVALUATION_SAMPLING_FREQUENCY = 5
-    if is_gt:
-        columns = ['log_id', 'prompt', 'track_uuid', 'mining_category', 'timestamp_ns']
-        sm_annotations = pd.DataFrame(all_data, columns=columns)
-        referred_object_annotations = sm_annotations[sm_annotations['mining_category'] == 'REFERRED_OBJECT']
-
-        evaluation_timestamps = log_timestamps[::EVALUATION_SAMPLING_FREQUENCY]
-        evaluated_referred_objects = referred_object_annotations[
-            referred_object_annotations['timestamp_ns'].isin(evaluation_timestamps)]
-
-        if evaluated_referred_objects.empty:
-            return
-        
-        sm_annotations.to_feather(output_dir/ log_id / f'{description}_{log_id[:8]}_annotations.feather')
-        frames = frames[::EVALUATION_SAMPLING_FREQUENCY]
-
     sequences = {(log_id, description): frames}
-
-    if is_gt:
-        print(output_dir / log_id / f'{description}_{log_id[:8]}_ref_gt.pkl')
-        save(sequences, output_dir / log_id / f'{description}_{log_id[:8]}_ref_gt.pkl')
-    else:
-        save(sequences, output_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl')
+    save(sequences, output_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl')
 
     print(f'Scenario pkl file for {description}_{log_id[:8]} saved successfully.')
+
+    return True
 
 
 def referred_full_tracks(pkl_file_path):
@@ -3413,4 +3598,4 @@ def referred_full_tracks(pkl_file_path):
         
         reconstructed_sequences[seq_name] = new_frames
     
-    return reconstructed_sequences
+    return reconstructed_sequences    

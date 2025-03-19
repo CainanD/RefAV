@@ -1,0 +1,37 @@
+description = 'vehicle heading toward ego from the side while at an intersection'
+
+# Get all vehicles and ego vehicle
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+ego = get_objects_of_category(log_dir, category="EGO_VEHICLE")
+
+# Get vehicles that are moving (not parked/stopped)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are near an intersection
+vehicles_near_intersection = near_intersection(moving_vehicles, log_dir)
+
+# Find vehicles that are approaching from the sides of ego
+# We'll check both left and right sides
+vehicles_from_left = get_objects_in_relative_direction(ego, vehicles_near_intersection, log_dir, 
+                                                     direction='left', 
+                                                     within_distance=20)
+vehicles_from_right = get_objects_in_relative_direction(ego, vehicles_near_intersection, log_dir, 
+                                                      direction='right', 
+                                                      within_distance=20)
+
+# Combine vehicles approaching from either side
+approaching_from_sides = scenario_or([vehicles_from_left, vehicles_from_right])
+
+# Make sure these vehicles are moving toward ego by checking their lateral acceleration
+# Positive lateral acceleration means moving left, negative means moving right
+vehicles_moving_toward_ego = scenario_or([
+    # For vehicles on the left, we want negative lateral acceleration (moving right toward ego)
+    has_lateral_acceleration(vehicles_from_left, log_dir, min_accel=-np.inf, max_accel=-0.5),
+    # For vehicles on the right, we want positive lateral acceleration (moving left toward ego)
+    has_lateral_acceleration(vehicles_from_right, log_dir, min_accel=0.5)
+])
+
+# Final scenario is vehicles that are both approaching from the sides AND moving toward ego
+final_scenario = scenario_and([approaching_from_sides, vehicles_moving_toward_ego])
+
+output_scenario(final_scenario, description, log_dir, output_dir)

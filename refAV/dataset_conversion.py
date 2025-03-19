@@ -1,6 +1,6 @@
 from pathlib import Path
 from av2.utils.io import read_feather, read_city_SE3_ego
-from av2.evaluation.tracking.utils import save, load
+from av2.evaluation.tracking.utils import save
 from av2.structures.cuboid import CuboidList
 
 import multiprocessing as mp
@@ -8,26 +8,16 @@ from functools import partial
 from tqdm import tqdm
 import pyarrow.feather as feather
 import pandas as pd
-import shutil
 import pickle
 import numpy as np
 from pathlib import Path
-from datetime import datetime
 from scipy.spatial.transform import Rotation
 import os
-import json
-import glob
-import re
-import uuid
-from eval import combine_matching_pkls
-from av2.datasets.sensor.splits import TEST, TRAIN, VAL
 import os
 import pandas as pd
-import argparse
 from pathlib import Path
-import random
-from paths import *
-from utils import get_ego_SE3
+from refAV.paths import *
+from refAV.utils import get_ego_SE3, get_log_split
 
 
 def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir):
@@ -314,7 +304,8 @@ def process_log_prompt(log_id, prompt, sm_annotations, output_dir, SM_DATA_DIR, 
     
     frames = []
     
-    log_dir = SM_DATA_DIR / log_id 
+    split = get_log_split(Path(log_id))
+    log_dir = SM_DATA_DIR / split / log_id 
     (output_dir / log_id).mkdir(exist_ok=True)
     
     annotations = read_feather(log_dir / 'sm_annotations.feather')

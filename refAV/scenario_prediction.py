@@ -1,5 +1,5 @@
 import anthropic
-import paths
+import refAV.paths as paths
 from pathlib import Path
 
 client = anthropic.Anthropic(
