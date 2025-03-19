@@ -6,7 +6,7 @@ pyvista
 vtk
 imageio
 imageio-ffmpeg
+ipykernal
+huggingface_hub
+av2
 --extra-index-url https://wheels.vtk.org vtk-egl
-git+https://github.com/CainanD/av2-api-sm.git
-git+https://github.com/JonathonLuiten/TrackEval.git
-

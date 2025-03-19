@@ -20,13 +20,14 @@ s5cmd --no-sign-request cp "s3://argoverse/datasets/av2/$DATASET_NAME/*" $TARGET
 ```
 It also requies downloading the scenario-mining add on. 
 ```
+export TARGET_DIR="$(pwd)/av2_sm_downloads"
 s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
 ```
 
 ### Running the Code
 
 All of the code necessary for unpacking the dataset, generating referred track predictions,
-and evaluating the predictions against the ground truth can be found in the `run.ipynb` file.
+and evaluating the predictions against the ground truth can be found in the `tutorial.ipynb` file.
 It also includes some basic tutorials about how to define and visualize a scenario.
 
 ### Benchmark Evaluation

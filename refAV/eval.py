@@ -86,7 +86,7 @@ def evaluate_pkls(pred_pkl, gt_pkl):
     with open(gt_pkl, 'rb') as f:
         labels = pickle.load(f)
 
-    evaluate(predictions, labels, objective_metric='HOTA', max_range_m=100, dataset_dir=AV2_DATA_DIR, out='output/evaluation')
+    evaluate(predictions, labels, objective_metric='HOTA', max_range_m=50, dataset_dir=AV2_DATA_DIR, out='output/evaluation')
 
 
 def clear_pkl_files(dir:Path):
