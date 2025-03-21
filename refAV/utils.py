@@ -2238,7 +2238,7 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     pv.start_xvfb() #
     FPS = 10
     output_file = output_dir / (description + '_n' + str(len(scenario_dict)) + '.mp4')
-    plotter = pv.Plotter(off_screen=True)
+    plotter = pv.Plotter(off_screen=True, notebook=True)
     plotter.open_movie(output_file, framerate=FPS)
 
     if av2_log_dir is None:
@@ -3411,7 +3411,7 @@ def output_scenario(
     log_dir:Path, 
     output_dir, 
     is_gt=False, 
-    visualize=True, 
+    visualize=False, 
     **kwargs):
     
     Path(output_dir/log_dir.name).mkdir(exist_ok=True)

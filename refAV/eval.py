@@ -32,6 +32,11 @@ def evaluate_baseline(description,
     evaluate(pred_pkl, gt_pkl, objective_metric='HOTA', max_range_m=100, dataset_dir=AV2_DATA_DIR, out=str('eval'))
 
 
+def execute_scenario(scenario, log_dir, output_dir, is_gt=False):
+    """Executes string as a python script in a local namespace."""
+    exec(scenario)
+
+
 def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_pred_dir):
 
     pred_path = baseline_pred_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl'
@@ -39,7 +44,6 @@ def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_
         return pred_path
 
     #Used in exec(scenario) code
-    is_gt = False
     output_dir = baseline_pred_dir 
     log_dir:Path = baseline_pred_dir / log_id
     
@@ -53,7 +57,7 @@ def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_
         
         with open(scenario_filename, 'r') as f:
             scenario = f.read()
-            exec(scenario)
+            execute_scenario(scenario, log_dir, output_dir)
 
     except:
         # Sometimes Claude will generate scenario definitions with bugs

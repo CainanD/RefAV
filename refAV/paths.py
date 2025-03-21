@@ -2,7 +2,7 @@ from pathlib import Path
 
 AV2_DATA_DIR = Path('/data3/crdavids/refAV/dataset')
 SM_DATA_DIR = Path('output/sm_dataset')
-SM_PRED_DIR = Path('output/sm_predictions/val')
+SM_PRED_DIR = Path('output/sm_predictions')
 LLM_DEF_DIR = Path('output/llm_scenario_predictions')
 
 ANTRHOPIC_API_KEY = None

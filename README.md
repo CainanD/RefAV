@@ -1,12 +1,26 @@
 ## RefAV: Mining Referred Scenarios in Autonomous Vehicle Datasets using LLMs
 
-This serves as the official baseline for the 2025 Argoverse2 Scenario Mining Challenge. It imitates using SQL queries on a large dataset to find scenarios of interest.
+<p align="center">
+  <img src="output/figures/method.png" alt="RefAV Method">
+</p>
+
+A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios -- the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrive and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
+
+RefAV serves as the baseline for the 2025 Argoverse2 Scenario Mining Challenge. It utilizes an LLM to construct composable function calls from a set of hand-crafted atomic functions such as "turning" or "has_objects_in_front". Given a prompt, the LLM outputs a composable function that narrows down a set of bounding box track predictions to the set that best corresponds to the prompt. This method can be thought as equivalent to querying a SQL database.  
 
 ### Installation
 
+Using [Conda](https://anaconda.org/anaconda/conda) is recommended for environment management
+```
+conda create -n refAV python=3.10
+conda activate refAV
+```
+
 All of the required libaries and packages can be installed with
 
-`pip install -r requirements.txt`
+```
+pip install -r requirements.txt
+```
 
 Running this code requires downloading the Argoverse2 test and val splits. Run the commands below to download the entire sensor dataset.
 More information can be found in the [Argoverse User Guide](https://argoverse.github.io/user-guide/getting_started.html#downloading-the-data).

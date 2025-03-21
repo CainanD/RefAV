@@ -6,7 +6,7 @@ pyvista
 vtk
 imageio
 imageio-ffmpeg
-ipykernal
+ipykernel
 huggingface_hub
 av2
 --extra-index-url https://wheels.vtk.org vtk-egl

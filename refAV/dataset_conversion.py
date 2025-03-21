@@ -48,7 +48,7 @@ def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir
     exclude_columns = ['log_id', 'prompt', 'mining_category']
     
     # Process each log_id
-    for log_id in unique_log_ids:
+    for log_id in tqdm(unique_log_ids):
         # Create directory for this log_id
         log_dir = base_dir / str(log_id)
         log_dir.mkdir(exist_ok=True, parents=True)
@@ -56,7 +56,6 @@ def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir
         # Get all entries for this log_id
         log_data = df[df['log_id'] == log_id]
         
-
         log_prompts = log_data['prompt'].unique()
         log_data = log_data[log_data['prompt'] == log_prompts[0]]
         
@@ -135,6 +134,7 @@ def pickle_to_feather(dataset_dir, input_pickle_path, base_output_dir="output"):
     
     # Process each log_id
     for log_id, track_data in data.items():
+        split = get_log_split(Path(log_id))
         ego_poses = read_city_SE3_ego(dataset_dir / log_id)
 
         rows = []
@@ -249,8 +249,9 @@ def pickle_to_feather(dataset_dir, input_pickle_path, base_output_dir="output"):
 
 def add_ego_to_annotation(log_dir:Path, output_dir:Path=Path('output')):
 
+    split = get_log_split(log_dir)
     annotations_df = read_feather(log_dir / 'annotations.feather')
-    ego_df = read_feather(AV2_DATA_DIR / log_dir.name / 'city_SE3_egovehicle.feather')
+    ego_df = read_feather(AV2_DATA_DIR / split / log_dir.name / 'city_SE3_egovehicle.feather')
     ego_df['track_uuid'] = 'ego'
     ego_df['category'] = 'EGO_VEHICLE'
     ego_df['length_m'] = 4.877
