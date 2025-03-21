@@ -1,21 +1,16 @@
-from av2.evaluation.scenario_mining.eval import evaluate
-from av2.datasets.sensor.splits import TEST, TRAIN, VAL
-from av2.datasets.sensor.constants import AnnotationCategories
-from paths import AV2_DATA_DIR, SM_PRED_DIR, LLM_DEF_DIR, SM_DATA_DIR
-
-from utils import *
-from scenario_prediction import predict_scenario_from_description
 import pickle
-import random
 import json
-from tqdm import tqdm
-import time
 import copy
 import argparse
-import glob
-import re
 import logging
 import faulthandler
+
+from refAV.paths import AV2_DATA_DIR, SM_PRED_DIR, LLM_DEF_DIR, SM_DATA_DIR
+from refAV.utils import *
+from refAV.scenario_prediction import predict_scenario_from_description
+
+from av2.evaluation.scenario_mining.eval import evaluate
+from av2.datasets.sensor.splits import TEST, TRAIN, VAL
 
 
 def evaluate_baseline(description,

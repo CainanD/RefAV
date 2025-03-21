@@ -1,12 +1,13 @@
+av2
 anthropic
 pathos
-pycocotools
-tabulate
+ipykernel
+huggingface_hub
 pyvista
 vtk
 imageio
 imageio-ffmpeg
-ipykernel
-huggingface_hub
-av2
---extra-index-url https://wheels.vtk.org vtk-egl
+pycocotools
+tabulate
+git+https://github.com/JonathonLuiten/TrackEval.git
+--no-cache-dir --extra-index-url https://wheels.vtk.org vtk-egl

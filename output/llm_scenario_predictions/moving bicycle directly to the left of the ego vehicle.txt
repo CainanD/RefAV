@@ -1,0 +1,23 @@
+description = 'moving bicycle directly to the left of the ego vehicle'
+
+# Get all bicycles and ego vehicles from the scenario
+bicycles = get_objects_of_category(log_dir, category='BICYCLE') 
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+
+# Filter for moving bicycles only (not stationary)
+moving_bicycles = scenario_not(stationary)(bicycles, log_dir)
+
+# Find bicycles that are to the left of the ego vehicle
+# Using small distance thresholds to ensure they are "directly" to the left:
+# - within_distance=5 means within 5m laterally
+# - lateral_thresh=2 means within 2m forward/backward
+bikes_left_of_ego = get_objects_in_relative_direction(
+    ego,
+    moving_bicycles, 
+    log_dir,
+    direction='left',
+    within_distance=5,
+    lateral_thresh=2
+)
+
+output_scenario(bikes_left_of_ego, description, log_dir, output_dir)

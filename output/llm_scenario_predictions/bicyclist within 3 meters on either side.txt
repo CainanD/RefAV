@@ -1,0 +1,33 @@
+description = 'bicyclist within 3 meters on either side'
+
+# Get all bicyclists (includes both bicycles and people riding them)
+bicyclists = get_objects_of_category(log_dir, category='BICYCLIST')
+moving_bicyclists = scenario_not(stationary)(bicyclists, log_dir)
+
+# Find bicyclists that have another bicyclist within 3 meters on either their left or right side
+# First check for bicyclists on the left side
+bicyclists_with_left = has_objects_in_relative_direction(
+    moving_bicyclists, 
+    moving_bicyclists, 
+    log_dir, 
+    direction='left',
+    min_number=1,
+    within_distance=3,
+    lateral_thresh=3
+)
+
+# Then check for bicyclists on the right side
+bicyclists_with_right = has_objects_in_relative_direction(
+    moving_bicyclists,
+    moving_bicyclists,
+    log_dir,
+    direction='right',
+    min_number=1,
+    within_distance=3,
+    lateral_thresh=3
+)
+
+# Combine scenarios where bicyclists have others on either their left or right side
+bicyclists_with_neighbors = scenario_or([bicyclists_with_left, bicyclists_with_right])
+
+output_scenario(bicyclists_with_neighbors, description, log_dir, output_dir)

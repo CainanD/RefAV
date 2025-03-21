@@ -1,0 +1,16 @@
+description = 'bicycle in vehicle lane with vehicle'
+
+# Get all bicycles and vehicles
+bicycles = get_objects_of_category(log_dir, category='BICYCLE')
+vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
+
+# Find bicycles that are on a vehicle lane (not bike lane)
+bicycles_in_vehicle_lane = on_lane_type(bicycles, log_dir, lane_type='VEHICLE')
+
+# Find bicycles that are in the same lane as a vehicle
+bicycles_sharing_lane = in_same_lane(bicycles_in_vehicle_lane, vehicles, log_dir)
+
+# Only include bicycles that are moving (to exclude parked/stopped bicycles)
+moving_bicycles = scenario_not(stationary)(bicycles_sharing_lane, log_dir)
+
+output_scenario(moving_bicycles, description, log_dir, output_dir)
