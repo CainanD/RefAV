@@ -1,14 +1,14 @@
-import paths
+import refav.paths as paths
 from pathlib import Path
 from typing import Literal
 import os
 import json
-
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
+import time
 
 import anthropic
 from google import genai
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
 
 
 def extract_and_save_code_blocks(message, title=None,output_dir:Path=Path('.'))->list[Path]:
@@ -79,30 +79,38 @@ def extract_and_save_code_blocks(message, title=None,output_dir:Path=Path('.'))-
     return filenames
 
 
-def predict_scenario_from_description(natural_language_description, output_dir:Path, model:Literal['claude', 'qwen', 'gemini'] = 'claude',
-                                      local_model = None, local_tokenizer=None):
+def predict_scenario_from_description(natural_language_description, output_dir:Path, 
+        model:Literal['claude-3-5-sonnet', 'qwen-2-5-7b', 'gemini-2-0-flash-thinking'] = 'claude-3-5-sonnet',
+        local_model = None, local_tokenizer=None):
         
-    with open(paths.REFAV_CONTEXT, 'r') as f:
+    with open(paths.refav_CONTEXT, 'r') as f:
         refav_context = f.read().format()
 
     with open(paths.PREDICTION_EXAMPLES, 'r') as f:
         prediction_examples = f.read().format()
 
-    prompt = f"{refav_context}\n Please define a single scenario for the description:{natural_language_description}\n Here is a list of examples: {prediction_examples}. Feel free to use a liberal amount of comments within the code. Use only one python block and do not provide alternatives."
+    prompt = f"{refav_context}\n Please define a single scenario for the description:{natural_language_description}\n Here is a list of examples: {prediction_examples}. Feel free to use a liberal amount of comments within the code. Do not define any additional functions. Use only one python block and do not provide alternatives."
 
-    if model == 'gemini':
-        output_dir = output_dir / 'gemini-2-0-flash-thinking'
+    output_dir = output_dir / model
+    definition_filename = output_dir / (natural_language_description + '.txt')
+    if definition_filename.exists():
+        print(f'Cached scenario for description {natural_language_description} already found.')
+        return definition_filename
+
+    if model == 'gemini-2-0-flash-thinking':
         response = predict_scenario_gemini(prompt)
-    elif model == 'qwen':
-        output_dir = output_dir / 'qwen-2-5-7b'
+    elif model == 'qwen-2-5-7b':
         response = predict_scenario_qwen(prompt, local_model, local_tokenizer)
     else:
-        output_dir = output_dir / 'clause-3-5-sonnet'
         response = predict_scenario_claude(prompt)
 
-    definition_filename = extract_and_save_code_blocks(response, output_dir=output_dir, title=natural_language_description)[0]
-    print(f'{natural_language_description} definition saved to {output_dir}')
-    return definition_filename
+    try:
+        definition_filename = extract_and_save_code_blocks(response, output_dir=output_dir, title=natural_language_description)[0]
+        print(f'{natural_language_description} definition saved to {output_dir}')
+        return definition_filename
+    except:
+        print(f"Error saving description {natural_language_description}")
+        return
 
 
 def predict_scenario_gemini(prompt):
@@ -110,16 +118,14 @@ def predict_scenario_gemini(prompt):
     Available models:
     gemini-2.0-flash-thinking-exp-01-21
     gemini-2.0-flash
-    
     """
 
+    time.sleep(6)  #Free API limited to 10 requests per minute
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
     response = client.models.generate_content(
         model="gemini-2.0-flash", contents=prompt
     )
-
-
 
     return response.text
 
@@ -211,12 +217,13 @@ if __name__ == '__main__':
     for log_id, prompts in lpp.items():
         all_descriptions.update(prompts)
 
-    local_model, local_tokenizer = load_qwen()
- 
     output_dir = paths.LLM_DEF_DIR
+    for description in all_descriptions:
+        predict_scenario_from_description(description, output_dir, model='gemini')
+
+    local_model, local_tokenizer = load_qwen()
     for description in all_descriptions:
         predict_scenario_from_description(description, output_dir, model='qwen', local_model=local_model, local_tokenizer=local_tokenizer)
 
-    for description in all_descriptions:
-        predict_scenario_from_description(description, output_dir, model='gemini')
+
     

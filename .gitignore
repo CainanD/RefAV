@@ -4,5 +4,7 @@
 *.mp4
 *.pyc
 
+refav/refAV.egg-info/
+refav/__pycache__/
 output/llm_scenario_predictions/gemini-2-0-flash-thinking/*
 output/llm_scenario_predictions/qwen-2-5-7b/*

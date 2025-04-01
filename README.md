@@ -12,14 +12,15 @@ RefAV serves as the baseline for the 2025 Argoverse2 Scenario Mining Challenge. 
 
 Using [Conda](https://anaconda.org/anaconda/conda) is recommended for environment management
 ```
-conda create -n refAV python=3.10
-conda activate refAV
+conda create -n refav python=3.10
+conda activate refav
 ```
 
 All of the required libaries and packages can be installed with
 
 ```
 pip install -r requirements.txt
+python setup.py
 ```
 
 Running this code requires downloading the Argoverse2 test and val splits. Run the commands below to download the entire sensor dataset.

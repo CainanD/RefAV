@@ -6,9 +6,9 @@ import logging
 import faulthandler
 from tqdm import tqdm
 
-from refAV.paths import AV2_DATA_DIR, SM_PRED_DIR, LLM_DEF_DIR, SM_DATA_DIR
-from refAV.utils import *
-from refAV.scenario_prediction import predict_scenario_from_description
+from refav.paths import AV2_DATA_DIR, SM_PRED_DIR, LLM_DEF_DIR, SM_DATA_DIR
+from refav.utils import *
+from refav.scenario_prediction import predict_scenario_from_description
 
 from av2.evaluation.scenario_mining.eval import evaluate
 from av2.datasets.sensor.splits import TEST, TRAIN, VAL
@@ -50,15 +50,16 @@ def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_
         if scenario_filename.exists():
             print('Cached scenario prediction found')
         else:
-            scenario_filename = predict_scenario_from_description(description, output_dir=scenario_pred_dir)
+            scenario_filename = predict_scenario_from_description(description, output_dir=scenario_pred_dir, model=method_name)
         
         with open(scenario_filename, 'r') as f:
             scenario = f.read()
             execute_scenario(scenario, log_dir, output_dir)
 
-    except:
+    except Exception as e:
         # Sometimes Claude will generate scenario definitions with bugs
         # In this case, output the default prediction of no referred tracks
+        print(f"Error predicting scenario: {e}")
         pred_path = create_default_prediction(description, log_id, baseline_pred_dir, method_name=method_name)
 
     return pred_path
@@ -87,7 +88,11 @@ def evaluate_pkls(pred_pkl, gt_pkl):
     with open(gt_pkl, 'rb') as f:
         labels = pickle.load(f)
 
-    evaluate(predictions, labels, objective_metric='HOTA', max_range_m=50, dataset_dir=AV2_DATA_DIR, out='output/evaluation')
+    for (log_id, prompt) in labels.keys():
+        split = get_log_split(log_id)
+        break
+
+    evaluate(predictions, labels, objective_metric='HOTA', max_range_m=50, dataset_dir=AV2_DATA_DIR/split, out='output/evaluation')
 
 
 def clear_pkl_files(dir:Path):
@@ -189,7 +194,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Example script with arguments")
     parser.add_argument("--split", type=str, help="An optional argument", default='val')
     parser.add_argument("--start_log_index", type=int, help="An optional argument", default=0)
-    parser.add_argument("--end_log_index", type=int, help="An optional argument", default=700)
+    parser.add_argument("--end_log_index", type=int, help="An optional argument", default=150)
+    parser.add_argument("--num_processes", type=int, help="Number of parallel processes you want to use for computation", default=max(int(0.9 * os.cpu_count()), 1))
+    parser.add_argument("--model",type=str, help="The name of the LLM you want to use", default='gemini-2-0-flash-thinking')
     args = parser.parse_args()
     split = args.split
 
@@ -215,11 +222,13 @@ if __name__ == '__main__':
     with open(log_prompt_input_path, 'rb') as f:
         log_prompts = json.load(f)
 
-    
+    baseline_pred_dir = SM_PRED_DIR / split
+    scenario_def_dir = LLM_DEF_DIR
+
     for log_id, prompts in log_prompts.items():
         for prompt in prompts:
-            create_baseline_prediction(prompt, log_id, SM_PRED_DIR, LLM_DEF_DIR)
+            create_baseline_prediction(prompt, log_id, baseline_pred_dir, scenario_def_dir, method_name=args.model)
     
-    combine_matching_pkls(SM_DATA_DIR, SM_PRED_DIR, eval_output_dir)
-    evaluate_pkls(eval_output_dir / 'combined_predictions.pkl', eval_output_dir / 'combined_gt.pkl')
+    #combine_matching_pkls(SM_DATA_DIR, SM_PRED_DIR, eval_output_dir)
+    #evaluate_pkls(eval_output_dir / 'combined_predictions.pkl', eval_output_dir / 'combined_gt.pkl')
     

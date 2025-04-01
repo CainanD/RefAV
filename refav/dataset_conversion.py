@@ -16,8 +16,8 @@ import os
 import os
 import pandas as pd
 from pathlib import Path
-from refAV.paths import *
-from refAV.utils import get_ego_SE3, get_log_split
+from refav.paths import *
+from refav.utils import get_ego_SE3, get_log_split
 
 
 def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir):

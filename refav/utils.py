@@ -18,7 +18,7 @@ import scipy
 import sys
 import json
 from collections import OrderedDict
-from refAV.paths import AV2_DATA_DIR
+from refav.paths import AV2_DATA_DIR
 
 from av2.structures.cuboid import Cuboid, CuboidList
 from av2.map.map_api import ArgoverseStaticMap
@@ -35,11 +35,14 @@ from av2.datasets.sensor.splits import TEST, TRAIN, VAL
 
 
 class CacheManager:
-    def __init__(self):
+    def __init__(self, max_caches=50):
         self.caches = {}
         self.stats = {}
+
+        self.max_caches=max_caches
         self.num_processes = max(int(0.9 * os.cpu_count()), 1)
-    
+        self.cache_usage = []  # Track cache usage for LRU eviction
+
     def set_num_processes(self, num):
         self.num_processes = max(min(os.cpu_count(), num), 1)
 
@@ -60,9 +63,19 @@ class CacheManager:
             return obj
 
     def create_cache(self, name, maxsize=128):
+
+        if name not in self.caches and len(self.caches) >= self.max_caches:
+            # Evict least recently used cache
+            self._evict_least_used_cache()
+
         if name not in self.caches:
             self.caches[name] = OrderedDict()
             self.stats[name] = {'hits': 0, 'misses': 0}
+        else:
+            # Move this cache to the end (most recently used)
+            self.cache_usage.remove(name)
+            self.cache_usage.append(name)
+
         
         def decorator(func):
             @wraps(func)
@@ -97,6 +110,14 @@ class CacheManager:
             
             return wrapper
         return decorator
+    
+    def _evict_least_used_cache(self):
+        """Evict the least recently used cache"""
+        if self.cache_usage:
+            oldest_cache = self.cache_usage.pop(0)
+            self.caches.pop(oldest_cache)
+            self.stats.pop(oldest_cache)
+            print(f"Evicted cache: {oldest_cache}")
     
     def clear_all(self):
         for cache in self.caches.values():
@@ -3415,7 +3436,7 @@ def output_scenario(
     **kwargs):
     
     Path(output_dir/log_dir.name).mkdir(exist_ok=True)
-    create_mining_pkl(description, scenario, log_dir, output_dir, method_name='claude-3-5-sonnet')
+    create_mining_pkl(description, scenario, log_dir, output_dir, method_name='gemini-2-0-flash-thinking')
 
     if visualize:
         log_scenario_visualization_path = Path(output_dir/log_dir.name/'scenario visualizations')

@@ -1,5 +1,7 @@
 av2
 anthropic
+transformers
+google-genai
 pathos
 ipykernel
 huggingface_hub
@@ -9,5 +11,4 @@ imageio
 imageio-ffmpeg
 pycocotools
 tabulate
-git+https://github.com/JonathonLuiten/TrackEval.git
 --no-cache-dir --extra-index-url https://wheels.vtk.org vtk-egl
