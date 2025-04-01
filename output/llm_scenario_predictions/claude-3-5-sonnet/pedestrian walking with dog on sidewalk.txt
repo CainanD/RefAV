@@ -1,0 +1,17 @@
+description = 'pedestrian walking with dog on sidewalk'
+
+# Get pedestrians and dogs
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+dogs = get_objects_of_category(log_dir, category='DOG')
+
+# Find moving pedestrians (not standing still)
+moving_peds = scenario_not(stationary)(peds, log_dir)
+
+# Find pedestrians that are not on the road (implies they're on sidewalk)
+peds_on_sidewalk = scenario_not(on_road)(moving_peds, log_dir)
+
+# Find pedestrians that have a dog nearby (within 3 meters)
+# Using near_objects with min_objects=1 ensures at least one dog is close by
+peds_with_dogs = near_objects(peds_on_sidewalk, dogs, log_dir, distance_thresh=3, min_objects=1)
+
+output_scenario(peds_with_dogs, description, log_dir, output_dir)

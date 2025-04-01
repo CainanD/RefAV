@@ -1,0 +1,25 @@
+description = 'ego vehicle approaching bicycle merging from bike lane'
+
+# Get ego vehicle and bicycles
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+bicycles = get_objects_of_category(log_dir, category='BICYCLE')
+
+# Find bicycles that are on a bike lane and moving
+moving_bicycles = scenario_not(stationary)(bicycles, log_dir)
+bicycles_on_bike_lane = on_lane_type(moving_bicycles, log_dir, lane_type='BIKE')
+
+# Find bicycles that are merging into vehicle lane
+# First get bicycles that are in front of ego within 20m
+bicycles_ahead = get_objects_in_relative_direction(ego, bicycles_on_bike_lane, log_dir, 
+                                                 direction='forward',
+                                                 within_distance=20)
+
+# Then find which of these bicycles are changing lanes
+merging_bicycles = changing_lanes(bicycles_ahead, log_dir)
+
+# Finally, get ego vehicle timestamps where there's a merging bicycle ahead
+ego_approaching_merger = has_objects_in_relative_direction(ego, merging_bicycles, log_dir,
+                                                         direction='forward',
+                                                         within_distance=20)
+
+output_scenario(ego_approaching_merger, description, log_dir, output_dir)

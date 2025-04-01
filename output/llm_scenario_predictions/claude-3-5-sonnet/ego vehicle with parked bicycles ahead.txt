@@ -1,0 +1,21 @@
+description = 'ego vehicle with parked bicycles ahead'
+
+# Get ego vehicle and bicycles
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+bicycles = get_objects_of_category(log_dir, category='BICYCLE')
+
+# Find stationary/parked bicycles
+parked_bicycles = stationary(bicycles, log_dir)
+
+# Find parked bicycles that are in front of ego vehicle
+# Using within_distance=30 to capture bicycles that would be visible ahead
+parked_bicycles_ahead = get_objects_in_relative_direction(ego, parked_bicycles, log_dir, 
+                                                        direction='forward',
+                                                        within_distance=30)
+
+# Return ego vehicle timestamps when there are parked bicycles ahead
+ego_with_parked_bikes = has_objects_in_relative_direction(ego, parked_bicycles_ahead, log_dir,
+                                                        direction='forward',
+                                                        min_number=1)
+
+output_scenario(ego_with_parked_bikes, description, log_dir, output_dir)

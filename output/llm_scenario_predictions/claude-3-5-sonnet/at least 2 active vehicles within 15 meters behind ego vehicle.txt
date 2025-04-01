@@ -1,0 +1,25 @@
+description = 'at least 2 active vehicles within 15 meters behind ego vehicle'
+
+# Get ego vehicle and all other vehicles
+ego = get_objects_of_category(log_dir, category="EGO_VEHICLE")
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+
+# Filter out stationary vehicles since we only want active ones
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are behind ego vehicle within 15 meters
+# Using get_objects_in_relative_direction with:
+# - direction='backward' to look behind ego
+# - min_number=2 to ensure at least 2 vehicles
+# - within_distance=15 to limit to 15 meters
+# - lateral_thresh=np.inf to consider full width behind ego
+vehicles_behind_ego = get_objects_in_relative_direction(
+    ego, 
+    moving_vehicles,
+    log_dir,
+    direction='backward',
+    min_number=2,
+    within_distance=15
+)
+
+output_scenario(vehicles_behind_ego, description, log_dir, output_dir)

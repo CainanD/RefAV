@@ -1,0 +1,26 @@
+description = 'vehicle approaching pedestrians waiting at a crosswalk'
+
+# Get all vehicles and pedestrians
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find moving vehicles (not stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find pedestrians at crosswalks
+peds_at_crossing = at_pedestrian_crossing(peds, log_dir)
+
+# Find vehicles that have pedestrians in front of them at a crosswalk
+# Using 15m as a reasonable distance for "approaching"
+# Using lateral_thresh=2 to ensure pedestrians are actually in front of vehicle's path
+vehicles_approaching_peds = has_objects_in_relative_direction(
+    moving_vehicles, 
+    peds_at_crossing,
+    log_dir,
+    direction='forward',
+    min_number=1,
+    within_distance=15,
+    lateral_thresh=2
+)
+
+output_scenario(vehicles_approaching_peds, description, log_dir, output_dir)

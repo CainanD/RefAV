@@ -1,0 +1,11 @@
+description = 'vehicles within view of another vehicle'
+
+# Get all vehicles from the scenario
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+
+# Find vehicles that have other vehicles nearby (within 50m)
+# Using near_objects to identify vehicles that are close to at least one other vehicle
+# 50m is chosen as a reasonable distance for visibility between vehicles
+vehicles_near_vehicles = near_objects(vehicles, vehicles, log_dir, distance_thresh=50, min_objects=1)
+
+output_scenario(vehicles_near_vehicles, description, log_dir, output_dir)

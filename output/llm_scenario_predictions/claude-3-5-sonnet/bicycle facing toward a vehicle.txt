@@ -1,0 +1,23 @@
+description = 'bicycle facing toward a vehicle'
+
+# Get all bicycles and vehicles
+bicycles = get_objects_of_category(log_dir, category='BICYCLE')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for moving vehicles and bicycles (to ensure they're actively in use)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+moving_bicycles = scenario_not(stationary)(bicycles, log_dir)
+
+# Find bicycles that have vehicles in front of them
+# Using a reasonable distance threshold of 20 meters
+# This means the bicycle and vehicle are facing each other since 
+# the bicycle sees the vehicle in its "forward" direction
+bicycles_facing_vehicles = has_objects_in_relative_direction(
+    moving_bicycles, 
+    moving_vehicles, 
+    log_dir,
+    direction='forward',
+    within_distance=20
+)
+
+output_scenario(bicycles_facing_vehicles, description, log_dir, output_dir)

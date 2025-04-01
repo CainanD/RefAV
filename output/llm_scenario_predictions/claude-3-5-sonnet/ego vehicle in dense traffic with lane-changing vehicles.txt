@@ -1,0 +1,26 @@
+description = 'ego vehicle in dense traffic with lane-changing vehicles'
+
+# Get ego vehicle and all other vehicles
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find vehicles that are moving (not parked/stopped)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are changing lanes
+lane_changing_vehicles = changing_lanes(moving_vehicles, log_dir)
+
+# Find vehicles near the ego vehicle (within 30m) to identify "dense traffic"
+# Need at least 3 vehicles nearby to consider it dense
+vehicles_near_ego = near_objects(ego, moving_vehicles, log_dir, distance_thresh=30, min_objects=3)
+
+# Combine conditions:
+# 1. Must be ego vehicle timestamps when there are multiple vehicles nearby (dense traffic)
+# 2. At least one of those nearby vehicles must be changing lanes
+dense_traffic_with_lane_changes = scenario_and([
+    vehicles_near_ego,
+    has_objects_in_relative_direction(ego, lane_changing_vehicles, log_dir, 
+                                    direction='forward', min_number=1, within_distance=30)
+])
+
+output_scenario(dense_traffic_with_lane_changes, description, log_dir, output_dir)

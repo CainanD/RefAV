@@ -1,0 +1,11 @@
+description = 'vehicle near construction barrel'
+
+# Get all vehicles and construction barrels
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+construction_barrels = get_objects_of_category(log_dir, category="CONSTRUCTION_BARREL")
+
+# Find vehicles that are within 10 meters of any construction barrel
+# Using near_objects since we want to identify vehicles in proximity to barrels
+vehicles_near_barrels = near_objects(vehicles, construction_barrels, log_dir, distance_thresh=10)
+
+output_scenario(vehicles_near_barrels, description, log_dir, output_dir)

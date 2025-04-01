@@ -1,0 +1,16 @@
+description = 'bicyclist riding in vehicle lane'
+
+# Get all bicyclists 
+bicyclists = get_objects_of_category(log_dir, category='BICYCLIST')
+
+# Get moving bicyclists to exclude stopped ones
+moving_bicyclists = scenario_not(stationary)(bicyclists, log_dir)
+
+# Get bicyclists that are in a driveable area (on the road)
+bicyclists_on_road = on_road(moving_bicyclists, log_dir)
+
+# Get bicyclists that are in a vehicle lane
+# We want bicyclists NOT in a bike lane, so use scenario_not
+bicyclists_in_vehicle_lane = scenario_not(on_lane_type)(bicyclists_on_road, log_dir, lane_type='BIKE')
+
+output_scenario(bicyclists_in_vehicle_lane, description, log_dir, output_dir)

@@ -1,0 +1,23 @@
+# Description: Vehicle accelerating towards pedestrian crossing
+description = 'vehicle accelerating towards pedestrian crossing'
+
+# Get all vehicles and filter to only those that are accelerating
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+accelerating_vehicles = accelerating(vehicles, log_dir, thresh=1.0)
+
+# Get vehicles that are near a pedestrian crossing
+# We'll look for vehicles within 15m of a crossing that are accelerating
+vehicles_near_crossing = near_intersection(accelerating_vehicles, log_dir, threshold=15)
+
+# Filter to only include vehicles that have the crossing in front of them
+# This ensures we're only capturing vehicles moving towards the crossing
+vehicles_approaching_crossing = get_objects_in_relative_direction(
+    vehicles_near_crossing, 
+    at_pedestrian_crossing(vehicles_near_crossing, log_dir),
+    log_dir,
+    direction='forward',
+    within_distance=15
+)
+
+# Output the scenario of vehicles accelerating towards pedestrian crossings
+output_scenario(vehicles_approaching_crossing, description, log_dir, output_dir)

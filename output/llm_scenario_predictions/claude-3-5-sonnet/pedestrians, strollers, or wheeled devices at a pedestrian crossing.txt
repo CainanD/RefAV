@@ -1,0 +1,14 @@
+description = 'pedestrians, strollers, or wheeled devices at a pedestrian crossing'
+
+# Get all relevant objects that could be crossing at a pedestrian crossing
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+strollers = get_objects_of_category(log_dir, category='STROLLER') 
+wheeled_devices = get_objects_of_category(log_dir, category='WHEELED_DEVICE')
+
+# Combine all object types into one scenario
+all_crossing_objects = scenario_or([pedestrians, strollers, wheeled_devices])
+
+# Filter to only objects at pedestrian crossings
+objects_at_crossing = at_pedestrian_crossing(all_crossing_objects, log_dir)
+
+output_scenario(objects_at_crossing, description, log_dir, output_dir)

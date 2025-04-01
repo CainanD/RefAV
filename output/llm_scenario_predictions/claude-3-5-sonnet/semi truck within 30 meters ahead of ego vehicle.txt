@@ -1,0 +1,20 @@
+description = 'semi truck within 30 meters ahead of ego vehicle'
+
+# Get ego vehicle and semi trucks from the dataset
+ego_vehicle = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+semi_trucks = get_objects_of_category(log_dir, category='TRUCK_CAB')
+
+# Find semi trucks that are in front of the ego vehicle within 30 meters
+# Using get_objects_in_relative_direction since we want to find trucks relative to ego's position
+# direction='forward' looks ahead of ego vehicle
+# within_distance=30 limits the search to 30 meters
+# max_number=np.inf allows finding all trucks that meet the criteria
+semis_ahead = get_objects_in_relative_direction(
+    ego_vehicle, 
+    semi_trucks, 
+    log_dir,
+    direction='forward',
+    within_distance=30
+)
+
+output_scenario(semis_ahead, description, log_dir, output_dir)

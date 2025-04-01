@@ -1,0 +1,9 @@
+description = 'box truck changing lanes to the left'
+
+# Get all box trucks
+box_trucks = get_objects_of_category(log_dir, category='BOX_TRUCK')
+
+# Find box trucks that are changing lanes to the left
+box_trucks_changing_left = changing_lanes(box_trucks, log_dir, direction='left')
+
+output_scenario(box_trucks_changing_left, description, log_dir, output_dir)

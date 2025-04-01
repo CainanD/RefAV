@@ -1,0 +1,14 @@
+description = 'truck on intersection'
+
+# Get all trucks (including box trucks, truck cabs, etc)
+trucks = get_objects_of_category(log_dir, category='TRUCK')
+
+# Add other truck types to include all possible trucks
+box_trucks = get_objects_of_category(log_dir, category='BOX_TRUCK') 
+truck_cabs = get_objects_of_category(log_dir, category='TRUCK_CAB')
+all_trucks = scenario_or([trucks, box_trucks, truck_cabs])
+
+# Find trucks that are on an intersection
+trucks_on_intersection = on_intersection(all_trucks, log_dir)
+
+output_scenario(trucks_on_intersection, description, log_dir, output_dir)

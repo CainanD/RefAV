@@ -1,0 +1,13 @@
+# Description: Find vehicles that are changing lanes
+description = 'vehicles changing lanes'
+
+# Get all vehicles from the scenario
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Use the changing_lanes function to identify lane change events
+# This will return vehicles during timestamps when they are changing lanes
+# The direction parameter is not specified, so it will detect both left and right lane changes
+lane_changes = changing_lanes(vehicles, log_dir)
+
+# Output the scenario with vehicles that are changing lanes
+output_scenario(lane_changes, description, log_dir, output_dir)

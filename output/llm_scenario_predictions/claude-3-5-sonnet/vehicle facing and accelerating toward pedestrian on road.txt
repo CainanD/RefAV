@@ -1,0 +1,38 @@
+description = 'vehicle facing and accelerating toward pedestrian on road'
+
+# Get all vehicles and pedestrians
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find pedestrians that are on the road
+peds_on_road = on_road(pedestrians, log_dir)
+
+# Get vehicles that are moving (not stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are accelerating
+accelerating_vehicles = accelerating(moving_vehicles, log_dir, thresh=1.0)
+
+# Find pedestrians that are in front of accelerating vehicles
+# within 20 meters forward distance and 2 meters lateral distance
+peds_in_front = get_objects_in_relative_direction(
+    accelerating_vehicles, 
+    peds_on_road, 
+    log_dir, 
+    direction='forward',
+    within_distance=20,
+    lateral_thresh=2
+)
+
+# Get the vehicles that have pedestrians in front of them
+vehicles_facing_peds = has_objects_in_relative_direction(
+    accelerating_vehicles,
+    peds_on_road,
+    log_dir,
+    direction='forward',
+    min_number=1,
+    within_distance=20,
+    lateral_thresh=2
+)
+
+output_scenario(vehicles_facing_peds, description, log_dir, output_dir)

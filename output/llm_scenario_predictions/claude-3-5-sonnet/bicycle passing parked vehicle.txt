@@ -1,0 +1,30 @@
+description = 'bicycle passing parked vehicle'
+
+# Get bicycles and vehicles from the dataset
+bicycles = get_objects_of_category(log_dir, category='BICYCLE') 
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find parked vehicles that are in a drivable area
+parked_vehicles = scenario_and([
+    stationary(vehicles, log_dir),
+    in_drivable_area(vehicles, log_dir)
+])
+
+# Get moving bicycles (not stationary)
+moving_bicycles = scenario_not(stationary)(bicycles, log_dir)
+
+# Find bicycles that are crossing past parked vehicles
+# Using being_crossed_by with 'left' or 'right' direction to detect passing
+# forward_thresh=3 means looking 3m ahead/behind the parked vehicle
+# lateral_thresh=2 means the bicycle must be within 2m of the side of the vehicle
+bicycles_passing = being_crossed_by(
+    parked_vehicles, 
+    moving_bicycles, 
+    log_dir,
+    direction='left',  # Passing on the left side
+    forward_thresh=3,  # Look 3m ahead/behind parked vehicle
+    lateral_thresh=2   # Within 2m laterally of parked vehicle
+)
+
+# Output the scenario of bicycles passing parked vehicles
+output_scenario(bicycles_passing, description, log_dir, output_dir)

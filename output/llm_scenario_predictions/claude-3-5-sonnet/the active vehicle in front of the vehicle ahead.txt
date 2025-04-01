@@ -1,0 +1,43 @@
+description = 'the active vehicle in front of the vehicle ahead'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for moving vehicles only
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# First find vehicles that have another vehicle behind them
+vehicles_with_follower = has_objects_in_relative_direction(
+    moving_vehicles, 
+    moving_vehicles, 
+    log_dir,
+    direction='backward',
+    min_number=1,
+    max_number=1,
+    within_distance=25  # Reasonable following distance
+)
+
+# Then from those vehicles, find the ones that have another vehicle in front of them
+# This gives us the "middle" vehicle that has both a leader and follower
+vehicles_with_leader_and_follower = has_objects_in_relative_direction(
+    vehicles_with_follower,
+    moving_vehicles,
+    log_dir, 
+    direction='forward',
+    min_number=1,
+    max_number=1,
+    within_distance=25
+)
+
+# Finally get the vehicle in front of our "middle" vehicle
+# This is the "active vehicle" we're looking for
+lead_vehicle = get_objects_in_relative_direction(
+    vehicles_with_leader_and_follower,
+    moving_vehicles,
+    log_dir,
+    direction='forward',
+    max_number=1,
+    within_distance=25
+)
+
+output_scenario(lead_vehicle, description, log_dir, output_dir)

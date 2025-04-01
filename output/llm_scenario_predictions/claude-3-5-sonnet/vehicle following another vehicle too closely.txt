@@ -1,0 +1,25 @@
+description = 'vehicle following another vehicle too closely'
+
+# Get all vehicles that are on the road
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+vehicles_on_road = on_road(moving_vehicles, log_dir)
+
+# Find vehicles that have another vehicle directly in front of them
+# within_distance=10 means the following vehicle is within 10m of the lead vehicle
+# lateral_thresh=2 ensures the vehicles are roughly in line with each other (not offset by more than 2m)
+following_vehicles = get_objects_in_relative_direction(
+    vehicles_on_road, 
+    vehicles_on_road, 
+    log_dir, 
+    direction='forward',
+    max_number=1,
+    within_distance=10,
+    lateral_thresh=2
+)
+
+# Make sure the vehicles are in the same lane to filter out cases
+# where vehicles might be close but in adjacent lanes
+tailgating_vehicles = in_same_lane(following_vehicles, vehicles_on_road, log_dir)
+
+output_scenario(tailgating_vehicles, description, log_dir, output_dir)

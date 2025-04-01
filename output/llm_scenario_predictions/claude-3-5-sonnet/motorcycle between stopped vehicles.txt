@@ -1,0 +1,37 @@
+description = 'motorcycle between stopped vehicles'
+
+# Get all motorcycles and vehicles
+motorcycles = get_objects_of_category(log_dir, category='MOTORCYCLE')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find stationary vehicles
+stopped_vehicles = scenario_and([
+    stationary(vehicles, log_dir),
+    in_drivable_area(vehicles, log_dir)  # Ensure vehicles are on the road
+])
+
+# Find moving motorcycles (not parked)
+moving_motorcycles = scenario_not(stationary)(motorcycles, log_dir)
+
+# Find motorcycles that have stopped vehicles on both sides
+# Look for vehicles within 3m laterally on each side
+motorcycles_with_vehicle_left = has_objects_in_relative_direction(
+    moving_motorcycles, 
+    stopped_vehicles, 
+    log_dir, 
+    direction='left',
+    within_distance=3,
+    lateral_thresh=2
+)
+
+# From those motorcycles, find ones that also have vehicles on their right
+motorcycles_between_vehicles = has_objects_in_relative_direction(
+    motorcycles_with_vehicle_left,
+    stopped_vehicles,
+    log_dir,
+    direction='right', 
+    within_distance=3,
+    lateral_thresh=2
+)
+
+output_scenario(motorcycles_between_vehicles, description, log_dir, output_dir)

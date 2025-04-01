@@ -1,0 +1,22 @@
+description = 'moving bus to the front-left of the ego vehicle'
+
+# Get ego vehicle and buses
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+buses = get_objects_of_category(log_dir, category='BUS')
+
+# Filter for moving buses by excluding stationary ones
+moving_buses = scenario_not(stationary)(buses, log_dir)
+
+# Find buses that are to the front-left of ego vehicle
+# Using get_objects_in_relative_direction to find buses in front-left quadrant
+# within_distance and lateral_thresh can be adjusted based on desired detection range
+buses_front_left = get_objects_in_relative_direction(
+    ego, 
+    moving_buses, 
+    log_dir,
+    direction='left',  # Looking for objects to the left
+    within_distance=20,  # Maximum forward distance to consider
+    lateral_thresh=10  # Maximum lateral distance to consider
+)
+
+output_scenario(buses_front_left, description, log_dir, output_dir)

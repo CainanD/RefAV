@@ -59,7 +59,7 @@ class CacheManager:
         else:
             return obj
 
-    def create_cache(self, name, maxsize=1024):
+    def create_cache(self, name, maxsize=128):
         if name not in self.caches:
             self.caches[name] = OrderedDict()
             self.stats[name] = {'hits': 0, 'misses': 0}
@@ -3410,12 +3410,12 @@ def output_scenario(
     description, 
     log_dir:Path, 
     output_dir, 
-    is_gt=False, 
+    is_gt=False,
     visualize=False, 
     **kwargs):
     
     Path(output_dir/log_dir.name).mkdir(exist_ok=True)
-    create_mining_pkl(description, scenario, log_dir, output_dir)
+    create_mining_pkl(description, scenario, log_dir, output_dir, method_name='claude-3-5-sonnet')
 
     if visualize:
         log_scenario_visualization_path = Path(output_dir/log_dir.name/'scenario visualizations')
@@ -3451,7 +3451,7 @@ def get_related_objects(relationship_dict):
     return all_related_objects
 
 
-def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
+def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, method_name='ref'):
     """
     Generates both a pkl file for evaluation and annotations for the scenario mining challenge.
     """
@@ -3535,7 +3535,7 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
         frames.append(frame)
 
     sequences = {(log_id, description): frames}
-    save(sequences, output_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl')
+    save(sequences, output_dir / log_id / f'{description}_{log_id[:8]}_{method_name}_predictions.pkl')
 
     print(f'Scenario pkl file for {description}_{log_id[:8]} saved successfully.')
 

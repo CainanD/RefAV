@@ -1,0 +1,37 @@
+description = 'pedestrian crossing between bollards'
+
+# Get pedestrians and bollards
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+bollards = get_objects_of_category(log_dir, category='BOLLARD')
+
+# Find pedestrians that have bollards on both their left and right sides
+# within 2 meters lateral distance and 1 meter forward/backward
+peds_with_bollard_left = get_objects_in_relative_direction(
+    peds, 
+    bollards, 
+    log_dir, 
+    direction='left',
+    within_distance=1,
+    lateral_thresh=2
+)
+
+peds_with_bollards_both_sides = has_objects_in_relative_direction(
+    peds_with_bollard_left,
+    bollards,
+    log_dir,
+    direction='right',
+    within_distance=1,
+    lateral_thresh=2
+)
+
+# Get pedestrians that are being crossed by bollards (moving between them)
+peds_crossing = being_crossed_by(
+    peds_with_bollards_both_sides,
+    bollards,
+    log_dir,
+    direction='forward',
+    forward_thresh=1,
+    lateral_thresh=2
+)
+
+output_scenario(peds_crossing, description, log_dir, output_dir)

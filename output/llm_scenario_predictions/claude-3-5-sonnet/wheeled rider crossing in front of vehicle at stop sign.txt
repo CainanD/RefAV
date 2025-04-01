@@ -1,0 +1,22 @@
+description = 'wheeled rider crossing in front of vehicle at stop sign'
+
+# Get all wheeled riders and vehicles
+wheeled_riders = get_objects_of_category(log_dir, category='WHEELED_RIDER')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find vehicles that are at a stop sign
+vehicles_at_stop = at_stop_sign(vehicles, log_dir)
+
+# Get wheeled riders that are crossing in front of vehicles at stop signs
+# Using being_crossed_by with reverse_relationship to focus on the wheeled riders
+# doing the crossing rather than the vehicles being crossed
+crossing_riders = reverse_relationship(being_crossed_by)(
+    vehicles_at_stop,  # vehicles at stop signs
+    wheeled_riders,    # wheeled riders doing the crossing
+    log_dir,
+    direction='forward',  # crossing in front
+    forward_thresh=10,    # within 10m in front
+    lateral_thresh=5      # within 5m laterally
+)
+
+output_scenario(crossing_riders, description, log_dir, output_dir)

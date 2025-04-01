@@ -1,0 +1,33 @@
+description = 'vehicle passing stopped truck with pedestrian nearby'
+
+# Get all vehicles and filter for trucks
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+trucks = get_objects_of_category(log_dir, category='TRUCK')
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find stopped trucks
+stopped_trucks = stationary(trucks, log_dir)
+
+# Find vehicles that are moving (not stopped)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are passing the stopped trucks
+# Uses being_crossed_by to detect when a moving vehicle crosses the left/right plane of the stopped truck
+# forward_thresh=15 looks ahead/behind the truck by 15m
+# lateral_thresh=5 extends the detection zone 5m to the sides
+vehicles_passing_trucks = being_crossed_by(stopped_trucks, moving_vehicles, log_dir, 
+                                         direction='left', 
+                                         forward_thresh=15,
+                                         lateral_thresh=5)
+
+# Find pedestrians near the stopped trucks
+# Considers pedestrians within 10m of the truck
+peds_near_trucks = near_objects(stopped_trucks, pedestrians, log_dir, 
+                               distance_thresh=10)
+
+# Final scenario requires both conditions:
+# 1. Vehicle passing a stopped truck
+# 2. Pedestrian nearby the stopped truck
+final_scenario = scenario_and([vehicles_passing_trucks, peds_near_trucks])
+
+output_scenario(final_scenario, description, log_dir, output_dir)

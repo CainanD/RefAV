@@ -1,0 +1,12 @@
+description = 'object that hasn't moved'
+
+# Get all objects in the scene
+all_objects = get_objects_of_category(log_dir, category="ANY")
+
+# Use stationary() to find objects that haven't moved more than 2m 
+# during their entire observation period. This is more reliable than 
+# using has_velocity() for finding truly stationary objects since
+# has_velocity() would only find objects that are momentarily stopped
+stationary_objects = stationary(all_objects, log_dir)
+
+output_scenario(stationary_objects, description, log_dir, output_dir)

@@ -1,0 +1,16 @@
+description = 'vehicle stopped at construction barrel'
+
+# Get all vehicles and construction barrels
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+barrels = get_objects_of_category(log_dir, category='CONSTRUCTION_BARREL')
+
+# Find vehicles that are stopped (velocity near 0)
+# Using has_velocity with very low max velocity to find effectively stopped vehicles
+# Min velocity of 0 and max of 0.5 accounts for slight measurement variations
+stopped_vehicles = has_velocity(vehicles, log_dir, min_velocity=0, max_velocity=0.5)
+
+# Find stopped vehicles that are near construction barrels
+# Using 5m as a reasonable threshold for being "at" a barrel
+vehicles_at_barrels = near_objects(stopped_vehicles, barrels, log_dir, distance_thresh=5)
+
+output_scenario(vehicles_at_barrels, description, log_dir, output_dir)

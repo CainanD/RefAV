@@ -1,0 +1,14 @@
+description = 'pedestrians over 30 meters away'
+
+# Get all pedestrians
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Get ego vehicle to measure distance from
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+
+# Find pedestrians that are at least 30m away from ego vehicle
+# Using near_objects with ego vehicle and inverting the result to get peds NOT within 30m
+peds_within_30m = near_objects(peds, ego, log_dir, distance_thresh=30)
+distant_peds = scenario_not(lambda x, y: peds_within_30m)(peds, log_dir)
+
+output_scenario(distant_peds, description, log_dir, output_dir)

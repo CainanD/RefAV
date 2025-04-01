@@ -1,0 +1,23 @@
+description = 'vehicle crossing path of another vehicle'
+
+# Get all vehicles that are moving (not parked/stationary)
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are being crossed by other vehicles
+# Using being_crossed_by with forward direction and reasonable thresholds:
+# - forward_thresh=15 means we look 15m ahead for crossing vehicles
+# - lateral_thresh=5 means we track the crossing until vehicle is 5m to the side
+vehicles_being_crossed = being_crossed_by(moving_vehicles, moving_vehicles, log_dir, 
+                                        direction='forward',
+                                        forward_thresh=15,
+                                        lateral_thresh=5)
+
+# Only include vehicles that are moving when being crossed
+# This filters out cases where vehicles might be crossing paths with parked cars
+crossing_scenario = scenario_and([
+    vehicles_being_crossed,
+    has_velocity(vehicles_being_crossed, log_dir, min_velocity=0.5)
+])
+
+output_scenario(crossing_scenario, description, log_dir, output_dir)

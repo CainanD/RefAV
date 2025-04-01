@@ -1,0 +1,33 @@
+description = 'vehicle two vehicles ahead is at a stop sign'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles at stop signs
+vehicles_at_stop = at_stop_sign(moving_vehicles, log_dir)
+
+# Find vehicles that are directly behind vehicles at stop signs
+# Using 25m as a reasonable following distance
+vehicles_behind_stopped = get_objects_in_relative_direction(
+    vehicles_at_stop, 
+    moving_vehicles, 
+    log_dir, 
+    direction='backward',
+    max_number=1,
+    within_distance=25
+)
+
+# Find vehicles that are behind the vehicles that are behind stopped vehicles
+# These are the vehicles we want to track - they have two vehicles ahead of them
+# where the front vehicle is at a stop sign
+vehicles_two_back = get_objects_in_relative_direction(
+    vehicles_behind_stopped,
+    moving_vehicles,
+    log_dir,
+    direction='backward',
+    max_number=1,
+    within_distance=25
+)
+
+output_scenario(vehicles_two_back, description, log_dir, output_dir)

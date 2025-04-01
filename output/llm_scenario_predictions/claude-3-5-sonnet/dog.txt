@@ -1,0 +1,8 @@
+# Description: Find all dogs in the dataset
+description = 'dog'
+
+# Get all dogs from the dataset
+dogs = get_objects_of_category(log_dir, category='DOG')
+
+# Output the scenario containing all dogs
+output_scenario(dogs, description, log_dir, output_dir)

@@ -1,0 +1,21 @@
+description = 'motorcycle or pedestrian within 5 meters to the right'
+
+# Get all motorcycles and pedestrians
+motorcycles = get_objects_of_category(log_dir, category='MOTORCYCLE') 
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Combine motorcycles and pedestrians into one group
+motorcycle_and_peds = scenario_or([motorcycles, pedestrians])
+
+# Get all objects and find which ones have a motorcycle or pedestrian within 5m to their right
+all_objects = get_objects_of_category(log_dir, category='ANY')
+objects_with_right_moto_or_ped = has_objects_in_relative_direction(
+    all_objects,
+    motorcycle_and_peds, 
+    log_dir,
+    direction='right',
+    min_number=1,
+    within_distance=5
+)
+
+output_scenario(objects_with_right_moto_or_ped, description, log_dir, output_dir)

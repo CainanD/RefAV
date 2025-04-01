@@ -1,0 +1,37 @@
+description = 'bicycle traveling with vehicle traffic'
+
+# Get bicycles and vehicles
+bicycles = get_objects_of_category(log_dir, category='BICYCLE') 
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for moving bicycles that are on the road
+moving_bicycles = scenario_not(stationary)(bicycles, log_dir)
+bicycles_on_road = on_road(moving_bicycles, log_dir)
+
+# Find bicycles that are in the same lane as vehicles
+# This ensures the bicycle is traveling in a vehicle lane rather than a bike lane
+bicycles_in_vehicle_lane = in_same_lane(bicycles_on_road, vehicles, log_dir)
+
+# Find bicycles that have vehicles nearby in the same direction of travel
+# Looking for vehicles within 20m ahead or behind
+# Using a small lateral threshold (2m) to ensure they're truly following the same path
+bicycles_with_traffic = scenario_or([
+    has_objects_in_relative_direction(
+        bicycles_in_vehicle_lane, 
+        vehicles, 
+        log_dir,
+        direction='forward',
+        within_distance=20,
+        lateral_thresh=2
+    ),
+    has_objects_in_relative_direction(
+        bicycles_in_vehicle_lane,
+        vehicles,
+        log_dir, 
+        direction='backward',
+        within_distance=20,
+        lateral_thresh=2
+    )
+])
+
+output_scenario(bicycles_with_traffic, description, log_dir, output_dir)

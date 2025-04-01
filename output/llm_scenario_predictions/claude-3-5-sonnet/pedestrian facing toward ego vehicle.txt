@@ -1,0 +1,25 @@
+description = 'pedestrian facing toward ego vehicle'
+
+# Get all pedestrians and ego vehicle
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+
+# Find pedestrians that are in front of the ego vehicle
+# Using a reasonable distance threshold of 30m and lateral threshold of 10m
+# to capture pedestrians in front that could potentially interact with ego
+peds_in_front = get_objects_in_relative_direction(ego, pedestrians, log_dir, 
+                                                direction='forward',
+                                                within_distance=30,
+                                                lateral_thresh=10)
+
+# Reverse the relationship to get pedestrians that have ego vehicle in front of them
+# This means the pedestrian is facing toward the ego vehicle
+# Using same distance thresholds for consistency
+peds_facing_ego = reverse_relationship(get_objects_in_relative_direction)(
+    ego, peds_in_front, log_dir,
+    direction='forward', 
+    within_distance=30,
+    lateral_thresh=10
+)
+
+output_scenario(peds_facing_ego, description, log_dir, output_dir)

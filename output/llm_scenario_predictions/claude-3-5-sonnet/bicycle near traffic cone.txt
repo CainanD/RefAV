@@ -1,0 +1,11 @@
+description = 'bicycle near traffic cone'
+
+# Get all bicycles and traffic cones from the scenario
+bicycles = get_objects_of_category(log_dir, category='BICYCLE') 
+cones = get_objects_of_category(log_dir, category='CONSTRUCTION_CONE')
+
+# Find bicycles that are within 10m of any traffic cone
+# Using near_objects since we just want proximity regardless of direction
+bicycles_near_cones = near_objects(bicycles, cones, log_dir, distance_thresh=10)
+
+output_scenario(bicycles_near_cones, description, log_dir, output_dir)

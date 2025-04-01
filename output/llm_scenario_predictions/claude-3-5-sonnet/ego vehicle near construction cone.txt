@@ -1,0 +1,12 @@
+description = 'ego vehicle near construction cone'
+
+# Get ego vehicle and construction cones from the dataset
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+cones = get_objects_of_category(log_dir, category='CONSTRUCTION_CONE')
+
+# Find ego vehicles that are within 10m of any construction cone
+# Using near_objects since we want to identify when the ego vehicle 
+# is close to construction cones regardless of their relative position
+ego_near_cone = near_objects(ego, cones, log_dir, distance_thresh=10)
+
+output_scenario(ego_near_cone, description, log_dir, output_dir)

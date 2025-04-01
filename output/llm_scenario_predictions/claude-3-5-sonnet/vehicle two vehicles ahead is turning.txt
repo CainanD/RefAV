@@ -1,0 +1,33 @@
+description = 'vehicle two vehicles ahead is turning'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are turning
+turning_vehicles = turning(moving_vehicles, log_dir)
+
+# Find vehicles that are directly behind the turning vehicles
+# Using 25m as a reasonable following distance
+vehicles_behind_turning = get_objects_in_relative_direction(
+    turning_vehicles, 
+    moving_vehicles, 
+    log_dir, 
+    direction='backward', 
+    max_number=1, 
+    within_distance=25
+)
+
+# Find vehicles that are behind the vehicles that are behind turning vehicles
+# These are the vehicles we want to track - they have two vehicles ahead of them
+# where the front vehicle is turning
+vehicles_two_back = get_objects_in_relative_direction(
+    vehicles_behind_turning,
+    moving_vehicles,
+    log_dir,
+    direction='backward',
+    max_number=1,
+    within_distance=25
+)
+
+output_scenario(vehicles_two_back, description, log_dir, output_dir)

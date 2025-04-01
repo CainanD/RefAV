@@ -1,0 +1,13 @@
+description = 'vehicle accelerating on intersection'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+
+# Find vehicles that are accelerating
+accelerating_vehicles = accelerating(vehicles, log_dir, thresh=1.0)  # thresh=1.0 reliably indicates acceleration
+
+# Find vehicles that are on an intersection
+vehicles_on_intersection = on_intersection(accelerating_vehicles, log_dir)
+
+# Combine to get vehicles that are both accelerating and on an intersection
+output_scenario(vehicles_on_intersection, description, log_dir, output_dir)

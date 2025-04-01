@@ -1,0 +1,47 @@
+# Get all vehicles and pedestrians
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Get moving vehicles on the road
+moving_vehicles = scenario_and([
+    scenario_not(stationary)(vehicles, log_dir),
+    on_road(vehicles, log_dir)
+])
+
+# Find vehicles being crossed by pedestrians
+vehicles_crossed_by_peds = being_crossed_by(moving_vehicles, peds, log_dir)
+
+# Find vehicles that have a vehicle directly in front of them
+# Using 25m as a reasonable following distance
+vehicles_with_lead = get_objects_in_relative_direction(
+    moving_vehicles, 
+    moving_vehicles, 
+    log_dir, 
+    direction='forward',
+    max_number=1,
+    within_distance=25
+)
+
+# Find vehicles that have a vehicle in front of them that is being crossed by a pedestrian
+# First get vehicles directly behind vehicles being crossed by peds
+vehicles_behind_crossed = get_objects_in_relative_direction(
+    vehicles_crossed_by_peds,
+    moving_vehicles,
+    log_dir,
+    direction='backward',
+    max_number=1, 
+    within_distance=25
+)
+
+# Then get vehicles behind those vehicles (two cars back from crossed vehicle)
+vehicles_two_back = get_objects_in_relative_direction(
+    vehicles_behind_crossed,
+    moving_vehicles, 
+    log_dir,
+    direction='backward',
+    max_number=1,
+    within_distance=25
+)
+
+description = 'vehicle two cars ahead is being crossed by a pedestrian'
+output_scenario(vehicles_two_back, description, log_dir, output_dir)

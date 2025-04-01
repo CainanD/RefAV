@@ -1,0 +1,21 @@
+description = 'ego vehicle approaching stopped truck'
+
+# Get ego vehicle and trucks
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+trucks = get_objects_of_category(log_dir, category='TRUCK')
+
+# Find stopped trucks
+stopped_trucks = scenario_not(has_velocity)(trucks, log_dir, min_velocity=0.5)
+
+# Find trucks that are in front of ego vehicle within 30m
+# This will naturally capture the "approaching" aspect since ego is moving toward a stopped vehicle
+trucks_ahead = get_objects_in_relative_direction(
+    ego, 
+    stopped_trucks,
+    log_dir,
+    direction='forward',
+    max_number=1,
+    within_distance=30
+)
+
+output_scenario(trucks_ahead, description, log_dir, output_dir)

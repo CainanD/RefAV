@@ -1,0 +1,26 @@
+description = 'vehicle approaching stopped vehicle at intersection'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find vehicles that are stopped (using has_velocity instead of stationary to catch temporarily stopped vehicles)
+stopped_vehicles = has_velocity(vehicles, log_dir, min_velocity=0, max_velocity=0.5)
+
+# Find stopped vehicles near intersection
+stopped_at_intersection = near_intersection(stopped_vehicles, log_dir, threshold=10)
+
+# Find moving vehicles (not stopped)
+moving_vehicles = has_velocity(vehicles, log_dir, min_velocity=0.5)
+
+# Find moving vehicles that have a stopped vehicle in front of them within 20m
+# and are approaching (positive velocity)
+approaching_vehicles = get_objects_in_relative_direction(
+    moving_vehicles, 
+    stopped_at_intersection, 
+    log_dir, 
+    direction='forward',
+    max_number=1,
+    within_distance=20
+)
+
+output_scenario(approaching_vehicles, description, log_dir, output_dir)

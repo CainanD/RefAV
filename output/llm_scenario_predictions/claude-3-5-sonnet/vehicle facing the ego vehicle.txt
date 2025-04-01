@@ -1,0 +1,28 @@
+description = 'vehicle facing the ego vehicle'
+
+# Get all vehicles and ego vehicle
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+ego_vehicle = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+
+# Get moving vehicles that are in front of the ego vehicle within 50m
+# (reasonable distance to detect oncoming traffic)
+vehicles_in_front = get_objects_in_relative_direction(
+    ego_vehicle, 
+    vehicles, 
+    log_dir,
+    direction='forward',
+    within_distance=50
+)
+
+# A vehicle facing the ego vehicle will be moving backwards relative to the 
+# ego vehicle's forward direction. We can use get_objects_in_relative_direction
+# with direction='backward' to find vehicles moving towards us
+oncoming_vehicles = get_objects_in_relative_direction(
+    vehicles_in_front,
+    ego_vehicle,
+    log_dir, 
+    direction='backward',
+    within_distance=50
+)
+
+output_scenario(oncoming_vehicles, description, log_dir, output_dir)

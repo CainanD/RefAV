@@ -1,0 +1,12 @@
+description = 'city bus'
+
+# Get all buses from the scenario
+# This will include regular buses, school buses, and articulated buses
+buses = get_objects_of_category(log_dir, category="BUS")
+
+# Filter out school buses since we only want city buses
+# Note: Articulated buses are still included since they serve the same function as city buses
+city_buses = scenario_not(is_category)(buses, log_dir, category="SCHOOL_BUS")
+
+# Output the scenario containing only city buses
+output_scenario(city_buses, description, log_dir, output_dir)

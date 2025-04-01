@@ -1,0 +1,12 @@
+# Define scenario for vehicles in front of a stop sign
+description = 'vehicle in front of stop sign'
+
+# Get all vehicles and stop signs
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+stop_signs = get_objects_of_category(log_dir, category="STOP_SIGN")
+
+# Find vehicles that are at a stop sign
+# at_stop_sign() identifies vehicles within 10m of a stop sign by default
+vehicles_at_stop = at_stop_sign(vehicles, log_dir)
+
+output_scenario(vehicles_at_stop, description, log_dir, output_dir)

@@ -1,0 +1,36 @@
+description = 'the vehicle two cars in front of the ego vehicle'
+
+# Get all vehicles and the ego vehicle
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+
+# Get the vehicle directly in front of ego
+# Using within_distance=25 as a reasonable following distance
+# max_number=1 ensures we only get the closest vehicle
+vehicle_in_front_of_ego = get_objects_in_relative_direction(
+    ego, 
+    vehicles, 
+    log_dir, 
+    direction='forward',
+    max_number=1,
+    within_distance=25
+)
+
+# Get the vehicle in front of that vehicle
+# This will be two vehicles ahead of ego
+vehicle_two_ahead = get_objects_in_relative_direction(
+    vehicle_in_front_of_ego,
+    vehicles,
+    log_dir,
+    direction='forward', 
+    max_number=1,
+    within_distance=25
+)
+
+# Ensure these vehicles are in the same lane
+two_ahead_same_lane = scenario_and([
+    in_same_lane(ego, vehicle_in_front_of_ego, log_dir),
+    in_same_lane(vehicle_in_front_of_ego, vehicle_two_ahead, log_dir)
+])
+
+output_scenario(two_ahead_same_lane, description, log_dir, output_dir)

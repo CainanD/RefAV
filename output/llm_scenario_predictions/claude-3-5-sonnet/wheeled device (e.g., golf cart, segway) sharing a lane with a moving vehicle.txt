@@ -1,0 +1,13 @@
+description = 'wheeled device (e.g., golf cart, segway) sharing a lane with a moving vehicle'
+
+# Get all wheeled devices and vehicles
+wheeled_devices = get_objects_of_category(log_dir, category='WHEELED_DEVICE')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Only consider moving vehicles to avoid parked cars
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find wheeled devices that are in the same lane as a moving vehicle
+wheeled_device_sharing_lane = in_same_lane(wheeled_devices, moving_vehicles, log_dir)
+
+output_scenario(wheeled_device_sharing_lane, description, log_dir, output_dir)

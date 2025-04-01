@@ -1,0 +1,25 @@
+description = 'truck without trailer'
+
+# Get all trucks and truck cabs
+trucks = get_objects_of_category(log_dir, category="TRUCK")
+truck_cabs = get_objects_of_category(log_dir, category="TRUCK_CAB")
+all_trucks = scenario_or([trucks, truck_cabs])
+
+# Get all trailers
+trailers = get_objects_of_category(log_dir, category="VEHICULAR_TRAILER")
+
+# Find trucks that have a trailer behind them within 3m
+# (using a small distance since trailers should be directly attached)
+trucks_with_trailers = has_objects_in_relative_direction(
+    all_trucks, 
+    trailers,
+    log_dir,
+    direction='backward',
+    within_distance=3,
+    lateral_thresh=2  # Allow some lateral offset for turning
+)
+
+# Get trucks without trailers by taking the difference
+trucks_without_trailers = scenario_not(lambda x, y: trucks_with_trailers)(all_trucks, log_dir)
+
+output_scenario(trucks_without_trailers, description, log_dir, output_dir)

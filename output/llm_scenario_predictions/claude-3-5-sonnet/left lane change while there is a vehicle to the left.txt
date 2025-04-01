@@ -1,0 +1,22 @@
+description = 'left lane change while there is a vehicle to the left'
+
+# Get all vehicles from the scenario
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Get vehicles that are changing lanes to the left
+left_lane_changes = changing_lanes(vehicles, log_dir, direction='left')
+
+# Find vehicles that have another vehicle to their left while changing lanes
+# Using within_distance=5 to detect vehicles in adjacent lane
+# Using lateral_thresh=3 to ensure vehicle is roughly parallel
+vehicles_with_left_neighbor = has_objects_in_relative_direction(
+    left_lane_changes,  # Only check vehicles making left lane changes
+    vehicles,  # Look for any vehicle to the left
+    log_dir,
+    direction='left',
+    min_number=1,  # Must have at least one vehicle to the left
+    within_distance=5,  # Distance to consider adjacent lane
+    lateral_thresh=3  # Keep vehicles roughly parallel
+)
+
+output_scenario(vehicles_with_left_neighbor, description, log_dir, output_dir)

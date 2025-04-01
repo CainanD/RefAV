@@ -1,0 +1,27 @@
+description = 'vehicle being passed on the left by another vehicle'
+
+# Get all vehicles from the scenario
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for moving vehicles only since parked vehicles can't pass each other
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are being crossed by other vehicles on their left side
+# forward_thresh=10 means we look 10m ahead/behind the vehicle being passed
+# lateral_thresh=5 means we track the passing vehicle until it's 5m laterally away
+vehicles_being_passed = being_crossed_by(moving_vehicles, moving_vehicles, log_dir, 
+                                       direction='left', 
+                                       forward_thresh=10,
+                                       lateral_thresh=5)
+
+# The vehicles being passed must have a passing vehicle to their left within 5m
+# and that passing vehicle must be moving faster (hence passing)
+vehicles_with_faster_vehicle_left = has_objects_in_relative_direction(
+    vehicles_being_passed,
+    moving_vehicles, 
+    log_dir,
+    direction='left',
+    min_number=1,
+    within_distance=5)
+
+output_scenario(vehicles_with_faster_vehicle_left, description, log_dir, output_dir)

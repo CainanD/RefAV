@@ -1,0 +1,23 @@
+description = 'pedestrian turning and watching the ego vehicle'
+
+# Get all pedestrians and the ego vehicle
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+
+# Find pedestrians that are turning (either direction)
+turning_peds = turning(pedestrians, log_dir)
+
+# Find turning pedestrians that have the ego vehicle behind them
+# This indicates they are watching the ego vehicle while turning
+# Using a 20m threshold to ensure the ego vehicle is close enough to be relevant
+watching_ego = has_objects_in_relative_direction(
+    turning_peds, 
+    ego, 
+    log_dir,
+    direction='backward',  # backward means the ego is behind them
+    min_number=1,
+    max_number=1,
+    within_distance=20
+)
+
+output_scenario(watching_ego, description, log_dir, output_dir)

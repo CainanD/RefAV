@@ -1,0 +1,15 @@
+description = 'parked vehicle'
+
+# Get all vehicles (excluding buses, trucks etc)
+vehicles = get_objects_of_category(log_dir, category="REGULAR_VEHICLE") 
+
+# A parked vehicle is defined as one that:
+# 1. Is stationary (moves less than 2m during observation)
+# 2. Is in a drivable area (on or near a road)
+# 3. Has a very low velocity (under 0.5 m/s accounts for annotation jitter)
+
+stationary_vehicles = stationary(vehicles, log_dir)
+vehicles_in_drivable = in_drivable_area(stationary_vehicles, log_dir)
+parked_vehicles = has_velocity(vehicles_in_drivable, log_dir, min_velocity=0, max_velocity=0.5)
+
+output_scenario(parked_vehicles, description, log_dir, output_dir)

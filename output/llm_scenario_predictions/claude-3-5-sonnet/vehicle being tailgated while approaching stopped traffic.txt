@@ -1,0 +1,34 @@
+description = 'vehicle being tailgated while approaching stopped traffic'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Get moving vehicles only 
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that have stopped vehicles in front of them
+stopped_vehicles = scenario_and([
+    has_velocity(vehicles, log_dir, min_velocity=0, max_velocity=0.5),
+    on_road(vehicles, log_dir)
+])
+
+# Find vehicles approaching stopped vehicles (within 30m)
+approaching_stopped = has_objects_in_relative_direction(
+    moving_vehicles, 
+    stopped_vehicles,
+    log_dir,
+    direction='forward',
+    within_distance=30
+)
+
+# Find vehicles that have another vehicle following very closely behind them (within 5m)
+# These are the tailgating vehicles
+tailgated = has_objects_in_relative_direction(
+    approaching_stopped,
+    moving_vehicles, 
+    log_dir,
+    direction='backward',
+    within_distance=5
+)
+
+output_scenario(tailgated, description, log_dir, output_dir)

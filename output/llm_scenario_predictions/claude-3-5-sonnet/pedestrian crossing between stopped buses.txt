@@ -1,0 +1,39 @@
+description = 'pedestrian crossing between stopped buses'
+
+# Get all buses and pedestrians
+buses = get_objects_of_category(log_dir, category="BUS")
+peds = get_objects_of_category(log_dir, category="PEDESTRIAN")
+
+# Find stopped buses
+stopped_buses = scenario_not(has_velocity)(buses, log_dir, min_velocity=0.5)
+
+# Find pedestrians that are near stopped buses (within 5m)
+peds_near_buses = near_objects(peds, stopped_buses, log_dir, distance_thresh=5)
+
+# Find pedestrians that are between at least 2 stopped buses
+# First find peds that have a bus to their left within 5m
+peds_with_bus_left = get_objects_in_relative_direction(
+    peds_near_buses, 
+    stopped_buses, 
+    log_dir, 
+    direction='left', 
+    within_distance=5,
+    lateral_thresh=2
+)
+
+# Then filter to only peds that also have a bus to their right within 5m
+peds_between_buses = has_objects_in_relative_direction(
+    peds_with_bus_left,
+    stopped_buses, 
+    log_dir,
+    direction='right',
+    min_number=1,
+    within_distance=5,
+    lateral_thresh=2
+)
+
+# Finally, find pedestrians that are actually crossing between the buses
+# by checking if they're being crossed by the buses from either side
+crossing_peds = being_crossed_by(stopped_buses, peds_between_buses, log_dir)
+
+output_scenario(crossing_peds, description, log_dir, output_dir)

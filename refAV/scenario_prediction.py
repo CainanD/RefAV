@@ -1,10 +1,14 @@
-import anthropic
-import refAV.paths as paths
+import paths
 from pathlib import Path
+from typing import Literal
+import os
+import json
 
-client = anthropic.Anthropic(
-    api_key = paths.ANTRHOPIC_API_KEY
-)
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+import anthropic
+from google import genai
 
 
 def extract_and_save_code_blocks(message, title=None,output_dir:Path=Path('.'))->list[Path]:
@@ -12,21 +16,9 @@ def extract_and_save_code_blocks(message, title=None,output_dir:Path=Path('.'))-
     Extracts Python code blocks from a message and saves them to files based on their title variables.
     Handles both explicit Python code blocks (```python) and generic code blocks (```).
     """
-    # Convert the message content to string
-    if hasattr(message, 'content'):
-        content = message.content
-    else:
-        raise ValueError("Message object doesn't have 'content' attribute")
-    
-    if hasattr(content[0], 'text'):
-        text = content[0].text
-    elif isinstance(content, list):
-        text = '\n'.join(str(item) for item in content)
-    else:
-        text = str(content)
     
     # Split the message into lines and handle escaped characters
-    lines = text.replace('\\n', '\n').replace("\\'", "'").split('\n')
+    lines = message.replace('\\n', '\n').replace("\\'", "'").split('\n')
     in_code_block = False
     current_block = []
     code_blocks = []
@@ -86,49 +78,58 @@ def extract_and_save_code_blocks(message, title=None,output_dir:Path=Path('.'))-
 
     return filenames
 
-def extract_descriptions(message)->list[str]:
-    # Convert the message content to string
-    if hasattr(message, 'content'):
-        content = message.content
-    else:
-        raise ValueError("Message object doesn't have 'content' attribute")
-    
-    if hasattr(content[0], 'text'):
-        text = content[0].text
-    elif isinstance(content, list):
-        text = '\n'.join(str(item) for item in content)
-    else:
-        text = str(content)
 
-    descriptions = []
-    for line in text.strip().split('\n'):
-        line = line.strip()
-        # Skip empty lines
-        if not line:
-            continue
-            
-        # Check if line starts with a number followed by common list delimiters
-        parts = line.split(' ', 1)  # Split on first space
-        if len(parts) < 2:  # Skip lines that don't have a space
-            continue
-            
-        first_part = parts[0].rstrip('.)-')  # Remove common list delimiters
-        
-        # Check if the first part is a number
-        if first_part.isdigit():
-            description = parts[1].strip()
-            if description:  # Only add non-empty descriptions
-                descriptions.append(description)
-    
-    return descriptions
-
-def predict_scenario_from_description(natural_language_description, output_dir: Path):
+def predict_scenario_from_description(natural_language_description, output_dir:Path, model:Literal['claude', 'qwen', 'gemini'] = 'claude',
+                                      local_model = None, local_tokenizer=None):
         
     with open(paths.REFAV_CONTEXT, 'r') as f:
         refav_context = f.read().format()
 
     with open(paths.PREDICTION_EXAMPLES, 'r') as f:
         prediction_examples = f.read().format()
+
+    prompt = f"{refav_context}\n Please define a single scenario for the description:{natural_language_description}\n Here is a list of examples: {prediction_examples}. Feel free to use a liberal amount of comments within the code. Use only one python block and do not provide alternatives."
+
+    if model == 'gemini':
+        output_dir = output_dir / 'gemini-2-0-flash-thinking'
+        response = predict_scenario_gemini(prompt)
+    elif model == 'qwen':
+        output_dir = output_dir / 'qwen-2-5-7b'
+        response = predict_scenario_qwen(prompt, local_model, local_tokenizer)
+    else:
+        output_dir = output_dir / 'clause-3-5-sonnet'
+        response = predict_scenario_claude(prompt)
+
+    definition_filename = extract_and_save_code_blocks(response, output_dir=output_dir, title=natural_language_description)[0]
+    print(f'{natural_language_description} definition saved to {output_dir}')
+    return definition_filename
+
+
+def predict_scenario_gemini(prompt):
+    """
+    Available models:
+    gemini-2.0-flash-thinking-exp-01-21
+    gemini-2.0-flash
+    
+    """
+
+    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+    response = client.models.generate_content(
+        model="gemini-2.0-flash", contents=prompt
+    )
+
+
+
+    return response.text
+
+
+def predict_scenario_claude(prompt):
+        
+    client = anthropic.Anthropic(
+        # defaults to os.environ.get("ANTHROPIC_API_KEY")
+        #api_key="my_api_key",
+    )
 
     message = client.messages.create(
         model="claude-3-5-sonnet-20241022",
@@ -140,20 +141,82 @@ def predict_scenario_from_description(natural_language_description, output_dir: 
             "content": [
                 {
                     "type": "text",
-                    "text": f"{refav_context}\n Here is aPlease define a single scenario for the description:{natural_language_description}\n Here is a list of examples: {prediction_examples}. Feel free to use a liberal amount of comments within the code. Use only one python block and do not provide alternatives."
+                    "text": prompt
                     }
                 ]
             }
         ]
     )
 
-    definition_filename = extract_and_save_code_blocks(message, output_dir=output_dir, title=natural_language_description)[0]
-    print(f'{natural_language_description} definition saved to {output_dir}')
-    return definition_filename
+    # Convert the message content to string
+    if hasattr(message, 'content'):
+        content = message.content
+    else:
+        raise ValueError("Message object doesn't have 'content' attribute")
+    
+    if hasattr(content[0], 'text'):
+        text_response = content[0].text
+    elif isinstance(content, list):
+        text_response = '\n'.join(str(item) for item in content)
+    else:
+        text_response = str(content)
+        
+    return text_response
+
+def load_qwen():
+
+    model_name = "Qwen/Qwen2.5-7B-Instruct"
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        torch_dtype="auto",
+        device_map="auto"
+    )
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    return model, tokenizer
+
+def predict_scenario_qwen(prompt, model=None, tokenizer=None):
+
+    if model == None or tokenizer == None:
+        model, tokenizer = load_qwen()
+
+    messages = [
+        {"role": "user", "content": prompt}
+    ]
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+    generated_ids = model.generate(
+        **model_inputs,
+        max_new_tokens=512
+    )
+    generated_ids = [
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    ]
+    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+    return response
+
 
 
 if __name__ == '__main__':
-    existing_descriptions_path = Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/prompting/existing_descriptions.txt')
-    output_dir=Path('/home/crdavids/Trinity-Sync/av2-api/output/scenario_generation/gt_scenarios')
-    predict_scenario_from_description('moving animal to the right of the ego-vehicle', output_dir)
+
+    all_descriptions = set()
+    with open('av2_sm_downloads/log_prompt_pairs_val.json', 'rb') as file:
+        lpp = json.load(file)
+
+    for log_id, prompts in lpp.items():
+        all_descriptions.update(prompts)
+
+    local_model, local_tokenizer = load_qwen()
+ 
+    output_dir = paths.LLM_DEF_DIR
+    for description in all_descriptions:
+        predict_scenario_from_description(description, output_dir, model='qwen', local_model=local_model, local_tokenizer=local_tokenizer)
+
+    for description in all_descriptions:
+        predict_scenario_from_description(description, output_dir, model='gemini')
     

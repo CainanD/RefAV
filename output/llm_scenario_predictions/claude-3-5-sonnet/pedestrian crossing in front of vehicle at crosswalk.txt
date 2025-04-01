@@ -1,0 +1,28 @@
+# Description: pedestrian crossing in front of vehicle at crosswalk
+
+# Get all vehicles and pedestrians from the scenario
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find pedestrians that are at a crosswalk
+peds_at_crossing = at_pedestrian_crossing(pedestrians, log_dir)
+
+# Find vehicles that have pedestrians crossing in front of them
+# Only consider pedestrians that are at a crosswalk
+# being_crossed_by will identify when the pedestrian's centroid crosses 
+# the vehicle's forward-facing half-midplane
+vehicles_being_crossed = being_crossed_by(vehicles, peds_at_crossing, log_dir, 
+                                        direction='forward',
+                                        # Look 10m ahead of vehicle for crossing
+                                        forward_thresh=10,
+                                        # Allow 5m lateral deviation during crossing
+                                        lateral_thresh=5)
+
+# Reverse the relationship to get the pedestrians doing the crossing
+# rather than the vehicles being crossed
+crossing_peds = reverse_relationship(being_crossed_by)(vehicles, peds_at_crossing, log_dir,
+                                                     direction='forward',
+                                                     forward_thresh=10,
+                                                     lateral_thresh=5)
+
+output_scenario(crossing_peds, description, log_dir, output_dir)

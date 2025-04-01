@@ -1,0 +1,27 @@
+description = 'bicycle facing toward moving traffic'
+
+# Get all bicycles and vehicles
+bicycles = get_objects_of_category(log_dir, category='BICYCLE') 
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Get moving vehicles only (exclude parked/stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find bicycles that have moving vehicles in front of them
+# The vehicles should be moving toward the bicycle, meaning they are in the bicycle's "forward" direction
+# Using within_distance=20 to look for vehicles within 20m
+# Using lateral_thresh=3 to only consider vehicles roughly in line with bicycle's direction
+bicycles_facing_traffic = has_objects_in_relative_direction(
+    bicycles,
+    moving_vehicles, 
+    log_dir,
+    direction='forward',
+    min_number=1,
+    within_distance=20,
+    lateral_thresh=3
+)
+
+# Only include bicycles that are actually on the road
+bicycles_on_road = on_road(bicycles_facing_traffic, log_dir)
+
+output_scenario(bicycles_on_road, description, log_dir, output_dir)

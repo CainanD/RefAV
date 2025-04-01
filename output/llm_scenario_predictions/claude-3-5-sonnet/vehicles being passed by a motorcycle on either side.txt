@@ -1,0 +1,23 @@
+description = 'vehicles being passed by a motorcycle on either side'
+
+# Get all vehicles and motorcycles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+motorcycles = get_objects_of_category(log_dir, category='MOTORCYCLE')
+
+# Only consider moving vehicles and motorcycles
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+moving_motorcycles = scenario_not(stationary)(motorcycles, log_dir)
+
+# Find vehicles that are being passed by motorcycles on either side
+# being_crossed_by() will track the motorcycle crossing the vehicle's midplane
+# Use forward_thresh=10 to look 10m ahead/behind the vehicle
+# Use lateral_thresh=5 to continue tracking the motorcycle until it's 5m away laterally
+passed_on_left = being_crossed_by(moving_vehicles, moving_motorcycles, log_dir, 
+                                direction='left', forward_thresh=10, lateral_thresh=5)
+passed_on_right = being_crossed_by(moving_vehicles, moving_motorcycles, log_dir,
+                                 direction='right', forward_thresh=10, lateral_thresh=5)
+
+# Combine vehicles being passed on either side
+vehicles_being_passed = scenario_or([passed_on_left, passed_on_right])
+
+output_scenario(vehicles_being_passed, description, log_dir, output_dir)

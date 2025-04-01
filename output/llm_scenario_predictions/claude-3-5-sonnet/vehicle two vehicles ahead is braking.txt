@@ -1,0 +1,34 @@
+description = 'vehicle two vehicles ahead is braking'
+
+# Get all vehicles and filter to only moving ones
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are braking (negative acceleration)
+braking_vehicles = accelerating(moving_vehicles, log_dir, thresh=-1.0)
+
+# Find vehicles that are directly behind the braking vehicles (first vehicle behind)
+vehicles_behind_braking = get_objects_in_relative_direction(
+    braking_vehicles, 
+    moving_vehicles, 
+    log_dir,
+    direction='backward',
+    max_number=1,
+    within_distance=25  # Reasonable following distance
+)
+
+# Find vehicles that are behind the first following vehicle (second vehicle behind)
+# These are the vehicles we want to track since they have two vehicles ahead
+vehicles_two_behind = get_objects_in_relative_direction(
+    vehicles_behind_braking,
+    moving_vehicles,
+    log_dir, 
+    direction='backward',
+    max_number=1,
+    within_distance=25
+)
+
+# Make sure all vehicles are in the same lane
+vehicles_in_same_lane = in_same_lane(vehicles_two_behind, braking_vehicles, log_dir)
+
+output_scenario(vehicles_in_same_lane, description, log_dir, output_dir)

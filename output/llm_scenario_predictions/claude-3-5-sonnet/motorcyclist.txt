@@ -1,0 +1,13 @@
+description = 'motorcyclist'
+
+# Get all motorcycles from the dataset
+motorcycles = get_objects_of_category(log_dir, category='MOTORCYCLE')
+
+# Get all motorcyclists (people riding motorcycles)
+motorcyclists = get_objects_of_category(log_dir, category='MOTORCYCLIST')
+
+# Combine both motorcycles and motorcyclists into one scenario
+# This ensures we capture both the vehicle and rider
+motorcycle_scenario = scenario_or([motorcycles, motorcyclists])
+
+output_scenario(motorcycle_scenario, description, log_dir, output_dir)

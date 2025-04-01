@@ -1,0 +1,36 @@
+description = 'vehicle passing truck with pedestrian crossing ahead'
+
+# Get all vehicles, trucks, and pedestrians
+vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
+trucks = get_objects_of_category(log_dir, category='TRUCK')
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Filter for moving vehicles and trucks
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+moving_trucks = scenario_not(stationary)(trucks, log_dir)
+
+# Find vehicles that are passing trucks (crossing from behind to front)
+# Using being_crossed_by with left/right direction to identify passing maneuver
+# Forward_thresh of 15m to capture the passing movement
+# Lateral_thresh of 5m to ensure vehicles are relatively close side-by-side
+vehicles_passing_trucks = being_crossed_by(moving_trucks, moving_vehicles, log_dir, 
+                                         direction='left', 
+                                         forward_thresh=15,
+                                         lateral_thresh=5)
+
+# Find pedestrians ahead of these passing vehicles
+# Looking within 30m ahead and 5m to either side
+peds_ahead = get_objects_in_relative_direction(vehicles_passing_trucks, peds, log_dir,
+                                             direction='forward',
+                                             within_distance=30,
+                                             lateral_thresh=5)
+
+# Final scenario: vehicles that are passing trucks AND have pedestrians ahead
+vehicles_passing_with_peds = has_objects_in_relative_direction(vehicles_passing_trucks, 
+                                                             peds_ahead, log_dir,
+                                                             direction='forward',
+                                                             min_number=1,
+                                                             within_distance=30,
+                                                             lateral_thresh=5)
+
+output_scenario(vehicles_passing_with_peds, description, log_dir, output_dir)

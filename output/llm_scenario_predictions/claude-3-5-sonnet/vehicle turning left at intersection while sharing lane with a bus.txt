@@ -1,0 +1,23 @@
+description = 'vehicle turning left at intersection while sharing lane with a bus'
+
+# Get all vehicles and buses
+vehicles = get_objects_of_category(log_dir, category="REGULAR_VEHICLE")
+buses = get_objects_of_category(log_dir, category="BUS")
+
+# Find vehicles that are turning left
+turning_vehicles = turning(vehicles, log_dir, direction='left')
+
+# Find turning vehicles that are at an intersection
+turning_vehicles_at_intersection = scenario_and([
+    turning_vehicles,
+    on_intersection(turning_vehicles, log_dir)
+])
+
+# Find turning vehicles that are in the same lane as a bus
+# We use in_same_lane to identify vehicles sharing a lane with buses
+turning_vehicles_with_bus = scenario_and([
+    turning_vehicles_at_intersection,
+    in_same_lane(turning_vehicles_at_intersection, buses, log_dir)
+])
+
+output_scenario(turning_vehicles_with_bus, description, log_dir, output_dir)

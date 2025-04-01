@@ -1,0 +1,19 @@
+description = 'ego vehicle two cars ahead of another vehicle'
+
+# Get ego vehicle and all other vehicles
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE') 
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Get vehicle directly behind ego
+vehicle_behind_ego = get_objects_in_relative_direction(ego, vehicles, log_dir, 
+                                                     direction='backward',
+                                                     max_number=1, 
+                                                     within_distance=25)
+
+# Get vehicle behind that vehicle (two cars behind ego)
+vehicle_two_behind = get_objects_in_relative_direction(vehicle_behind_ego, vehicles, log_dir,
+                                                     direction='backward', 
+                                                     max_number=1,
+                                                     within_distance=25)
+
+output_scenario(vehicle_two_behind, description, log_dir, output_dir)

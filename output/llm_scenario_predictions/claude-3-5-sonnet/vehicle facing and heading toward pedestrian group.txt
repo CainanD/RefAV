@@ -1,0 +1,27 @@
+description = 'vehicle facing and heading toward pedestrian group'
+
+# Get all vehicles and pedestrians
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Get moving vehicles (not stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find pedestrian groups (defined as 3+ pedestrians near each other)
+# First find pedestrians that have at least 3 other pedestrians within 5m
+ped_groups = near_objects(pedestrians, pedestrians, log_dir, distance_thresh=5, min_objects=3)
+
+# Find vehicles that:
+# 1. Have pedestrian groups in front of them (within 15m forward distance)
+# 2. Are moving (not stationary)
+# 3. Are heading toward the pedestrians (have positive velocity)
+vehicles_approaching_peds = scenario_and([
+    # Has pedestrian group in front
+    has_objects_in_relative_direction(moving_vehicles, ped_groups, log_dir, 
+                                    direction='forward', 
+                                    within_distance=15),
+    # Is moving (velocity > 0.5 m/s)                                
+    has_velocity(moving_vehicles, log_dir, min_velocity=0.5)
+])
+
+output_scenario(vehicles_approaching_peds, description, log_dir, output_dir)

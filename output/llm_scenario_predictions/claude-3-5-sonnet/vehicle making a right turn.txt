@@ -1,0 +1,11 @@
+description = 'vehicle making a right turn'
+
+# Get all vehicles from the scenario
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find vehicles that are turning right
+# The turning() function will identify vehicles that are actively making a right turn
+right_turning_vehicles = turning(vehicles, log_dir, direction='right')
+
+# Output the scenario of right turning vehicles
+output_scenario(right_turning_vehicles, description, log_dir, output_dir)

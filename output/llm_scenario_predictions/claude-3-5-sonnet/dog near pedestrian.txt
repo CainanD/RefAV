@@ -1,0 +1,12 @@
+description = 'dog near pedestrian'
+
+# Get all dogs and pedestrians from the scenario
+dogs = get_objects_of_category(log_dir, category='DOG')
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find dogs that are within 10 meters of at least one pedestrian
+# Using near_objects since we want to identify when dogs are in proximity to pedestrians
+# A threshold of 10 meters is used as a reasonable distance to consider "near"
+dogs_near_peds = near_objects(dogs, pedestrians, log_dir, distance_thresh=10)
+
+output_scenario(dogs_near_peds, description, log_dir, output_dir)

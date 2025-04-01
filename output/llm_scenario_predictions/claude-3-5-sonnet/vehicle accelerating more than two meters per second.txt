@@ -1,0 +1,11 @@
+description = 'vehicle accelerating more than two meters per second'
+
+# Get all vehicles from the scenario
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+
+# Find vehicles that are accelerating more than 2 m/s^2
+# Note: Using accelerating() function with thresh=2 will identify 
+# vehicles with forward acceleration above 2 m/s^2
+fast_accelerating_vehicles = accelerating(vehicles, log_dir, thresh=2)
+
+output_scenario(fast_accelerating_vehicles, description, log_dir, output_dir)

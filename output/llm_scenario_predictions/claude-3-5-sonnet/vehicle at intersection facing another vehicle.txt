@@ -1,0 +1,23 @@
+description = 'vehicle at intersection facing another vehicle'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for vehicles that are moving (not parked/stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Get vehicles that are at an intersection
+vehicles_at_intersection = on_intersection(moving_vehicles, log_dir)
+
+# Find vehicles that have another vehicle in front of them within 15m
+# while at the intersection (likely stopped or approaching intersection)
+vehicles_facing_others = has_objects_in_relative_direction(
+    vehicles_at_intersection, 
+    vehicles_at_intersection,  # Looking for other vehicles
+    log_dir,
+    direction='forward',
+    max_number=1,  # Only need one vehicle in front
+    within_distance=15  # Within reasonable stopping distance
+)
+
+output_scenario(vehicles_facing_others, description, log_dir, output_dir)

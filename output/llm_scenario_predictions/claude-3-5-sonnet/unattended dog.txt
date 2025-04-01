@@ -1,0 +1,18 @@
+description = 'unattended dog'
+
+# Get all dogs and pedestrians from the scenario
+dogs = get_objects_of_category(log_dir, category='DOG')
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Dogs are considered unattended if there is no pedestrian within 10 meters
+# Using scenario_not with near_objects to find dogs that are NOT near pedestrians
+unattended_dogs = scenario_not(near_objects)(dogs, pedestrians, log_dir, distance_thresh=10)
+
+# Only consider dogs that are in areas where they shouldn't be unattended
+# This means either on the road or in a drivable area
+dogs_in_dangerous_area = scenario_or([
+    on_road(unattended_dogs, log_dir),
+    in_drivable_area(unattended_dogs, log_dir)
+])
+
+output_scenario(dogs_in_dangerous_area, description, log_dir, output_dir)

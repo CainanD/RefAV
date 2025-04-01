@@ -1,0 +1,15 @@
+description = 'vehicle at a stop sign'
+
+# Get all vehicles except for buses since they have different stopping patterns
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+regular_vehicles = scenario_not(is_category)(vehicles, log_dir, category='BUS')
+
+# Get vehicles that are near a stop sign and moving slowly or stopped
+# Using has_velocity with max_velocity=2 to capture vehicles that are stopping or creeping
+slow_vehicles = has_velocity(regular_vehicles, log_dir, min_velocity=0, max_velocity=2)
+
+# Find vehicles that are at a stop sign
+# Using forward_thresh=10 to capture vehicles approaching/at the stop sign
+vehicles_at_stop = at_stop_sign(slow_vehicles, log_dir, forward_thresh=10)
+
+output_scenario(vehicles_at_stop, description, log_dir, output_dir)

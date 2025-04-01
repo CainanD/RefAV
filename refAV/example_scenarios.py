@@ -15,7 +15,7 @@ all_uuids = annotations_df['track_uuid'].unique()
 scenarios = [4,9,10,11,12,13]
 
 
-#Secenario 1: accelerating_at_crosswalk
+#Secenario 1: vehicle in the wrong lane
 
 if 1 in scenarios:
     description = 'vehicles in the wrong lane type'

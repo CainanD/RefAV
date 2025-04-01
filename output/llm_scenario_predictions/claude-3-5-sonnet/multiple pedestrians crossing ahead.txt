@@ -1,0 +1,30 @@
+description = 'multiple pedestrians crossing ahead'
+
+# Get vehicles and pedestrians
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Get moving vehicles (not parked)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find pedestrians crossing in front of moving vehicles
+# Using forward_thresh=15 to look ahead a reasonable distance
+# Using lateral_thresh=5 to account for pedestrians crossing at an angle
+crossing_peds = being_crossed_by(moving_vehicles, pedestrians, log_dir, 
+                               direction='forward',
+                               forward_thresh=15,
+                               lateral_thresh=5)
+
+# Get vehicles that have multiple pedestrians crossing in front of them
+# min_number=2 ensures at least 2 pedestrians are crossing
+vehicles_with_multiple_crossing = has_objects_in_relative_direction(
+    moving_vehicles,
+    crossing_peds,
+    log_dir,
+    direction='forward',
+    min_number=2,
+    within_distance=15,
+    lateral_thresh=5
+)
+
+output_scenario(vehicles_with_multiple_crossing, description, log_dir, output_dir)

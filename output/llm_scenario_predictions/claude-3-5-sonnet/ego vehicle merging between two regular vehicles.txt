@@ -1,0 +1,37 @@
+description = 'ego vehicle merging between two regular vehicles'
+
+# Get ego vehicle and regular vehicles
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+regular_vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
+
+# Only consider moving vehicles
+moving_ego = scenario_not(stationary)(ego, log_dir)
+moving_vehicles = scenario_not(stationary)(regular_vehicles, log_dir)
+
+# Find vehicles to the left and right of ego within merging distance
+# Using 5m lateral threshold since merging vehicles get fairly close side-to-side
+# Using 15m forward/backward threshold to identify vehicles we're merging between
+vehicles_left = get_objects_in_relative_direction(moving_ego, moving_vehicles, log_dir, 
+                                                direction='left',
+                                                min_number=1, max_number=1,
+                                                within_distance=15, 
+                                                lateral_thresh=5)
+
+vehicles_right = get_objects_in_relative_direction(moving_ego, moving_vehicles, log_dir,
+                                                 direction='right', 
+                                                 min_number=1, max_number=1,
+                                                 within_distance=15,
+                                                 lateral_thresh=5)
+
+# Ego must be changing lanes and have vehicles on both sides
+merging_ego = scenario_and([
+    changing_lanes(moving_ego, log_dir),
+    has_objects_in_relative_direction(moving_ego, vehicles_left, log_dir,
+                                    direction='left',
+                                    within_distance=15, lateral_thresh=5),
+    has_objects_in_relative_direction(moving_ego, vehicles_right, log_dir, 
+                                    direction='right',
+                                    within_distance=15, lateral_thresh=5)
+])
+
+output_scenario(merging_ego, description, log_dir, output_dir)

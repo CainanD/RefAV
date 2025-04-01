@@ -1,0 +1,17 @@
+description = 'vehicle in close proximity to bicycle'
+
+# Get all vehicles and bicycles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+bicycles = get_objects_of_category(log_dir, category='BICYCLE')
+
+# Only consider moving vehicles and bicycles to avoid parked vehicles
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+moving_bicycles = scenario_not(stationary)(bicycles, log_dir)
+
+# Find vehicles that are within 3 meters of a bicycle
+# Using near_objects since we want to capture vehicles close to bicycles 
+# regardless of their relative direction
+vehicles_near_bicycles = near_objects(moving_vehicles, moving_bicycles, log_dir, 
+                                    distance_thresh=3)
+
+output_scenario(vehicles_near_bicycles, description, log_dir, output_dir)

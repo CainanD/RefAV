@@ -1,0 +1,8 @@
+description = 'stroller'
+
+# Get all strollers from the dataset
+strollers = get_objects_of_category(log_dir, category='STROLLER')
+
+# Output the scenario - we don't need any additional filtering since 
+# we just want to identify all strollers in the dataset
+output_scenario(strollers, description, log_dir, output_dir)

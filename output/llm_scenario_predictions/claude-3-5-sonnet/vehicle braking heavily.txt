@@ -1,0 +1,13 @@
+description = 'vehicle braking heavily' 
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+
+# Find vehicles that are actively moving (not parked)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Get vehicles that are braking heavily
+# Using -1.0 acceleration threshold which reliably indicates braking
+braking_vehicles = accelerating(moving_vehicles, log_dir, thresh=-1.0)
+
+output_scenario(braking_vehicles, description, log_dir, output_dir)

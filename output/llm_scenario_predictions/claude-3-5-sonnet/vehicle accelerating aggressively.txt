@@ -1,0 +1,17 @@
+description = 'vehicle accelerating aggressively'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Get vehicles that are in a drivable area (on the road)
+vehicles_on_road = in_drivable_area(vehicles, log_dir)
+
+# Get vehicles that are moving (not parked)
+moving_vehicles = scenario_not(stationary)(vehicles_on_road, log_dir)
+
+# Find vehicles with high acceleration (threshold of 2.5 m/s² indicates aggressive acceleration)
+# This is a relatively high threshold that should capture sudden, aggressive acceleration
+# while filtering out normal acceleration from stops
+aggressively_accelerating = accelerating(moving_vehicles, log_dir, thresh=2.5)
+
+output_scenario(aggressively_accelerating, description, log_dir, output_dir)

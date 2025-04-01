@@ -1,0 +1,35 @@
+description = 'vehicle approaching and facing a stopped vehicle at an intersection'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find vehicles that are stopped
+stopped_vehicles = scenario_not(has_velocity)(vehicles, log_dir, min_velocity=0.5)
+
+# Find vehicles that are at an intersection
+stopped_at_intersection = scenario_and([
+    stopped_vehicles,
+    on_intersection(stopped_vehicles, log_dir)
+])
+
+# Get moving vehicles that are approaching the intersection
+moving_vehicles = has_velocity(vehicles, log_dir, min_velocity=0.5)
+approaching_vehicles = near_intersection(moving_vehicles, log_dir, threshold=15)
+
+# Find vehicles that are approaching and facing a stopped vehicle
+# We look for vehicles that:
+# 1. Have a stopped vehicle in front of them within 15m
+# 2. Are moving towards the intersection
+approaching_and_facing = scenario_and([
+    approaching_vehicles,
+    has_objects_in_relative_direction(
+        approaching_vehicles, 
+        stopped_at_intersection, 
+        log_dir,
+        direction='forward',
+        max_number=1,
+        within_distance=15
+    )
+])
+
+output_scenario(approaching_and_facing, description, log_dir, output_dir)

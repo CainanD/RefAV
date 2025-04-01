@@ -1,0 +1,11 @@
+description = 'pedestrian near construction cone'
+
+# Get all pedestrians and construction cones from the scenario
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+cones = get_objects_of_category(log_dir, category='CONSTRUCTION_CONE')
+
+# Find pedestrians that are within 5 meters of at least one construction cone
+# Using 5 meters as a reasonable distance to consider "near"
+peds_near_cones = near_objects(pedestrians, cones, log_dir, distance_thresh=5, min_objects=1)
+
+output_scenario(peds_near_cones, description, log_dir, output_dir)

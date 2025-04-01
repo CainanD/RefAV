@@ -4,6 +4,7 @@ import copy
 import argparse
 import logging
 import faulthandler
+from tqdm import tqdm
 
 from refAV.paths import AV2_DATA_DIR, SM_PRED_DIR, LLM_DEF_DIR, SM_DATA_DIR
 from refAV.utils import *
@@ -32,10 +33,12 @@ def execute_scenario(scenario, log_dir, output_dir, is_gt=False):
     exec(scenario)
 
 
-def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_pred_dir):
+def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_pred_dir, method_name='ref'):
 
-    pred_path = baseline_pred_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl'
+    pred_path = (baseline_pred_dir / log_id / f'{description}_{log_id[:8]}_{method_name}_predictions.pkl').resolve()
+    print(pred_path)
     if pred_path.exists():
+        print(f'File {pred_path.name} exists.')
         return pred_path
 
     #Used in exec(scenario) code
@@ -44,7 +47,6 @@ def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_
     
     try:
         scenario_filename = scenario_pred_dir / f'{description}.txt'
-        print(scenario_filename)
         if scenario_filename.exists():
             print('Cached scenario prediction found')
         else:
@@ -57,11 +59,11 @@ def create_baseline_prediction(description, log_id, baseline_pred_dir, scenario_
     except:
         # Sometimes Claude will generate scenario definitions with bugs
         # In this case, output the default prediction of no referred tracks
-        pred_path = create_default_prediction(description, log_id, baseline_pred_dir)
+        pred_path = create_default_prediction(description, log_id, baseline_pred_dir, method_name=method_name)
 
     return pred_path
 
-def create_default_prediction(description, log_id, baseline_pred_dir):
+def create_default_prediction(description, log_id, baseline_pred_dir, method_name='ref'):
     
     #Used in exec(scenario) code
     log_dir:Path = baseline_pred_dir / log_id
@@ -69,7 +71,7 @@ def create_default_prediction(description, log_id, baseline_pred_dir):
     empty_set = {}
     output_scenario(empty_set, description, log_dir, baseline_pred_dir, is_gt=False)
 
-    pred_path = baseline_pred_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl'
+    pred_path = baseline_pred_dir / log_id / f'{description}_{log_id[:8]}_{method_name}_predictions.pkl'
     if pred_path.exists():
         print('Default scenario prediction correctly generated.')
     else:
@@ -95,7 +97,7 @@ def clear_pkl_files(dir:Path):
             print(f'{file.name} deleted')
 
 
-def combine_matching_pkls(gt_base_dir, pred_base_dir, output_dir):
+def combine_matching_pkls(gt_base_dir, pred_base_dir, output_dir, method_name='ref'):
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
@@ -111,7 +113,7 @@ def combine_matching_pkls(gt_base_dir, pred_base_dir, output_dir):
     combined_pred = {}
     
     # For each matching log_id
-    for log_id in matching_log_ids:
+    for log_id in tqdm(matching_log_ids):
 
         gt_log_dir = gt_log_ids[log_id]
         pred_log_dir = pred_log_ids[log_id]
@@ -119,8 +121,8 @@ def combine_matching_pkls(gt_base_dir, pred_base_dir, output_dir):
         # Get all PKL files in these directories
         gt_files = {f.stem.replace('_ref_gt', ''): f 
                    for f in gt_log_dir.glob('*_ref_gt.pkl')}
-        pred_files = {f.stem.replace('_ref_predictions', ''): f 
-                     for f in pred_log_dir.glob('*_ref_predictions.pkl')}
+        pred_files = {f.stem.replace(f'_{method_name}_predictions', ''): f 
+                     for f in pred_log_dir.glob(f'*_{method_name}_predictions.pkl')}
         
         # Find matching files within this log_id
         matching_keys = set(gt_files.keys()) & set(pred_files.keys())
@@ -157,7 +159,7 @@ def combine_matching_pkls(gt_base_dir, pred_base_dir, output_dir):
             pickle.dump(combined_gt, f)
     
     if combined_pred:
-        with open(os.path.join(output_dir, 'combined_predictions.pkl'), 'wb') as f:
+        with open(os.path.join(output_dir, f'{method_name}_predictions.pkl'), 'wb') as f:
             pickle.dump(combined_pred, f)
     
     # Print statistics
@@ -220,7 +222,4 @@ if __name__ == '__main__':
     
     combine_matching_pkls(SM_DATA_DIR, SM_PRED_DIR, eval_output_dir)
     evaluate_pkls(eval_output_dir / 'combined_predictions.pkl', eval_output_dir / 'combined_gt.pkl')
-
-#Do not use Trinity-1-4 or Trinity-1-34 to generate scenario visualizations. Nvidia drivers incompatible with Pyvista
-
     

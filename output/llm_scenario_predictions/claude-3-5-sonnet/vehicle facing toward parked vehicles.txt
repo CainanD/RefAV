@@ -1,0 +1,24 @@
+description = 'vehicle facing toward parked vehicles'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Find stationary vehicles (parked)
+parked_vehicles = stationary(vehicles, log_dir)
+
+# Find moving vehicles
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find moving vehicles that have parked vehicles in front of them
+# within 20 meters and within 2 meters laterally to ensure they're actually facing the parked vehicles
+vehicles_facing_parked = has_objects_in_relative_direction(
+    moving_vehicles, 
+    parked_vehicles, 
+    log_dir,
+    direction='forward',
+    min_number=1,
+    within_distance=20,
+    lateral_thresh=2
+)
+
+output_scenario(vehicles_facing_parked, description, log_dir, output_dir)

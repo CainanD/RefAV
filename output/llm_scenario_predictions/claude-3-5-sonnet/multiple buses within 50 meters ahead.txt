@@ -1,0 +1,21 @@
+description = 'multiple buses within 50 meters ahead'
+
+# Get all buses from the scenario
+buses = get_objects_of_category(log_dir, category="BUS")
+
+# Get all vehicles to check which ones have multiple buses ahead
+vehicles = get_objects_of_category(log_dir, category="VEHICLE")
+
+# Find vehicles that have at least 2 buses within 50 meters ahead of them
+# The lateral threshold of 25 meters allows for buses in adjacent lanes
+vehicles_with_multiple_buses_ahead = has_objects_in_relative_direction(
+    vehicles, 
+    buses, 
+    log_dir,
+    direction='forward',
+    min_number=2,  # Require at least 2 buses
+    within_distance=50,  # Look up to 50 meters ahead
+    lateral_thresh=25  # Allow for buses in adjacent lanes
+)
+
+output_scenario(vehicles_with_multiple_buses_ahead, description, log_dir, output_dir)

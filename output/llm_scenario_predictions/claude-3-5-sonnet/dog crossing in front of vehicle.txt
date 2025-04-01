@@ -1,0 +1,23 @@
+description = 'dog crossing in front of vehicle'
+
+# Get all vehicles and dogs from the scenario
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+dogs = get_objects_of_category(log_dir, category='DOG')
+
+# Only consider moving vehicles since we care about potential interactions
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that have a dog crossing in front of them
+# being_crossed_by looks for objects crossing the half-midplane of the tracked object
+# Default direction is 'forward' which means crossing in front
+# forward_thresh=10 means we look 10m ahead of the vehicle
+# lateral_thresh=5 means we consider the crossing to continue until the dog is 5m to either side
+vehicles_being_crossed = being_crossed_by(moving_vehicles, dogs, log_dir, 
+                                        forward_thresh=10, lateral_thresh=5)
+
+# Reverse the relationship to get the dogs that are doing the crossing
+# rather than the vehicles being crossed
+dogs_crossing = reverse_relationship(being_crossed_by)(moving_vehicles, dogs, log_dir,
+                                                     forward_thresh=10, lateral_thresh=5)
+
+output_scenario(dogs_crossing, description, log_dir, output_dir)

@@ -1,0 +1,30 @@
+description = 'vehicle being overtaken while approaching another vehicle'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Filter for moving vehicles only
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that have another vehicle in front of them within 50m
+vehicles_with_forward_vehicle = has_objects_in_relative_direction(
+    moving_vehicles, 
+    moving_vehicles, 
+    log_dir,
+    direction='forward',
+    min_number=1,
+    max_number=1,
+    within_distance=50
+)
+
+# Find vehicles that are being overtaken (crossed) from either side
+# Using forward_thresh=10 to consider vehicles roughly aligned front-to-back
+# lateral_thresh=5 to capture the crossing movement within reasonable lane width
+being_overtaken = scenario_or([
+    being_crossed_by(vehicles_with_forward_vehicle, moving_vehicles, log_dir, 
+                    direction='left', forward_thresh=10, lateral_thresh=5),
+    being_crossed_by(vehicles_with_forward_vehicle, moving_vehicles, log_dir, 
+                    direction='right', forward_thresh=10, lateral_thresh=5)
+])
+
+output_scenario(being_overtaken, description, log_dir, output_dir)

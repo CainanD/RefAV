@@ -1,0 +1,23 @@
+description = 'vehicle turning right with pedestrian in front'
+
+# Get all vehicles and pedestrians
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find vehicles that are turning right
+turning_right_vehicles = turning(vehicles, log_dir, direction='right')
+
+# Find pedestrians that are in front of turning vehicles
+# Using within_distance=10 to capture pedestrians reasonably close to the front
+# Using lateral_thresh=3 to ensure pedestrian is actually in front, not off to the side
+vehicles_with_peds = has_objects_in_relative_direction(
+    turning_right_vehicles, 
+    pedestrians, 
+    log_dir, 
+    direction='forward',
+    min_number=1,
+    within_distance=10,
+    lateral_thresh=3
+)
+
+output_scenario(vehicles_with_peds, description, log_dir, output_dir)

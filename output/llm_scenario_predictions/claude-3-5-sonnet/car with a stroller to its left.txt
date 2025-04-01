@@ -1,0 +1,20 @@
+description = 'car with a stroller to its left'
+
+# Get all regular vehicles and strollers from the scenario
+vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
+strollers = get_objects_of_category(log_dir, category='STROLLER')
+
+# Find vehicles that have a stroller to their left
+# Using a reasonable distance threshold of 5m to consider the stroller "next to" the vehicle
+# and a lateral threshold of 3m to ensure the stroller is roughly beside the vehicle
+vehicles_with_stroller_left = has_objects_in_relative_direction(
+    vehicles, 
+    strollers,
+    log_dir,
+    direction='left',
+    min_number=1,
+    within_distance=5,
+    lateral_thresh=3
+)
+
+output_scenario(vehicles_with_stroller_left, description, log_dir, output_dir)

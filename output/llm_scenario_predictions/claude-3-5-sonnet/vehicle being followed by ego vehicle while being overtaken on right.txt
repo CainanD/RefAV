@@ -1,0 +1,21 @@
+description = 'vehicle being followed by ego vehicle while being overtaken on right'
+
+# Get the ego vehicle and regular vehicles
+ego = get_objects_of_category(log_dir, category='EGO_VEHICLE') 
+vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
+
+# Get moving vehicles that the ego vehicle is following
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+vehicles_followed_by_ego = get_objects_in_relative_direction(ego, moving_vehicles, log_dir, 
+                                                           direction='forward',
+                                                           max_number=1, # Only get the closest vehicle
+                                                           within_distance=25) # Within reasonable following distance
+
+# Find vehicles being overtaken on the right by another vehicle
+# First get vehicles to the right that are crossing the half-midplane
+overtaking_vehicles = being_crossed_by(vehicles_followed_by_ego, moving_vehicles, log_dir,
+                                     direction='right', # Looking for vehicles crossing on right side
+                                     forward_thresh=10, # Consider vehicles within 10m front/back
+                                     lateral_thresh=5) # Allow 5m lateral distance during overtake
+
+output_scenario(overtaking_vehicles, description, log_dir, output_dir)

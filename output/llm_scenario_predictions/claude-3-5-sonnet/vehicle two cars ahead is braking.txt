@@ -1,0 +1,35 @@
+description = 'vehicle two cars ahead is braking'
+
+# Get all vehicles on the road
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are braking (negative acceleration)
+braking_vehicles = accelerating(moving_vehicles, log_dir, thresh=-1.0)
+
+# Find vehicles that are directly behind the braking vehicles
+# within_distance=25 is a reasonable following distance
+vehicles_behind_braking = get_objects_in_relative_direction(
+    braking_vehicles, 
+    moving_vehicles, 
+    log_dir, 
+    direction='backward',
+    max_number=1,
+    within_distance=25
+)
+
+# Find vehicles that are behind the vehicles that are behind braking vehicles
+# These are the vehicles that can see a vehicle two cars ahead braking
+vehicles_two_back = get_objects_in_relative_direction(
+    vehicles_behind_braking,
+    moving_vehicles,
+    log_dir,
+    direction='backward', 
+    max_number=1,
+    within_distance=25
+)
+
+# All vehicles must be in the same lane for this scenario
+vehicles_in_same_lane = in_same_lane(vehicles_two_back, braking_vehicles, log_dir)
+
+output_scenario(vehicles_in_same_lane, description, log_dir, output_dir)

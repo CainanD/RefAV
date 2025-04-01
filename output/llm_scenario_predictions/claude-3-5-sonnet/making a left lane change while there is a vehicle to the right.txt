@@ -1,0 +1,25 @@
+description = 'making a left lane change while there is a vehicle to the right'
+
+# Get all vehicles from the scenario
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Get vehicles that are changing lanes to the left
+left_lane_changes = changing_lanes(vehicles, log_dir, direction='left')
+
+# Find vehicles that are actively moving (not parked/stopped)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# From the vehicles making left lane changes, find those that have another moving vehicle
+# to their right within 5m lateral distance and 15m forward/backward
+vehicles_changing_with_right_traffic = has_objects_in_relative_direction(
+    left_lane_changes,  # vehicles making left lane changes
+    moving_vehicles,    # look for these vehicles to the right
+    log_dir,
+    direction='right',  # look to the right
+    min_number=1,      # must have at least 1 vehicle
+    max_number=1,      # only consider the closest vehicle
+    within_distance=15, # within 15m forward/backward
+    lateral_thresh=5    # within 5m to the side
+)
+
+output_scenario(vehicles_changing_with_right_traffic, description, log_dir, output_dir)

@@ -1,0 +1,38 @@
+description = 'pedestrians facing each other at close range'
+
+# Get all pedestrians
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Get moving pedestrians (to filter out people sitting/lying down)
+moving_peds = scenario_not(stationary)(peds, log_dir)
+
+# Find pedestrians that have other pedestrians in front of them within 2 meters
+# Using a small lateral threshold (1m) to ensure they're roughly facing each other
+# rather than just being near each other
+peds_with_peds_in_front = has_objects_in_relative_direction(
+    moving_peds, 
+    moving_peds, 
+    log_dir,
+    direction='forward',
+    min_number=1,
+    within_distance=2,
+    lateral_thresh=1
+)
+
+# For those pedestrians that have someone in front of them,
+# check if they also have someone facing them (i.e., someone who has them in front)
+# This creates a mutual facing relationship
+peds_facing_each_other = scenario_and([
+    peds_with_peds_in_front,
+    reverse_relationship(has_objects_in_relative_direction)(
+        moving_peds,
+        peds_with_peds_in_front,
+        log_dir,
+        direction='forward',
+        min_number=1,
+        within_distance=2,
+        lateral_thresh=1
+    )
+])
+
+output_scenario(peds_facing_each_other, description, log_dir, output_dir)

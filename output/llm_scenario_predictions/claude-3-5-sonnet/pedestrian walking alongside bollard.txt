@@ -1,0 +1,23 @@
+description = 'pedestrian walking alongside bollard'
+
+# Get all pedestrians and bollards
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+bollards = get_objects_of_category(log_dir, category='BOLLARD')
+
+# Find moving pedestrians (not standing still)
+moving_peds = scenario_not(stationary)(peds, log_dir)
+
+# Find pedestrians that have a bollard to their left or right within 2 meters
+# Using a small lateral threshold (1m) to ensure they're truly alongside
+peds_near_bollard = scenario_or([
+    get_objects_in_relative_direction(moving_peds, bollards, log_dir, 
+                                    direction='left', 
+                                    within_distance=2,
+                                    lateral_thresh=1),
+    get_objects_in_relative_direction(moving_peds, bollards, log_dir, 
+                                    direction='right', 
+                                    within_distance=2,
+                                    lateral_thresh=1)
+])
+
+output_scenario(peds_near_bollard, description, log_dir, output_dir)

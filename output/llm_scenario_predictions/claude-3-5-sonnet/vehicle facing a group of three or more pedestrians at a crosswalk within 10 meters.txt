@@ -1,0 +1,34 @@
+description = 'vehicle facing a group of three or more pedestrians at a crosswalk within 10 meters'
+
+# Get all vehicles and pedestrians
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+# Find vehicles that are at pedestrian crossings
+vehicles_at_crossing = at_pedestrian_crossing(vehicles, log_dir)
+
+# Find moving vehicles (to ensure they're actively approaching the crossing)
+moving_vehicles = scenario_not(stationary)(vehicles_at_crossing, log_dir)
+
+# Find pedestrians that are in front of these vehicles within 10 meters
+# and at a pedestrian crossing
+peds_at_crossing = at_pedestrian_crossing(pedestrians, log_dir)
+peds_in_front = get_objects_in_relative_direction(
+    moving_vehicles, 
+    peds_at_crossing, 
+    log_dir,
+    direction='forward',
+    within_distance=10
+)
+
+# Find vehicles that have at least 3 pedestrians in front of them
+vehicles_facing_ped_group = has_objects_in_relative_direction(
+    moving_vehicles,
+    peds_in_front,
+    log_dir,
+    direction='forward',
+    min_number=3,
+    within_distance=10
+)
+
+output_scenario(vehicles_facing_ped_group, description, log_dir, output_dir)

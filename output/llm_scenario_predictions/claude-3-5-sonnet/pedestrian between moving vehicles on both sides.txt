@@ -1,0 +1,33 @@
+description = 'pedestrian between moving vehicles on both sides'
+
+# Get all pedestrians and vehicles
+pedestrians = get_objects_of_category(log_dir, category='PEDESTRIAN')
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Get only moving vehicles (exclude parked/stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+moving_vehicles = has_velocity(moving_vehicles, log_dir, min_velocity=0.5)
+
+# Find pedestrians that have vehicles within 5m on their left side
+peds_with_left_vehicle = has_objects_in_relative_direction(
+    pedestrians, 
+    moving_vehicles,
+    log_dir,
+    direction='left',
+    min_number=1,
+    within_distance=5,
+    lateral_thresh=2
+)
+
+# Among those pedestrians, find ones that also have vehicles within 5m on their right side
+peds_between_vehicles = has_objects_in_relative_direction(
+    peds_with_left_vehicle,
+    moving_vehicles, 
+    log_dir,
+    direction='right',
+    min_number=1,
+    within_distance=5,
+    lateral_thresh=2
+)
+
+output_scenario(peds_between_vehicles, description, log_dir, output_dir)

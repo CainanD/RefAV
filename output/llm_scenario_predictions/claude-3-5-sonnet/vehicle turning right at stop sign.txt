@@ -1,0 +1,17 @@
+description = 'vehicle turning right at stop sign'
+
+# Get all vehicles
+vehicles = get_objects_of_category(log_dir, category='VEHICLE')
+
+# Get moving vehicles (exclude parked/stationary)
+moving_vehicles = scenario_not(stationary)(vehicles, log_dir)
+
+# Find vehicles that are at a stop sign
+# We use forward_thresh=10 to look 10m ahead of the stop sign
+vehicles_at_stop = at_stop_sign(moving_vehicles, log_dir, forward_thresh=10)
+
+# Find vehicles that are turning right
+turning_right = turning(vehicles_at_stop, log_dir, direction='right')
+
+# Combine to get vehicles that are both at a stop sign and turning right
+output_scenario(turning_right, description, log_dir, output_dir)

@@ -1,0 +1,20 @@
+# Scenario: bicycle sharing lane with a regular vehicle
+description = 'bicycle sharing lane with a regular vehicle'
+
+# Get all bicycles and regular vehicles
+bicycles = get_objects_of_category(log_dir, category='BICYCLE')
+regular_vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
+
+# Filter for moving bicycles and vehicles to exclude parked ones
+moving_bicycles = scenario_not(stationary)(bicycles, log_dir)
+moving_vehicles = scenario_not(stationary)(regular_vehicles, log_dir)
+
+# Find bicycles that are in the same lane as a regular vehicle
+# This indicates they are sharing the lane
+bicycles_sharing_lane = in_same_lane(moving_bicycles, moving_vehicles, log_dir)
+
+# Make sure the vehicle is close to the bicycle (within 10 meters)
+# to ensure they are actually sharing the lane at the same time
+bicycles_with_close_vehicle = near_objects(bicycles_sharing_lane, moving_vehicles, log_dir, distance_thresh=10)
+
+output_scenario(bicycles_with_close_vehicle, description, log_dir, output_dir)
