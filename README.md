@@ -8,6 +8,16 @@ A single autonomous vehicle will stream about ~4TB of data per hour with a full 
 
 RefAV serves as the baseline for the 2025 Argoverse2 Scenario Mining Challenge. It utilizes an LLM to construct composable function calls from a set of hand-crafted atomic functions such as "turning" or "has_objects_in_front". Given a prompt, the LLM outputs a composable function that narrows down a set of bounding box track predictions to the set that best corresponds to the prompt. This method can be thought as equivalent to querying a SQL database.  
 
+:rotating_light: Top performing teams can win cash prizes! :rotating_light:
+
+:1st_place_medal: 1st Place: $5,000
+
+:2nd_place_medal: 2nd Place: $3,000
+
+:3rd_place_medal: 3rd Place: $2,000
+
+To be eligible for prizes, teams must submit a technical report, open source their code, and provide instructions on how to reproduce their results. 
+
 ### Installation
 
 Using [Conda](https://anaconda.org/anaconda/conda) is recommended for environment management
