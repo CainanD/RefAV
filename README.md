@@ -18,6 +18,9 @@ RefAV serves as the baseline for the 2025 Argoverse2 Scenario Mining Challenge. 
 
 To be eligible for prizes, teams must submit a technical report, open source their code, and provide instructions on how to reproduce their results. 
 
+### Generating Detections and Tracks
+See the [LT3D repository](https://github.com/neeharperi/LT3D) for information on training a baseline detector and tracker on the Argoverse 2 dataset. 
+
 ### Installation
 
 Using [Conda](https://anaconda.org/anaconda/conda) is recommended for environment management
