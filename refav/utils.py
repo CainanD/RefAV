@@ -7,11 +7,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 from pathos.multiprocessing import ProcessingPool as Pool
 import scipy.ndimage
-import scipy.signal
 from scipy.spatial.transform import Rotation
 from copy import deepcopy
 import vtk
-from functools import wraps, lru_cache
+from functools import wraps
 import pandas as pd
 import inspect
 import scipy
@@ -30,7 +29,7 @@ from av2.utils.io import read_feather, read_city_SE3_ego
 import av2.geometry.polyline_utils as polyline_utils
 import av2.rendering.vector as vector_plotting_utils
 from av2.structures.sweep import Sweep
-from av2.evaluation.tracking.utils import save, load
+from av2.evaluation.tracking.utils import save
 from av2.datasets.sensor.splits import TEST, TRAIN, VAL
 
 
@@ -40,11 +39,8 @@ class CacheManager:
         self.stats = {}
 
         self.max_caches=max_caches
-        self.num_processes = max(int(0.9 * os.cpu_count()), 1)
         self.cache_usage = []  # Track cache usage for LRU eviction
-
-    def set_num_processes(self, num):
-        self.num_processes = max(min(os.cpu_count(), num), 1)
+        self.num_processes = max(1, int(.9*os.cpu_count()))
 
     def make_hashable(self, obj):
         if isinstance(obj, (list, tuple, set)):
@@ -279,7 +275,6 @@ def get_ego_uuid(log_dir):
     return ego_df['track_uuid'].iloc[0]
 
 @composable_relational
-@cache_manager.create_cache('has_objects_in_relative_direction')
 def has_objects_in_relative_direction(
     track_candidates:Union[list, dict],
     related_candidates:Union[list, dict], 
@@ -364,7 +359,7 @@ def has_objects_in_relative_direction(
         return [], {}
 
 
-@cache_manager.create_cache('get_objects_in_relative_direction')
+#@cache_manager.create_cache('get_objects_in_relative_direction')
 def get_objects_in_relative_direction(
     track_candidates:Union[list, dict],
     related_candidates:Union[list, dict], 
@@ -607,7 +602,7 @@ def get_semantic_lane(ls: LaneSegment, log_dir, avm=None) -> list[LaneSegment]:
     lane_segments = avm.vector_lane_segments
 
     try:
-        with open('/home/crdavids/Trinity-Sync/av2-api/output/misc/semantic_lane_cache.json', 'rb') as file:
+        with open('output/misc/semantic_lane_cache.json', 'rb') as file:
             semantic_lane_cache = json.load(file)
             semantic_lanes = semantic_lane_cache[log_dir.name][ls.id]
             all_lanes = avm.vector_lane_segments
@@ -705,7 +700,6 @@ def get_lane_orientation(ls: LaneSegment, avm: ArgoverseStaticMap) -> tuple:
     return orientation
 
 @composable
-@cache_manager.create_cache('turning')
 def turning(
     track_candidates: Union[list, dict], 
     log_dir:Path,
@@ -778,7 +772,6 @@ def turning(
         return turn_dict['left'] + turn_dict['right']    
 
 @composable
-@cache_manager.create_cache('changing_lanes')
 def changing_lanes(
     track_candidates:Union[list, dict], 
     log_dir:Path,
@@ -880,7 +873,6 @@ def changing_lanes(
     return sorted(list(set(lane_changing_timestamps).difference(set(turning_timestamps))))
     
 @composable
-@cache_manager.create_cache('has_lateral_acceleration')
 def has_lateral_acceleration(
     track_candidates:Union[list,dict],
     log_dir:Path,
@@ -957,8 +949,8 @@ def parallelize_uuids(
         return uuid, timestamps, related
 
     # Initialize the pool
-    num_processes = cache_manager.num_processes
-    with Pool(nodes=num_processes) as pool:
+    print(cache_manager.num_processes)
+    with Pool(nodes=cache_manager.num_processes) as pool:
         # Map work to the pool - this will wait for completion
         results = pool.map(worker_func, all_uuids)
     
@@ -1304,7 +1296,6 @@ def get_nth_radial_deriv(track_uuid, n, log_dir,
     return radial_deriv, timestamps
 
 @composable_relational
-@cache_manager.create_cache('facing_toward')
 def facing_toward(
     track_candidates:Union[list,dict],
     related_candidates:Union[list,dict],
@@ -1354,7 +1345,6 @@ def facing_toward(
     return facing_toward_timestamps, facing_toward_objects
     
 @composable_relational
-@cache_manager.create_cache('heading_toward')
 def heading_toward(
     track_candidates:Union[list,dict],
     related_candidates:Union[list,dict],
@@ -1415,7 +1405,6 @@ def heading_toward(
     return heading_toward_timestamps, heading_toward_objects
 
 @composable_relational
-@cache_manager.create_cache('accelerating_toward')
 def accelerating_toward(
     track_candidates:Union[list,dict],
     related_candidates:Union[list,dict],
@@ -1475,7 +1464,6 @@ def accelerating_toward(
     return accel_toward_timestamps, accel_toward_objects
 
 @composable
-@cache_manager.create_cache('accelerating')
 def accelerating(
     track_candidates:Union[list,dict],
     log_dir:Path,
@@ -1515,7 +1503,6 @@ def accelerating(
 
 
 @composable
-@cache_manager.create_cache('has_velocity')
 def has_velocity(
     track_candidates:Union[list,dict],
     log_dir:Path, 
@@ -1546,7 +1533,7 @@ def has_velocity(
     return vel_timestamps
 
 
-@cache_manager.create_cache('get_nth_yaw_deriv')
+#@cache_manager.create_cache('get_nth_yaw_deriv')
 def get_nth_yaw_deriv(track_uuid, n, log_dir, coordinate_frame=None, in_degrees=False):
     """Returns the nth angular derivative of the track at all timestamps 
     with respect to the given coordinate frame. The default coordinate frame is city.
@@ -1652,7 +1639,6 @@ def get_nth_yaw_deriv(track_uuid, n, log_dir, coordinate_frame=None, in_degrees=
 
 
 @composable
-@cache_manager.create_cache('at_pedestrian_crossing')
 def at_pedestrian_crossing(
     track_candidates:Union[list,dict],
     log_dir:Path,
@@ -1699,7 +1685,6 @@ def at_pedestrian_crossing(
 
 
 @composable
-@cache_manager.create_cache('on_lane_type')
 def on_lane_type(
     track_uuid:Union[list,dict],
     log_dir,
@@ -1726,7 +1711,6 @@ def on_lane_type(
 
 
 @composable
-@cache_manager.create_cache('near_intersection')
 def near_intersection(
     track_uuid:Union[list,dict],
     log_dir:Path,
@@ -1770,7 +1754,6 @@ def near_intersection(
     return near_intersection_timestamps
 
 @composable
-@cache_manager.create_cache('on_intersection')
 def on_intersection(track_candidates:Union[list,dict], log_dir:Path):
     """
     Identifies objects located on top of an road intersection.
@@ -1930,7 +1913,6 @@ def to_scenario_dict(object_datastructure, log_dir)->dict:
 
 
 @composable_relational
-@cache_manager.create_cache('being_crossed_by')
 def being_crossed_by(
     track_candidates:Union[list,dict], 
     related_candidates:Union[list,dict], 
@@ -2168,7 +2150,6 @@ def plot_map(log_dir:Path, save_plot: bool = False) -> None:
 
 
 @composable_relational
-@cache_manager.create_cache('near_objects')
 def near_objects(
     track_uuid:Union[list,dict], 
     candidate_uuids:Union[list,dict], 
@@ -2583,7 +2564,6 @@ def dict_empty(d:dict):
 
 
 @composable_relational
-@cache_manager.create_cache('following')
 def following(
     track_uuid:Union[list,dict],
     candidate_uuids:Union[list,dict],
@@ -2659,7 +2639,6 @@ def following(
     return lead_timestamps, leads
 
 @composable_relational
-@cache_manager.create_cache('traveling_in_relative_direction_as')
 def heading_in_relative_direction_to(track_candidates, related_candidates, log_dir, direction:Literal['same', 'opposite', 'perpendicular']):
     """Returns the subset of track candidates that are traveling in the given direction compared to the related canddiates.
 
@@ -2737,7 +2716,6 @@ def heading_in_relative_direction_to(track_candidates, related_candidates, log_d
 
 
 @composable
-@cache_manager.create_cache('stationary')
 def stationary(track_candidates:Union[list,dict], log_dir:Path):
     """
     Returns objects that moved less than 2m over their length of observation in the scneario.
@@ -2799,7 +2777,6 @@ def __at_stop_signs(track_uuid, stop_sign_uuids, log_dir, forward_thresh=10) -> 
     return stop_sign_timestamps, stop_signs
 
 
-@cache_manager.create_cache('at_stop_sign')
 def at_stop_sign(track_candidates:Union[list,dict], log_dir:Path, forward_thresh:float=10):
     """
     Identifies timestamps when a tracked object is in a lane corresponding to a stop sign. The tracked
@@ -2945,7 +2922,6 @@ def get_pos_within_lane(pos, ls: LaneSegment) -> tuple:
 
 
 @composable
-@cache_manager.create_cache('in_drivable_area')
 def in_drivable_area(track_candidates:Union[list,dict], log_dir:Path)->dict:
     """
     Identifies objects within track_candidates that are within a drivable area.
@@ -2979,7 +2955,6 @@ def in_drivable_area(track_candidates:Union[list,dict], log_dir:Path)->dict:
 
 
 @composable 
-@cache_manager.create_cache('on_road')
 def on_road(
     track_candidates:Union[list,dict], 
     log_dir:Path)->dict:
@@ -3010,7 +2985,6 @@ def on_road(
 
 
 @composable_relational
-@cache_manager.create_cache('in_same_lane')
 def in_same_lane(
     track_candidates:Union[list,dict],
     related_candidates:Union[list,dict], 
@@ -3432,11 +3406,12 @@ def output_scenario(
     log_dir:Path, 
     output_dir, 
     is_gt=False,
-    visualize=False, 
-    **kwargs):
+    method_name='ref',
+    visualize=False,
+    **vis_kwargs):
     
     Path(output_dir/log_dir.name).mkdir(exist_ok=True)
-    create_mining_pkl(description, scenario, log_dir, output_dir, method_name='gemini-2-0-flash-thinking')
+    create_mining_pkl(description, scenario, log_dir, output_dir, method_name=method_name)
 
     if visualize:
         log_scenario_visualization_path = Path(output_dir/log_dir.name/'scenario visualizations')
@@ -3446,7 +3421,7 @@ def output_scenario(
             if file.is_file() and file.stem.split(sep='_')[0] == description:
                 file.unlink()
 
-        visualize_scenario(scenario, log_dir, log_scenario_visualization_path, description=description, **kwargs)
+        visualize_scenario(scenario, log_dir, log_scenario_visualization_path, description=description, **vis_kwargs)
 
 
 def get_related_objects(relationship_dict):

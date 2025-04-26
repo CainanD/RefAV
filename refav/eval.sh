@@ -1,13 +1,17 @@
 #!/bin/bash
 
+# WARNING -- this may consume a lot of RAM.
+# This script parallelizes evaluation of different log_ids across all (except 1) available CPUs.
+# This should provide for better CPU utilization overall.
+
 # Fixed CPUs per task
 PROCS_PER_TASK=1
 
 # Define your total dataset range
-SPLIT=$1
-MODEL=$2
-TOTAL_START_INDEX=$3
-TOTAL_END_INDEX=$4 # Change this to match your total dataset size
+SPLIT=${1:-val}
+MODEL=${2:-qwen-2-5-7b}
+TOTAL_START_INDEX=${3:-0} 
+TOTAL_END_INDEX=${4:-150} 
 
 # Get available CPU count
 CPU_COUNT=$(nproc)
@@ -30,7 +34,7 @@ log() {
 exec > >(tee -a "$MAIN_LOG") 2>&1
 
 # Calculate how many parallel tasks we can run (with 2 CPUs each)
-MAX_PARALLEL_TASKS=$(((CPU_COUNT - 1) / PROCS_PER_TASK))
+MAX_PARALLEL_TASKS=$(( (CPU_COUNT - 1) / PROCS_PER_TASK ))
 echo "System has $CPU_COUNT CPUs, can run $MAX_PARALLEL_TASKS parallel tasks with $PROCS_PER_TASK CPUs each"
 
 # Calculate total number of indices to process
@@ -59,7 +63,7 @@ for i in $(seq 0 $((MAX_PARALLEL_TASKS-1))); do
   > $TASK_LOG  # This will create an empty file (or truncate if it exists)
   
   echo "Starting task $i: logs from [$START_INDEX, $END_INDEX) with $PROCS_PER_TASK processes"
-  
+
   # Run in background
   python -u refav/eval.py \
     --split $SPLIT \
@@ -71,7 +75,7 @@ for i in $(seq 0 $((MAX_PARALLEL_TASKS-1))); do
   
   # Store the PID
   PIDS[$i]=$!
-  sleep 10
+  sleep 2
 done
 
 # Wait for all processes to complete

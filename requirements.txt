@@ -11,4 +11,4 @@ imageio
 imageio-ffmpeg
 pycocotools
 tabulate
---no-cache-dir --extra-index-url https://wheels.vtk.org vtk-egl
+--extra-index-url https://wheels.vtk.org vtk-egl

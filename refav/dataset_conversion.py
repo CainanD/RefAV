@@ -48,7 +48,7 @@ def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir
     exclude_columns = ['log_id', 'prompt', 'mining_category']
     
     # Process each log_id
-    for log_id in tqdm(unique_log_ids):
+    for log_id in [tqdm(unique_log_ids)]:
         # Create directory for this log_id
         log_dir = base_dir / str(log_id)
         log_dir.mkdir(exist_ok=True, parents=True)
@@ -134,6 +134,7 @@ def pickle_to_feather(dataset_dir, input_pickle_path, base_output_dir="output"):
     
     # Process each log_id
     for log_id, track_data in data.items():
+        
         split = get_log_split(Path(log_id))
         ego_poses = read_city_SE3_ego(dataset_dir / log_id)
 
