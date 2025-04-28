@@ -18,8 +18,7 @@ RefAV serves as the baseline for the 2025 Argoverse2 Scenario Mining Challenge. 
 
 To be eligible for prizes, teams must submit a technical report, open source their code, and provide instructions on how to reproduce their results. 
 
-### Generating Detections and Tracks
-See the [LT3D repository](https://github.com/neeharperi/LT3D) for information on training a baseline detector and tracker on the Argoverse 2 dataset. 
+The scenario mining test split and EvalAI leaderboard will both open on May 7th, 2025. The scenario mining train and val split are available for download now. You may test your method using the available val leaderboard. The val split results are not factored into the competition. 
 
 ### Installation
 
@@ -33,7 +32,6 @@ All of the required libaries and packages can be installed with
 
 ```
 pip install -r requirements.txt
-python setup.py
 ```
 
 Running this code requires downloading the Argoverse2 test and val splits. Run the commands below to download the entire sensor dataset.
@@ -51,6 +49,9 @@ It also requies downloading the scenario-mining add on.
 export TARGET_DIR="$(pwd)/av2_sm_downloads"
 s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
 ```
+
+### Generating Detections and Tracks
+See the [LT3D repository](https://github.com/neeharperi/LT3D) for information on training a baseline detector and tracker on the Argoverse 2 dataset. The tutorial notebook includes code to download a sample set of tracks.
 
 ### Running the Code
 
@@ -130,6 +131,15 @@ example_tracks = {
   ...
 }
 ```
+
+### Additional Competition Details
+
+* Language queries are object-centric -- all correspond to some set of objects.
+* Most language queries are given from the third person persective (such as "ego vehicle turning left"). The language queries given from the first-person perspective (such as "the pedestrian on the right") describe objects from the point of view of the ego vehicle.
+* In the case the language query does not refer to an object (such as "raining"), the track bounding boxes should be drawn around the ego vehicle.
+* Scenarios only involve objects within 50 meters from the ego vehicle and within 5 meters of a mapped road.
+* Interacting objects within a scenario are at most 50 meters away from each other. 
+* All referred object tracks persist for at least 3 evaluation timestamps (1.5s).
 
 ### Contact 
 
