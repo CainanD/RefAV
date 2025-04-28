@@ -88,22 +88,22 @@ The evaluation expects a dictionary of lists of dictionaries
 }
 ```
 
-log_id: Log id associated with the track, also called seq_id.
-prompt: The prompt/description string that describes the scenario associated with the log.
-timestamp_ns: Timestamp associated with the detections.
-track_id: Unique id assigned to each track, this is produced by your tracker.
-score: Track confidence.
-label: Integer index of the object class. This is 0 for REFERRED_OBJECTs, 1 for RELATED_OBJECTs, and 2 for OTHER_OBJECTs
-name: Object class name.
-translation_m: xyz-components of the object translation in the city reference frame, in meters.
-size: Object extent along the x,y,z axes in meters.
-yaw: Object heading rotation along the z axis.
+log_id: Log id associated with the track, also called seq_id.  
+prompt: The prompt/description string that describes the scenario associated with the log.  
+timestamp_ns: Timestamp associated with the detections.  
+track_id: Unique id assigned to each track, this is produced by your tracker.  
+score: Track confidence.  
+label: Integer index of the object class. This is 0 for REFERRED_OBJECTs, 1 for RELATED_OBJECTs, and 2 for OTHER_OBJECTs  
+name: Object class name.  
+translation_m: xyz-components of the object translation in the city reference frame, in meters.  
+size: Object extent along the x,y,z axes in meters.  
+yaw: Object heading rotation along the z axis.  
 An example looks like this:
 
 ### Example Submission
 ```python
 example_tracks = {
-  ('02678d04-cc9f-3148-9f95-1ba66347dff9','vehicle turning left'): [
+  ('02678d04-cc9f-3148-9f95-1ba66347dff9','vehicle turning left at stop sign'): [
     {
        'timestamp_ns': 315969904359876000,
        'translation_m': array([[6759.51786422, 1596.42662849,   57.90987307],
@@ -121,8 +121,8 @@ example_tracks = {
              [1.4323177 , 0.79862624, 1.5229694 ],
              [0.7979312 , 0.6317313 , 1.4602867 ]], dtype=float32),
       'yaw': array([-1.1205611 , ... , -1.1305285 , -1.1272993], dtype=float32),
-      'name': array(['REGULAR_VEHICLE', ..., 'STOP_SIGN', 'REGULAR_VEHICLE'], dtype='<U31'),
-      'label': array([ 0, 0, ... 9,  0], dtype=int32),
+      'name': array(['REFERRED_OBJECT', ..., 'REFERRED_OBJECT', 'RELATED_OBJECT'], dtype='<U31'),
+      'label': array([ 0, 0, ... 0,  1], dtype=int32),
       'score': array([0.54183, ..., 0.47720736, 0.4853499], dtype=float32),
       'track_id': array([0, ... , 11, 12], dtype=int32),
     },
@@ -140,6 +140,11 @@ example_tracks = {
 * Scenarios only involve objects within 50 meters from the ego vehicle and within 5 meters of a mapped road.
 * Interacting objects within a scenario are at most 50 meters away from each other. 
 * All referred object tracks persist for at least 3 evaluation timestamps (1.5s).
+  
+The ego vehicle has the following bounding box across all logs and timestamps
+'translation_m': [1.422, 0, 0.25]
+'size': [4.877, 2, 1.473]
+'yaw': [0]
 
 ### Contact 
 
