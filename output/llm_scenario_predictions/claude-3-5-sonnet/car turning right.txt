@@ -1,9 +1,0 @@
-description = 'car turning right'
-# Get all regular vehicles (cars, SUVs, etc.)
-vehicles = get_objects_of_category(log_dir, category='REGULAR_VEHICLE')
-
-# Find vehicles that are turning right
-# Using the turning() function which identifies objects making turns
-right_turning_cars = turning(vehicles, log_dir, direction='right')
-
-output_scenario(right_turning_cars, description, log_dir, output_dir, is_gt=False)

@@ -1,0 +1,47 @@
+LLM:
+- gemini-2.0-flash
+- gemini-2.5-flash-preview-04-17
+- Qwen2.5-7B-Instruct
+- Qwen3-8B
+- claude-3-5-sonnet-20241022
+- claude-3-7-sonnet-20250219
+
+prompt:
+- refAV_standard_context
+
+split:
+- test
+- val
+
+tracker:
+- DGIST_Tracking
+- Le3DE2D_Tracking
+- ReVoxelDet_Tracking
+- TransFusion_Tracking
+- Valeo4Cast_Tracking
+- VoxelDet_Tracking
+- ground truth
+
+exp1:
+  name: exp1
+  LLM: gemini-2.0-flash
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp1:
+  name: exp2
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp1:
+  name: exp1
+  LLM: gemini-2.0-flash
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp1:
+  name: exp1
+  LLM: gemini-2.0-flash
+  split: test
+  tracker: Le3DE2D_Tracking

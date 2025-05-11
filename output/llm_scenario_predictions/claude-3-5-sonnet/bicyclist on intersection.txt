@@ -1,9 +1,0 @@
-description = 'bicyclist on intersection'
-
-# Get all bicyclists (people actively riding bicycles)
-bicyclists = get_objects_of_category(log_dir, category='BICYCLIST')
-
-# Filter to only include bicyclists that are on an intersection
-bicyclists_on_intersection = on_intersection(bicyclists, log_dir)
-
-output_scenario(bicyclists_on_intersection, description, log_dir, output_dir)
