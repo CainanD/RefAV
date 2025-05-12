@@ -28,20 +28,44 @@ exp1:
   split: test
   tracker: Le3DE2D_Tracking
 
-exp1:
+exp2:
   name: exp2
   LLM: claude-3-5-sonnet-20241022
   split: test
   tracker: Le3DE2D_Tracking
 
-exp1:
-  name: exp1
-  LLM: gemini-2.0-flash
+exp3:
+  name: exp3
+  LLM: Qwen2.5-7B-Instruct
   split: test
   tracker: Le3DE2D_Tracking
 
-exp1:
-  name: exp1
-  LLM: gemini-2.0-flash
+exp4:
+  name: exp4
+  LLM: gemini-2.5-flash-preview-04-17
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp2:
+  name: exp2
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp2:
+  name: exp2
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp2:
+  name: exp2
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp2:
+  name: exp2
+  LLM: claude-3-5-sonnet-20241022
   split: test
   tracker: Le3DE2D_Tracking

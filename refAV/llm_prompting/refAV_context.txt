@@ -83,6 +83,25 @@ def get_objects_of_category(log_dir, category)->dict:
     """
 
 
+def is_category(track_candidates:dict, log_dir:Path, category:str):
+    """
+    Returns all objects from a given category from track_candidates dict. This method accepts the 
+    super-categories "ANY" and "VEHICLE".
+    
+    Args:
+        track_candidates: The scenario dict containing the objects to filter down
+        log_dir: Path to the directory containing scenario logs and data.
+        category: the category of objects to return
+    
+    Returns: 
+        dict: A scenario dict that where keys are the unique id of the object of the given category and values 
+        are the list of timestamps the object is in view of the ego-vehicle.
+    
+    Example:
+        box_trucks = is_category(vehicles, log_dir, category='BOX_TRUCK')
+    """
+
+
 def turning(
     track_candidates: dict,
     log_dir:Path,

@@ -104,6 +104,7 @@ def predict_scenario_from_description(natural_language_description, output_dir:P
         return definition_filename
     except Exception as e:
         print(e)
+        print(response)
         print(f"Error saving description {natural_language_description}")
         return
 
@@ -378,8 +379,8 @@ if __name__ == '__main__':
     for description in all_descriptions:
         #break
         #predict_scenario_from_description(description, output_dir, model_name='claude-3-5-sonnet-20241022')
-        #predict_scenario_from_description(description, output_dir, model_name='claude-3-7-sonnet-20250219')
-        predict_scenario_from_description(description, output_dir, model_name='gemini-2.5-flash-preview-04-17')
+        predict_scenario_from_description(description, output_dir, model_name='claude-3-7-sonnet-20250219')
+        #predict_scenario_from_description(description, output_dir, model_name='gemini-2.5-flash-preview-04-17')
 
         #predict_scenario_from_description(description, output_dir, model_name='gemini-2.0-flash')
 

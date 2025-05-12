@@ -11,7 +11,7 @@ import sys
 # multiple eval.py processes.
 # This version keeps all output in the same terminal.
 
-PROCS_PER_TASK = 2 # This is the --num_processes argument passed to each eval.py instance
+PROCS_PER_TASK = 3 # This is the --num_processes argument passed to each eval.py instance
 
 def run_parallel_eval(exp_name:str, total_start_index: int, total_end_index: int):
     """

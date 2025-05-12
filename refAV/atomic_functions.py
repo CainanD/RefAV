@@ -4,7 +4,7 @@ from typing import Literal
 from copy import deepcopy
 import inspect
 
-from utils import (
+from refAV.utils import (
     cache_manager, composable, composable_relational, get_cuboid_from_uuid,
     get_ego_SE3, get_ego_uuid,
     get_map, get_nth_pos_deriv, get_nth_radial_deriv,
@@ -15,7 +15,7 @@ from utils import (
     unwrap_func, dilate_convex_polygon, polygons_overlap, is_point_in_polygon,
     swap_keys_and_listed_values, has_free_will, at_stop_sign_, remove_empty_branches,
     scenario_at_timestamps, reconstruct_track_dict, create_mining_pkl,
-    post_process_scenario
+    post_process_scenario, get_object
 )
 
 
@@ -167,6 +167,34 @@ def get_objects_of_category(log_dir, category)->dict:
         trucks = get_objects_of_category(log_dir, category='TRUCK')
     """
     return to_scenario_dict(get_uuids_of_category(log_dir, category), log_dir)
+
+
+@composable
+def is_category(track_candidates:dict, log_dir:Path, category:str):
+    """
+    Returns all objects from a given category from track_candidates dict. This method accepts the 
+    super-categories "ANY" and "VEHICLE".
+
+    Args:
+        track_candidates: The scenario dict containing the objects to filter down
+        log_dir: Path to the directory containing scenario logs and data.
+        category: the category of objects to return
+
+    Returns: 
+        dict: A scenario dict that where keys are the unique id of the object of the given category and values 
+        are the list of timestamps the object is in view of the ego-vehicle.
+
+    Example:
+        box_trucks = is_category(vehicles, log_dir, category='BOX_TRUCK')
+    """
+
+
+    track_uuid = track_candidates
+    if track_uuid in get_uuids_of_category(log_dir, category):
+        non_composable_get_object = unwrap_func(get_object)
+        return non_composable_get_object(track_uuid, log_dir)
+    else:
+        return []
 
 
 @composable
@@ -513,7 +541,10 @@ def heading_toward(
             track_uuid, 1, log_dir, coordinate_frame=candidate_uuid)
         
         for i, timestamp in enumerate(related_timestamps):
-            timestamp_vel = track_vel[np.where(track_timestamps == timestamp)]
+            if timestamp not in track_timestamps:
+                continue
+            timestamp_vel = track_vel[track_timestamps.index(timestamp)]
+
             vel_direction = timestamp_vel/(np.linalg.norm(timestamp_vel) + 1e-8)
             direction_of_related = related_pos[i]/np.linalg.norm(related_pos[i] + 1e-8)
             angle = np.rad2deg(np.arccos(np.dot(vel_direction, direction_of_related)))

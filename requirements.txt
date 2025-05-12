@@ -11,4 +11,5 @@ imageio
 imageio-ffmpeg
 pycocotools
 tabulate
+evalai
 --extra-index-url https://wheels.vtk.org vtk-egl

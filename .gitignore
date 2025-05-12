@@ -16,3 +16,4 @@ output/llm_scenario_predictions/qwen-2-5-7b/*
 evaluation/
 ModelOutputs/
 docs/
+requirements.txt

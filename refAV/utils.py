@@ -217,7 +217,7 @@ def composable_relational(composable_func):
 
         for track_uuid, unfiltered_related_objects in relationship_dict.items():
             for related_uuid, related_timestamps in unfiltered_related_objects.items():
-                eligible_timestamps = set(related_timestamps).intersection(get_scenario_timestamps(track_dict[track_uuid]))
+                eligible_timestamps = sorted(set(related_timestamps).intersection(get_scenario_timestamps(track_dict[track_uuid])))
                 scenario_dict[track_uuid][related_uuid] = scenario_at_timestamps(related_candidate_dict[related_uuid], eligible_timestamps)            
 
         return scenario_dict
@@ -316,16 +316,6 @@ def has_free_will(track_uuid, log_dir):
         return True
     else:
         return False
-
-
-@composable
-def is_category(track_uuid, log_dir, category):
-
-    if track_uuid in get_uuids_of_category(log_dir, category):
-        non_composable_get_object = unwrap_func(get_object)
-        return non_composable_get_object(track_uuid, log_dir)
-    else:
-        return []
 
 
 @composable
@@ -1270,7 +1260,7 @@ def post_process_scenario(scenario, log_dir) -> dict:
 def filter_by_length(scenario, min_timesteps=2):
 
     for track_uuid, related_objects in list(scenario.items()):
-        if isinstance(related_objects, list):
+        if isinstance(related_objects, list) or isinstance(related_objects, set):
             if len(related_objects) < min_timesteps:
                 scenario.pop(track_uuid)
         else:
@@ -1688,7 +1678,7 @@ def get_related_objects(relationship_dict):
             elif timestamps and related_uuid not in track_dict and related_uuid in all_related_objects:
                 all_related_objects[related_uuid] = sorted(set(all_related_objects[related_uuid]).union(timestamps))
             elif timestamps and related_uuid in track_dict and related_uuid not in all_related_objects:
-                non_track_timestamps = set(track_dict[related_uuid]).difference(timestamps)
+                non_track_timestamps = sorted(set(track_dict[related_uuid]).difference(timestamps))
                 if non_track_timestamps:
                     all_related_objects[related_uuid] = non_track_timestamps
             elif timestamps and related_uuid in track_dict and related_uuid in all_related_objects:
