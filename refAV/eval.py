@@ -10,6 +10,7 @@ import os
 import datetime
 from tqdm import tqdm
 from pathlib import Path
+import shutil
 
 from av2.evaluation.scenario_mining.eval import evaluate
 from av2.datasets.sensor.splits import TEST, TRAIN, VAL
@@ -47,17 +48,18 @@ def create_baseline_prediction(description:str, log_id:str, llm_name, tracker_na
         return pred_path
 
     #Used in exec(scenario) code
-    output_dir = paths.SM_PRED_DIR / experiment_name / split
+    output_dir:Path = paths.SM_PRED_DIR / experiment_name / split
+
     log_dir:Path = paths.TRACKER_PRED_DIR / tracker_name / split / log_id
+    #log_dir:Path = paths.TRACKER_PRED_DIR / tracker_name / split / log_id
     
     try:
         scenario_filename = paths.LLM_PRED_DIR / llm_name / f'{description}.txt'
         if scenario_filename.exists():
-            print('Cached scenario definition found')
+            print(f'Cached scenario definition for {description} found')
         else:
-            scenario_filename = predict_scenario_from_description(description, output_dir=paths.LLM_PRED_DIR, model=llm_name)
+            scenario_filename = predict_scenario_from_description(description, output_dir=paths.LLM_PRED_DIR, model_name=llm_name)
         
-        print(f'Evaluating log for {description}.')
         with open(scenario_filename, 'r') as f:
             scenario = f.read()
             execute_scenario(scenario, description, log_dir, output_dir)
@@ -65,14 +67,20 @@ def create_baseline_prediction(description:str, log_id:str, llm_name, tracker_na
     except Exception as e:
         # Sometimes the LLM will generate scenario definitions with bugs
         # In this case, output the default prediction of no referred tracks
-        print(f"Error predicting scenario: {e}")
+
+        error_path = output_dir.parent / 'results' / 'errors'
+        error_path.mkdir(parents=True, exist_ok=True)
+        with open(error_path/f'{description}.txt', 'w') as file:
+            traceback.print_exc(file=file)
+
+        print(f"Error predicting {description} for log_id {log_id}: {e}")
         traceback.print_exc()
         pred_path = create_default_prediction(description, log_dir, output_dir)
 
     return pred_path
 
 
-def create_default_prediction(description, log_dir, output_dir):
+def create_default_prediction(description:str, log_dir:Path, output_dir:Path):
     
     empty_set = {}
     output_scenario(empty_set, description, log_dir, output_dir, visualize=False)
@@ -101,16 +109,16 @@ def evaluate_pkls(pred_pkl, gt_pkl, experiment_dir):
     metrics = evaluate(predictions, labels, objective_metric='HOTA', max_range_m=50, dataset_dir=paths.AV2_DATA_DIR/split, out=output_dir)
 
     metrics_dict = {
-        'HOTA-Temporal': metrics[0],
-        'HOTA': metrics[1],
-        'Timestamp F1': metrics[2],
-        'Log F1': metrics[3],
+        'HOTA-Temporal': float(metrics[0]),
+        'HOTA': float(metrics[1]),
+        'Timestamp F1': float(metrics[2]),
+        'Log F1': float(metrics[3]),
         'datetime': str(datetime.datetime.now())
     }
-
+    print(metrics_dict)
 
     with open(f'{output_dir}/results.json', 'w') as f:
-        json.dump(f, metrics_dict, indent=4)
+        json.dump(metrics_dict, f, indent=4)
 
     return metrics_dict
 
@@ -233,12 +241,24 @@ def combine_pkls(experiment_dir:Path, lpp_path:Path):
 
     return output_pkl
 
+def compile_results(experiment_dir: Path):
+    for experiment in experiment_dir.iterdir():
+        if 'exp' not in experiment.name:
+            continue
+        results_folder = experiment / 'results'
+        if results_folder.exists():
+            dest = experiment_dir.parent / 'compiled_results' / experiment.name
+            #dest.mkdir(parents=True, exist_ok=True)
+
+            shutil.copytree(results_folder, dest, ignore=shutil.ignore_patterns('*.pkl', '*.pdf'))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Example script with arguments")
-    parser.add_argument("--start_log_index", type=int, help="An optional argument", default=0)
-    parser.add_argument("--end_log_index", type=int, help="An optional argument", default=150)
     parser.add_argument("--num_processes", type=int, help="Number of parallel processes you want to use for computation", default=max(int(0.9 * os.cpu_count()), 1))
+    parser.add_argument("--log_prompt_pairs", type=str, required=True, help="String path to the log-prompt pairs json file")
     parser.add_argument("--exp_name", type=str, required=True)
+
     args = parser.parse_args()
 
     with open(paths.EXPERIMENTS, 'rb') as file:
@@ -257,23 +277,19 @@ if __name__ == '__main__':
     )
     
     cache_manager.num_processes = args.num_processes
-    if split == 'test':
-        logs_to_analyze = list(TEST)[args.start_log_index:min(args.end_log_index, len(TEST))]
-    elif split == 'train':
-        logs_to_analyze = list(TRAIN)[args.start_log_index:min(args.end_log_index, len(TRAIN))]
-    elif split == 'val':
-        logs_to_analyze = list(VAL)[args.start_log_index:min(args.end_log_index, len(VAL))]
-    else:
-        print('--split must be one of train, test, or val.')
-
-    log_prompt_input_path = Path(f'av2_sm_downloads/log_prompt_pairs_{split}.json')
+    log_prompt_input_path = Path(args.log_prompt_pairs)
     eval_output_dir = Path(f'output/evaluation/{exp_name}/{split}')
 
     with open(log_prompt_input_path, 'rb') as f:
         log_prompts = json.load(f)
 
-    for i, (log_id, prompts) in enumerate(log_prompts.items()):
-        if log_id in logs_to_analyze:
-            cache_manager.clear_all()
-            for prompt in tqdm(prompts, desc=f'{logs_to_analyze.index(log_id)}/{len(logs_to_analyze)}'):
-                create_baseline_prediction(prompt, log_id, llm_name, tracker_name, exp_name)
+    total_lpp = 0
+    for log_id, prompts in log_prompts.items():
+        total_lpp += len(prompts)
+
+    i = 0
+    for log_id, prompts in log_prompts.items():
+        cache_manager.clear_all()
+        for prompt in tqdm(prompts, desc=f'{i}/{total_lpp}'):
+            create_baseline_prediction(prompt, log_id, llm_name, tracker_name, exp_name)
+            i += 1

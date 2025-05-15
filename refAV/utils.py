@@ -19,7 +19,7 @@ from av2.geometry.se3 import SE3
 from av2.utils.io import read_feather, read_city_SE3_ego
 from av2.evaluation.tracking.utils import save, load
 from av2.datasets.sensor.splits import TEST, TRAIN, VAL
-from refAV.paths import AV2_DATA_DIR, CACHE_PATH
+import refAV.paths as paths
 
 
 class CacheManager:
@@ -27,7 +27,6 @@ class CacheManager:
         self.caches = {}
         self.stats = {}
         self.num_processes = max(int(0.9 * os.cpu_count()), 1)
-        self.scenario_lane_cache = None
         self.semantic_lane_cache = None
         self.road_side_cache = None
 
@@ -116,13 +115,10 @@ class CacheManager:
 
     def load_custom_caches(self):
 
-        with open(CACHE_PATH / 'scenario_lane_cache.json', 'rb') as file:
-            self.scenario_lane_cache = json.load(file)
-
-        with open(CACHE_PATH /'semantic_lane_cache.json', 'rb') as file:
+        with open(paths.CACHE_PATH /'semantic_lane_cache.json', 'rb') as file:
             self.semantic_lane_cache = json.load(file)
 
-        with open(CACHE_PATH / 'road_side_cache.json', 'rb') as file:
+        with open(paths.CACHE_PATH / 'road_side_cache.json', 'rb') as file:
             self.road_side_cache = json.load(file)
         
 cache_manager = CacheManager()
@@ -377,21 +373,6 @@ def get_scenario_lanes(track_uuid:str, log_dir:Path, avm=None)->dict[int,LaneSeg
 
     if not avm:
         avm = get_map(log_dir)
-
-    try:
-        lane_dict = avm.vector_lane_segments
-        road_side_dict = cache_manager.scenario_lane_cache[log_dir.name][track_uuid]
-
-        scenario_lanes = {}
-        for timestamp, id in road_side_dict.items():
-            if id:
-                scenario_lanes[int(timestamp)] = lane_dict[id]
-            else:
-                scenario_lanes[int(timestamp)] = None
-
-        return scenario_lanes
-    except Exception as e:
-        pass
 
     traj, timestamps = get_nth_pos_deriv(track_uuid, 0, log_dir)
     angular_velocities, _ = get_nth_yaw_deriv(track_uuid, 1, log_dir, coordinate_frame='self')
@@ -1032,7 +1013,7 @@ def get_map(log_dir: Path):
         avm = ArgoverseStaticMap.from_map_dir(log_dir / 'map', build_raster=True)
     except:
         split = get_log_split(log_dir)
-        avm = ArgoverseStaticMap.from_map_dir(AV2_DATA_DIR / split / log_dir.name / 'map', build_raster=True)
+        avm = ArgoverseStaticMap.from_map_dir(paths.AV2_DATA_DIR / split / log_dir.name / 'map', build_raster=True)
         
     return avm
 
@@ -1043,7 +1024,7 @@ def get_ego_SE3(log_dir:Path):
         ego_poses = read_city_SE3_ego(log_dir)
     except:
         split = get_log_split(log_dir)
-        ego_poses = read_city_SE3_ego(AV2_DATA_DIR / split / log_dir.name)
+        ego_poses = read_city_SE3_ego(paths.AV2_DATA_DIR / split / log_dir.name)
 
     return ego_poses
 
@@ -1166,7 +1147,6 @@ def cuboid_distance(cuboid1:Union[str, Cuboid], cuboid2:Union[str, Cuboid], log_
     rect2 = np.array([c2_verts[2],c2_verts[6],c2_verts[7],c2_verts[3],c2_verts[2]])[:,:2]
 
     distance = min_distance_between_rectangles(rect1, rect2)
-    #print(distance - np.linalg.norm(cuboid1.xyz_center_m - cuboid2.xyz_center_m))
 
     return distance
 
@@ -1422,7 +1402,7 @@ def stop_sign_lane(stop_sign_id, log_dir) -> LaneSegment:
     avm = get_map(log_dir)
     pos, _ = get_nth_pos_deriv(stop_sign_id, 0, log_dir)
 
-    ls_list = avm.get_nearby_lane_segments(pos[0,:2], 5)
+    ls_list = avm.get_nearby_lane_segments(pos[0,:2], 10)
     best_ls = None
     best_dist = np.inf
     for ls in ls_list:
@@ -1437,9 +1417,6 @@ def stop_sign_lane(stop_sign_id, log_dir) -> LaneSegment:
 
             if dist < best_dist:
                 best_ls = ls
-
-    if best_ls == None:
-        print('Correct lane segment not found for stop sign!')
     
     return best_ls
 
@@ -1630,7 +1607,7 @@ def get_objects_and_timestamps(scenario_dict: dict) -> dict:
                 if child_uuid not in track_dict:
                     track_dict[child_uuid] = timestamps
                 else:
-                    track_dict[child_uuid] = sorted(list(set(track_dict[child_uuid] + list(timestamps))))
+                    track_dict[child_uuid] = sorted(list(track_dict[child_uuid]) + list(timestamps))
         else:
             if uuid not in track_dict:
                 track_dict[uuid] = related_children
@@ -1689,6 +1666,20 @@ def get_related_objects(relationship_dict):
     return all_related_objects
 
 
+def get_objects_of_prompt(log_dir, prompt):
+    return to_scenario_dict(get_uuids_of_category(log_dir, prompt), log_dir)
+
+def get_uuids_of_prompt(log_dir, prompt):
+    df = read_feather(log_dir / 'sm_annotations.feather')
+
+    if prompt == 'ANY':
+        uuids = df['track_uuid'].unique()
+    else:
+        category_df = df[df['prompt'] == prompt]
+        uuids = category_df['track_uuid'].unique()
+
+    return uuids
+
 def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
     """
     Generates both a pkl file for evaluation and annotations for the scenario mining challenge.
@@ -1699,20 +1690,31 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
     #data_columns = ['log_id', 'prompt', 'track_uuid', 'mining_category', 'timestamp_ns']
     all_data = []
     frames = []
-
-    log_id = log_dir.name
     (output_dir / log_id).mkdir(exist_ok=True)
-
+    
     annotations = read_feather(log_dir / 'sm_annotations.feather')
-    log_timestamps = np.sort(annotations['timestamp_ns'].unique())
+    log_timestamps = sorted(annotations['timestamp_ns'].unique())
     all_uuids = list(annotations['track_uuid'].unique())
     ego_poses = get_ego_SE3(log_dir)
+
+    try:
+        with open(paths.SM_DOWNLOAD_DIR / 'eval_timestamps.json', 'rb') as file:
+            eval_timestamps_by_log_id = json.load(file)
+        eval_timestamps = eval_timestamps_by_log_id[log_id]
+    except:
+        # This assumes that your input has predictions for all of the timestamps
+        # This is valid assumption for the RefProg code, but not for the baselines
+        MAX_NUM_EVAL_TIMESTAMPS = 50
+        if len(log_timestamps) > MAX_NUM_EVAL_TIMESTAMPS:
+            eval_timestamps = log_timestamps[::5]
+        else:
+            eval_timestamps = log_timestamps
 
     referred_objects = swap_keys_and_listed_values(reconstruct_track_dict(scenario))
     relationships = reconstruct_relationship_dict(scenario)
     related_objects = swap_keys_and_listed_values(get_related_objects(relationships))
 
-    for timestamp in log_timestamps:
+    for timestamp in eval_timestamps:
         frame = {}
         timestamp_annotations = annotations[annotations['timestamp_ns'] == timestamp]
 
@@ -1728,7 +1730,6 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
         frame['translation_m'] = np.zeros((n, 3))
         frame['size'] = np.zeros((n,3), dtype=np.float32)
         frame['yaw'] = np.zeros(n, dtype=np.float32)
-        frame['velocity_m_per_s'] = np.zeros((n,3))
         frame['label'] = np.zeros(n, dtype=np.int32)
         frame['name'] = np.zeros(n, dtype='<U31')
         frame['track_id'] = np.zeros(n, dtype=np.int32)
@@ -1744,7 +1745,6 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
             size = np.array([cuboid.length_m, cuboid.width_m, cuboid.height_m], dtype=np.float32)
             yaw = Rotation.from_matrix(ego_to_city.compose(cuboid.dst_SE3_object).rotation).as_euler('zxy')[0]
 
-            #if track_uuid in referred_uuids:
             if timestamp in referred_objects and track_uuid in referred_objects[timestamp]:
                 category = "REFERRED_OBJECT"
                 label = 0
@@ -1758,11 +1758,15 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
             frame['translation_m'][i,:] = translation_m
             frame['size'][i,:] = size
             frame['yaw'][i] = yaw
-            frame['velocity_m_per_s'][i,:] = np.zeros(3)
             frame['label'][i] = label
             frame['name'][i] = category
             frame['track_id'][i] = all_uuids.index(track_uuid)
-            frame['score'][i] = float(track_df['score'].iloc[0])
+
+            # Assign a score of 1 to tracker predictions that do not have an associated confidence value
+            try:
+                frame['score'][i] = float(track_df['score'].iloc[0])
+            except:
+                frame['score'][i] = 1.0
 
             all_data.append([log_id, description, track_uuid, category, timestamp])
 

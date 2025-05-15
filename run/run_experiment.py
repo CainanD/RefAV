@@ -9,6 +9,7 @@ from refAV.eval import evaluate_pkls, combine_pkls
 
 parser = argparse.ArgumentParser(description="Example script with arguments")
 parser.add_argument("--exp_name", type=str, required=True, help="Enter the name of the experiment from experiments.yml you would like to run.")
+parser.add_argument("--procs_per_task", type=int, default=3, help="Enter the name of the experiment from experiments.yml you would like to run.")
 args = parser.parse_args()
 
 with open(paths.EXPERIMENTS, 'rb') as file:
@@ -41,23 +42,16 @@ if not tracker_predictions_dest.exists():
     av2_data_split = paths.AV2_DATA_DIR / split
     pickle_to_feather(av2_data_split, tracker_predictions_pkl, tracker_predictions_dest)
 
-log_index_start=0
-if split == 'train':
-     log_index_end=700
-else:
-    log_index_end=150
-run_parallel_eval(exp_name, log_index_start, log_index_end)
+log_prompts_path = paths.SM_DOWNLOAD_DIR / f'log_prompt_pairs_{split}.json'
+run_parallel_eval(exp_name, log_prompts_path, args.procs_per_task)
 
 experiment_dir = paths.SM_PRED_DIR / exp_name
-log_prompts_path = paths.SM_DOWNLOAD_DIR / f'log_prompt_pairs_{split}.json'
 combined_preds = combine_pkls(experiment_dir, log_prompts_path)
 
-if split in ['val', 'train']:
-    combined_gt = combine_pkls(paths.SM_DATA_DIR, log_prompts_path)
-elif split == 'test':
-    combined_gt = Path('/home/crdavids/Trinity-Sync/av2-api/output/eval/test/5-9-25/combined_gt_test.pkl')
+#if split in ['val', 'train']:
+#    combined_gt = combine_pkls(paths.SM_DATA_DIR, log_prompts_path)
+#elif split == 'test':
+combined_gt = Path(f'/home/crdavids/Trinity-Sync/av2-api/output/eval/{split}/latest/combined_gt_{split}.pkl')
 
 metrics = evaluate_pkls(combined_preds, combined_gt, experiment_dir)
 print(metrics)
-
-

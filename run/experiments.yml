@@ -5,6 +5,9 @@ LLM:
 - Qwen3-8B
 - claude-3-5-sonnet-20241022
 - claude-3-7-sonnet-20250219
+- claude-3-7-classes
+- all_objects
+- objects_of_assigned_description
 
 prompt:
 - refAV_standard_context
@@ -14,13 +17,44 @@ split:
 - val
 
 tracker:
+# RefProg input
 - DGIST_Tracking
 - Le3DE2D_Tracking
 - ReVoxelDet_Tracking
 - TransFusion_Tracking
 - Valeo4Cast_Tracking
 - VoxelDet_Tracking
-- ground truth
+- AV2_Detections
+- BEVFusion_Detections
+- Le3DE2D_Detections
+- Valeo4Cast_Detections
+- ReVoxelDet_Detections
+- LT3D_Detections
+- ground_truth
+# Baselines
+- Le3DE2D_Tracking_clip
+- groundingSAM
+
+#Ground truth experiments
+exp0:
+  name: exp0
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: ground_truth
+
+exp18:
+  name: exp18
+  LLM: all_objects
+  split: test
+  tracker: ground_truth
+
+exp19:
+  name: exp19
+  LLM: claude-3-7-classes
+  split: test
+  tracker: ground_truth
+
+#from here all experiments are chronological
 
 exp1:
   name: exp1
@@ -42,30 +76,165 @@ exp3:
 
 exp4:
   name: exp4
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Tracking
+
+#began error tracking, was fixing bugs up to this point
+exp5:
+  name: exp5
   LLM: gemini-2.5-flash-preview-04-17
   split: test
   tracker: Le3DE2D_Tracking
 
-exp2:
-  name: exp2
+exp6:
+  name: exp6
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: DGIST_Tracking
+
+exp7:
+  name: exp7
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: ReVoxelDet_Tracking
+
+exp8:
+  name: exp8
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: TransFusion_Tracking
+
+exp9:
+  name: exp9
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Tracking
+
+exp10:
+  name: exp10
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: ReVoxelDet_Tracking
+
+#Changed to bottomk filtering
+exp11:
+  name: exp11
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: BEVFusion_Detections
+
+exp12:
+  name: exp12
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections
+
+exp13:
+  name: exp13
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections
+
+exp14:
+  name: exp14
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections
+
+exp15:
+  name: exp15
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: ReVoxelDet_Detections
+
+exp16:
+  name: exp16
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: DGIST_Tracking
+
+exp17:
+  name: exp17
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: Valeo4Cast_Tracking
+
+exp20:
+  name: exp20
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: DGIST_Tracking
+
+exp21:
+  name: exp21
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: ReVoxelDet_Tracking
+
+exp22:
+  name: exp22
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: TransFusion_Tracking
+
+exp23:
+  name: exp23
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: AV2_Detections
+
+exp24:
+  name: exp24
   LLM: claude-3-5-sonnet-20241022
   split: test
   tracker: Le3DE2D_Tracking
 
-exp2:
-  name: exp2
+exp25:
+  name: exp25
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: ground_truth
+
+# Changed to topk filtering
+exp26:
+  name: exp26
   LLM: claude-3-5-sonnet-20241022
   split: test
   tracker: Le3DE2D_Tracking
 
-exp2:
-  name: exp2
-  LLM: claude-3-5-sonnet-20241022
-  split: test
-  tracker: Le3DE2D_Tracking
+exp27:
+  name: exp27
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: Valeo4Cast_Tracking
 
-exp2:
-  name: exp2
-  LLM: claude-3-5-sonnet-20241022
+exp28:
+  name: exp28
+  LLM: claude-3-7-sonnet-20250219
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Valeo4Cast_Detections
+
+exp29:
+  name: exp29
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections
+
+exp30: 
+  name: exp30
+  LLM: all-objects
+  tracker: groundingSAM
+  split: test
+
+exp31:
+  name: exp31
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: DGIST_Tracking
+
+exp32:
+  name: exp32
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections

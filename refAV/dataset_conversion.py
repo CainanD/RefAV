@@ -94,29 +94,62 @@ def filter_ids_by_score(track_data):
 
     id_stats = {}
     kept_ids = []
+    kept_ids_per_timestamp = {}
 
     for frame in track_data:
+        timestamp = frame['timestamp_ns']
         ids = frame['track_id']
         scores = frame['score']
+        categories = frame['label']
+
+        kept_ids_per_timestamp[timestamp] = []
 
         for index, id in enumerate(ids):
+
             if id not in id_stats:
                 #Track length, min confidence
-                id_stats[id] = (1, scores[index])
+                id_stats[id] = ([timestamp], scores[index], categories[index])
             else:
-                id_stats[id] = (id_stats[id][0]+1, min(scores[index], id_stats[id][1]))
+                #Weight longer tracks higher
+                #print(id_stats[id])
+                id_stats[id] = (id_stats[id][0] + [timestamp], scores[index] + id_stats[id][1], categories[index])
 
+    id_stats_by_category = {}
     for id, stats in id_stats.items():
-        track_length, min_confidence = stats
+        id_timestamps, score, category = stats
+        
+        if category not in id_stats_by_category:
+            id_stats_by_category[category] = []
+        id_stats_by_category[category].append((id, score))
 
-        if (track_length == 1 and min_confidence > .05) or (track_length > 1 and min_confidence > .005):
-            kept_ids.append(id)
+    for category, category_ids in id_stats_by_category.items():
+        sorted_ids = sorted(category_ids, key=lambda row:row[1], reverse=True)
+
+        if category in ['REGULAR_VEHCILE', 'PEDESTRIAN', 'BOLLARD', 'CONSTRUCTION_CONE', 'CONSTRUCTION_BARREL']:
+            topk = 200
+        else:
+            topk = 100
+        for i in range(min(topk, len(sorted_ids))):
+            print(sorted_ids[i][1])
+            kept_ids.append(sorted_ids[i][0])
+            id_timestamps = id_stats[sorted_ids[i][0]][0]
+            for timestamp in id_timestamps:
+                kept_ids_per_timestamp[timestamp].append(sorted_ids[i][0])
+
+        #Make sure that all frames have at least one kept id
+        for timestamp in kept_ids_per_timestamp.keys():
+            while len(kept_ids_per_timestamp[timestamp]) == 0 and i < len(sorted_ids):
+                if timestamp in id_stats[sorted_ids[i][0]][0]:
+                    kept_ids.append(sorted_ids[i][0])
+                    for id_timestamp in id_stats[sorted_ids[i][0]][0]:
+                        kept_ids_per_timestamp[id_timestamp].append(sorted_ids[i][0])
+                i += 1
 
     print(f'filtered from {len(id_stats.keys())} to {len(kept_ids)} ids')
 
     return kept_ids
 
-def process_sequences(log_id, track_data, dataset_dir, base_output_dir, filter=False):
+def process_sequences(log_id, track_data, dataset_dir, base_output_dir, filter=True):
     ego_poses = read_city_SE3_ego(dataset_dir / log_id)
     rows = []
 
@@ -146,12 +179,10 @@ def process_sequences(log_id, track_data, dataset_dir, base_output_dir, filter=F
         # Get track IDs
         track_ids = frame['track_id']
         
-
         if 'score' in frame:
             scores = frame['score']
         else:
             kept_ids = track_ids
-
         
         # Process each object in the frame
         ego_yaws = np.zeros(len(track_ids))
@@ -258,6 +289,7 @@ def add_ego_to_annotation(log_dir:Path, output_dir:Path=Path('output')):
     split = get_log_split(log_dir)
     annotations_df = read_feather(log_dir / 'annotations.feather')
     ego_df = read_feather(AV2_DATA_DIR / split / log_dir.name / 'city_SE3_egovehicle.feather')
+    ego_df['log_id'] = log_dir.name
     ego_df['track_uuid'] = 'ego'
     ego_df['category'] = 'EGO_VEHICLE'
     ego_df['length_m'] = 4.877

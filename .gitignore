@@ -4,9 +4,12 @@
 *.mp4
 *.pyc
 *.pdf
-
+*.log
 *.csv
+*.pt
+*.png
 
+*/output/
 output/
 refav/evaluation/
 refav/refAV.egg-info/
