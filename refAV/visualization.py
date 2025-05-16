@@ -13,9 +13,17 @@ from av2.structures.sweep import Sweep
 from av2.datasets.sensor.av2_sensor_dataloader import AV2SensorDataLoader
 from av2.map.map_api import ArgoverseStaticMap
 import matplotlib.pyplot as plt
+from av2.datasets.sensor.sensor_dataloader import SensorDataloader
+from av2.datasets.sensor.constants import RingCameras
+import json
+from av2.rendering.video import tile_cameras
+import pandas as pd
+from scipy.spatial.transform import Rotation as R
+import cv2
 
-from paths import AV2_DATA_DIR
-from utils import (
+from refAV.dataset_conversion import pickle_to_feather
+from refAV.paths import AV2_DATA_DIR
+from refAV.utils import (
     get_map, reconstruct_relationship_dict, reconstruct_track_dict,
     swap_keys_and_listed_values, get_log_split, read_feather,
     get_ego_uuid, get_nth_pos_deriv, dict_empty, get_ego_SE3
@@ -368,7 +376,7 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     related_dict = key_by_timestamps(relationship_dict)
 
     ego_uuid = get_ego_uuid(log_dir)
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
     ego_df = df[df['track_uuid'] == ego_uuid]
     timestamps = sorted(ego_df['timestamp_ns'])
     frequency = 1/(float(timestamps[1] - timestamps[0])/1E9)
@@ -511,7 +519,7 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
      
 
 def append_relationship_edges(relationship_edge_mesh:pv.PolyData, track_uuid, related_uuids, log_dir, timestamp, transform:SE3):
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
     track_df = df[df['track_uuid'] == track_uuid]
     timestamped_track = track_df[track_df['timestamp_ns'] == timestamp]
     track_pos = timestamped_track[['tx_m', 'ty_m', 'tz_m']].to_numpy()
@@ -583,7 +591,7 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
     related_transforms = []
 
     ego_poses = get_ego_SE3(log_dir)
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
 
     for track_uuid, timestamp in track_first_appearences.items():
         track_df = df[df['track_uuid'] == track_uuid]
@@ -613,3 +621,132 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
 
         for j in range(5):
             plotter.write_frame()
+
+
+def visualize_rgb(
+    dataset_dir: Path,
+    cuboid_csv: Path,
+    output_vis_dir: Path,
+    log_id: str,
+    description: str,
+    annotation_dir = Path('/data3/crdavids/refAV/dataset/test/'),
+    ) -> None:
+    """
+    Generates videos visualizing the 3D bounding boxes from an output feather file.
+    Only used for visualizing the ground truth
+    """
+    print(f"Generating visualization for {log_id} - {description}...")
+
+    if not cuboid_csv.exists():
+        print(f"Error: Cuboid CSV not found: {cuboid_csv}")
+        return
+
+    # --- Data Loading ---
+    # Determine camera names (using RingCameras as default)
+    valid_ring = {x.value for x in RingCameras}
+    cam_names_str = tuple(x.value for x in RingCameras)
+    cam_enums = [RingCameras(cam) for cam in cam_names_str if cam in valid_ring]
+    cam_names=tuple(cam_enums)
+
+    # Load AV2 dataloader for the specific log
+    try:
+        dataloader = SensorDataloader(
+            dataset_dir, # Should be the root AV2 'Sensor' directory
+            with_annotations=False, # We load annotations from our CSV
+        )
+    except Exception as e:
+        print(f"Error initializing SensorDataloader for log {log_id}: {e}")
+        return
+
+    # Load cuboids from the generated CSV
+    try:
+        df = pd.read_feather(cuboid_csv)
+        if df.empty:
+            print(f"No cuboids found in {cuboid_csv}. Skipping visualization.")
+            return
+    except Exception as e:
+        print(f"Error loading or parsing cuboid CSV {cuboid_csv}: {e}")
+        return
+
+    # --- Rendering Loop ---
+    output_log_dir = output_vis_dir / f"{log_id}_{description}" # Shorten desc for filename
+    output_log_dir.mkdir(parents=True, exist_ok=True)
+    rendered_count = 0
+
+    with open('baselines/groundingSAM/log_id_to_start_index.json', 'rb') as file:
+        log_id_to_start_index = json.load(file)
+
+    i = log_id_to_start_index[log_id]
+    datum = dataloader[i]
+    annotations_path = annotation_dir / log_id / 'annotations_with_ego.feather'
+    anno_df = pd.read_feather(annotations_path)
+
+    while datum.log_id == log_id:
+
+        try:
+            i += 5
+            datum = dataloader[i]
+            timestamp = datum.timestamp_ns
+            timestamp_df = df[df['timestamp_ns'] == timestamp]
+            referred_df = timestamp_df[timestamp_df['mining_category'] == 'REFERRED_OBJECT']
+
+            anno_timestamp_df = anno_df[anno_df['timestamp_ns'] == timestamp]
+            anno_cuboids = CuboidList.from_dataframe(anno_timestamp_df)
+            plotted_uuids = referred_df['track_uuid'].unique()
+        
+
+            # Filter cuboids for the current timestamp
+            ts_cuboids = [c for c in anno_cuboids.cuboids if c.track_uuid in plotted_uuids]
+            if not ts_cuboids:
+                continue # Skip frames with no detections
+
+            current_cuboid_list = CuboidList(ts_cuboids)
+            timestamp_city_SE3_ego_dict = datum.timestamp_city_SE3_ego_dict
+            synchronized_imagery = datum.synchronized_imagery
+
+            if synchronized_imagery is not None:
+                cam_name_to_img = {}
+                for cam_name, cam in synchronized_imagery.items():
+                    if cam.timestamp_ns in timestamp_city_SE3_ego_dict:
+                        city_SE3_ego_cam_t = timestamp_city_SE3_ego_dict[cam.timestamp_ns]
+                        img = cam.img.copy()
+                        img = current_cuboid_list.project_to_cam(
+                            img,
+                            cam.camera_model,
+                            city_SE3_ego_cam_t,
+                            city_SE3_ego_cam_t,
+                        )
+                        cam_name_to_img[cam_name] = img
+            
+                if len(cam_name_to_img) < len(cam_names):
+                    continue
+
+                tiled_img = tile_cameras(cam_name_to_img, bev_img=None)
+
+                # Save the frame
+                out_path = output_log_dir / f"{timestamp}.png"
+                cv2.imwrite(str(out_path), tiled_img)
+                rendered_count += 1
+
+        except Exception as e:
+            print(f"\nError during rendering frame {i} for log {log_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            continue # Try next frame
+
+    print(f"Finished visualization for {log_id} - {description}. Frames saved in {output_log_dir}")
+
+
+if __name__ == "__main__":
+    
+    import refAV.paths as paths
+
+    dataset_dir = paths.AV2_DATA_DIR
+    feather_path = Path('/home/crdavids/Trinity-Sync/refbot/output/visualization/b40c0cbf-5d35-30df-9f63-de088ada278e/turning left_b40c0cbf_annotations.feather') 
+    output_dir = Path('output/visualization')
+    log_id = 'b40c0cbf-5d35-30df-9f63-de088ada278e'
+
+    visualize_rgb(dataset_dir, feather_path, output_dir, log_id, description="Vehicle making left turn through ego-vehicle's path while it is raining")
+
+
+    pass

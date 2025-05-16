@@ -9,6 +9,7 @@ from copy import deepcopy
 from functools import wraps
 import scipy
 import json
+import pandas as pd
 from collections import OrderedDict
 
 from av2.structures.cuboid import Cuboid, CuboidList
@@ -253,7 +254,7 @@ def remove_nonintersecting_timestamps(dict1:dict[str,list], dict2:dict[str,list]
 
 @cache_manager.create_cache('get_ego_uuid')
 def get_ego_uuid(log_dir):
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
     ego_df = df[df['category'] == 'EGO_VEHICLE']
     return ego_df['track_uuid'].iloc[0]
 
@@ -282,7 +283,7 @@ def get_uuids_of_category(log_dir:Path, category:str):
         trucks = get_uuids_of_category(log_dir, category='TRUCK')
     """
 
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
 
     if category == 'ANY':
         uuids = df['track_uuid'].unique()
@@ -304,7 +305,7 @@ def get_uuids_of_category(log_dir:Path, category:str):
 
 def has_free_will(track_uuid, log_dir):
 
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
     category = df[df['track_uuid'] == track_uuid]['category'].iloc[0]
     if category in ['ANIMAL','OFFICIAL_SIGNALER','RAILED_VEHICLE','ARTICULATED_BUS','WHEELED_RIDER','SCHOOL_BUS',
                     'MOTORCYCLIST','TRUCK_CAB','VEHICULAR_TRAILER','BICYCLIST','MOTORCYCLE','TRUCK','BOX_TRUCK','BUS',
@@ -317,7 +318,7 @@ def has_free_will(track_uuid, log_dir):
 @composable
 def get_object(track_uuid, log_dir):
 
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
     track_df = df[df['track_uuid'] == track_uuid]
 
     if track_df.empty:
@@ -331,7 +332,7 @@ def get_object(track_uuid, log_dir):
 @cache_manager.create_cache('get_timestamps')   
 def get_timestamps(track_uuid, log_dir):
 
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
     track_df = df[df['track_uuid'] == track_uuid]
 
     if track_df.empty:
@@ -767,7 +768,7 @@ def get_nth_pos_deriv(
     """Returns the nth positional derivative of the track at all timestamps 
     with respect to city coordinates. """
 
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
     ego_poses = get_ego_SE3(log_dir)
 
     # Filter the DataFrame
@@ -892,7 +893,7 @@ def get_nth_yaw_deriv(track_uuid, n, log_dir, coordinate_frame=None, in_degrees=
     The returned angle is yaw measured from the x-axis of the track coordinate frame to the x-axis
     of the source coordinate frame"""
 
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
     ego_poses = get_ego_SE3(log_dir)
 
     # Filter the DataFrame
@@ -1088,7 +1089,7 @@ def dilate_convex_polygon(points, distance):
 
 @cache_manager.create_cache('get_cuboid_from_uuid')
 def get_cuboid_from_uuid(track_uuid, log_dir, timestamp = None):
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
     
     track_df = df[df["track_uuid"] == track_uuid]
 
@@ -1114,7 +1115,7 @@ def to_scenario_dict(object_datastructure, log_dir)->dict:
         object_dict = {object_datastructure: unwrap_func(get_object)(object_datastructure, log_dir)}
     elif isinstance(object_datastructure, int):
         timestamp = object_datastructure
-        df = read_feather(log_dir / 'sm_annotations.feather')
+        df = read_feather(log_dir / 'annotations_with_ego.feather')
         timestamp_df = df[df['timestamp_ns'] == timestamp]
 
         if timestamp_df.empty:
@@ -1126,7 +1127,7 @@ def to_scenario_dict(object_datastructure, log_dir)->dict:
               timestamp, or dict[timestamp:list[timestamp]]')
         print('Comparing to all objects in the log.')
 
-        df = read_feather(log_dir / 'sm_annotations.feather')
+        df = read_feather(log_dir / 'annotations_with_ego.feather')
         all_uuids = df['track_uuid'].unique()
         object_dict, _ = parallelize_uuids(get_object, all_uuids, log_dir)
     
@@ -1271,7 +1272,7 @@ def filter_by_relationship_distance(scenario, log_dir, max_distance=50):
 def dilate_timestamps(scenario, log_dir, min_length=15, log_df = None):
 
     if log_df is None:
-        log_df = read_feather(log_dir / 'sm_annotations.feather')
+        log_df = read_feather(log_dir / 'annotations_with_ego.feather')
 
     for track_uuid, related_objects in scenario.items():
         if isinstance(related_objects, dict):
@@ -1391,7 +1392,7 @@ def at_stop_sign_(track_uuid, stop_sign_uuids, log_dir, forward_thresh=10) -> tu
 @composable
 def occluded(track_uuid, log_dir):
 
-    annotations_df = read_feather(log_dir / 'sm_annotations.feather')
+    annotations_df = read_feather(log_dir / 'annotations_with_ego.feather')
     track_df = annotations_df[annotations_df['track_uuid'] == track_uuid]
     track_when_occluded = track_df[track_df['num_interior_pts'] == 0]
 
@@ -1673,7 +1674,7 @@ def get_objects_of_prompt(log_dir, prompt):
     return to_scenario_dict(get_uuids_of_prompt(log_dir, prompt), log_dir)
 
 def get_uuids_of_prompt(log_dir, prompt):
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / 'annotations_with_ego.feather')
 
     if prompt == 'ANY':
         uuids = df['track_uuid'].unique()
@@ -1683,10 +1684,11 @@ def get_uuids_of_prompt(log_dir, prompt):
 
     return uuids
 
+"""
 def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
-    """
+    
     Generates both a pkl file for evaluation and annotations for the scenario mining challenge.
-    """
+    
 
     log_id = log_dir.name
 
@@ -1695,7 +1697,7 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
     frames = []
     (output_dir / log_id).mkdir(exist_ok=True)
     
-    annotations = read_feather(log_dir / 'sm_annotations.feather')
+    annotations = read_feather(log_dir / 'annotations_with_ego.feather')
     log_timestamps = sorted(annotations['timestamp_ns'].unique())
     all_uuids = list(annotations['track_uuid'].unique())
     ego_poses = get_ego_SE3(log_dir)
@@ -1780,4 +1782,124 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
     print(f'Scenario pkl file for {description}_{log_id[:8]} saved successfully.')
 
     return True
+"""
 
+def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path, is_gt=True):
+    """
+    Generates both a pkl file for evaluation and annotations for the scenario mining challenge.
+    """
+
+    log_id = log_dir.name
+    if dict_empty(scenario) and is_gt:
+        path = output_dir / log_id / f'{description}_{log_id[:8]}_empty_gt.pkl'
+        save({}, path)
+        return False
+
+    #data_columns = ['log_id', 'prompt', 'track_uuid', 'mining_category', 'timestamp_ns']
+    all_data = []
+    frames = []
+
+    log_id = log_dir.name
+    (output_dir / log_id).mkdir(exist_ok=True)
+
+    annotations = read_feather(log_dir / 'annotations_with_ego.feather')
+    log_timestamps = np.sort(annotations['timestamp_ns'].unique())
+    all_uuids = list(annotations['track_uuid'].unique())
+    ego_poses = get_ego_SE3(log_dir)
+
+    referred_objects = swap_keys_and_listed_values(reconstruct_track_dict(scenario))
+    relationships = reconstruct_relationship_dict(scenario)
+    related_objects = swap_keys_and_listed_values(get_related_objects(relationships))
+
+    for timestamp in log_timestamps:
+        frame = {}
+        timestamp_annotations = annotations[annotations['timestamp_ns'] == timestamp]
+
+        timestamp_uuids = list(timestamp_annotations['track_uuid'].unique())
+        ego_to_city = ego_poses[timestamp]
+
+        frame['seq_id'] = (log_id, description)
+        frame['timestamp_ns'] = timestamp
+        frame['ego_translation_m'] = list(ego_to_city.translation)
+        frame['description'] = description
+
+        n = len(timestamp_uuids)
+        frame['translation_m'] = np.zeros((n, 3))
+        frame['size'] = np.zeros((n,3), dtype=np.float32)
+        frame['yaw'] = np.zeros(n, dtype=np.float32)
+        frame['label'] = np.zeros(n, dtype=np.int32)
+        frame['name'] = np.zeros(n, dtype='<U31')
+        frame['track_id'] = np.zeros(n, dtype=np.int32)
+
+        if not is_gt:
+            frame['score'] = np.zeros(n, dtype=np.float32)
+
+        for i, track_uuid in enumerate(timestamp_uuids):
+            track_df = timestamp_annotations[timestamp_annotations['track_uuid'] == track_uuid]
+            if track_df.empty:
+                continue
+            
+            cuboid = CuboidList.from_dataframe(track_df)[0]
+            translation_m = ego_to_city.transform_from(cuboid.xyz_center_m)
+            size = np.array([cuboid.length_m, cuboid.width_m, cuboid.height_m], dtype=np.float32)
+            yaw = Rotation.from_matrix(ego_to_city.compose(cuboid.dst_SE3_object).rotation).as_euler('zxy')[0]
+
+            #if track_uuid in referred_uuids:
+            if timestamp in referred_objects and track_uuid in referred_objects[timestamp]:
+                category = "REFERRED_OBJECT"
+                label = 0
+            elif timestamp in related_objects and track_uuid in related_objects[timestamp]:
+                category = "RELATED_OBJECT"
+                label = 1
+            else:
+                category = "OTHER_OBJECT"
+                label = 2
+
+            frame['translation_m'][i,:] = translation_m
+            frame['size'][i,:] = size
+            frame['yaw'][i] = yaw
+            frame['label'][i] = label
+            frame['name'][i] = category
+            frame['track_id'][i] = all_uuids.index(track_uuid)
+            
+            try:
+                if not is_gt:
+                    frame['score'][i] = track_df['score']
+            except: pass
+
+            all_data.append([log_id, description, track_uuid, category, timestamp])
+
+        frames.append(frame)
+
+
+    EVALUATION_SAMPLING_FREQUENCY = 5
+    evaluation_timestamps = log_timestamps[::EVALUATION_SAMPLING_FREQUENCY]
+    if is_gt:
+        columns = ['log_id', 'prompt', 'track_uuid', 'mining_category', 'timestamp_ns']
+        sm_annotations = pd.DataFrame(all_data, columns=columns)
+        referred_object_annotations = sm_annotations[sm_annotations['mining_category'] == 'REFERRED_OBJECT']
+
+        evaluated_referred_objects = referred_object_annotations[
+            referred_object_annotations['timestamp_ns'].isin(evaluation_timestamps)]
+
+        if evaluated_referred_objects.empty:
+            path = output_dir / log_id / f'{description}_{log_id[:8]}_filtered_out_gt.pkl'
+            save({}, path)
+
+            return False
+        
+        sm_annotations.to_feather(output_dir/ log_id / f'{description}_{log_id[:8]}_annotations.feather')
+
+    frames = [frame for frame in frames if frame['timestamp_ns'] in evaluation_timestamps]
+    print(len(frames))
+    sequences = {(log_id, description): frames}
+
+    if is_gt:
+        print(output_dir / log_id / f'{description}_{log_id[:8]}_ref_gt.pkl')
+        save(sequences, output_dir / log_id / f'{description}_{log_id[:8]}_ref_gt.pkl')
+    else:
+        save(sequences, output_dir / log_id / f'{description}_{log_id[:8]}_ref_predictions.pkl')
+
+    print(f'Scenario pkl file for {description}_{log_id[:8]} saved successfully.')
+
+    return True

@@ -5,12 +5,12 @@ from refAV.atomic_functions import *
 import refAV.paths as paths
 
 
-dataset_dir = paths.SM_DATA_DIR.parent / 'val'
-output_dir = Path("output/sm_predictions/val")
-log_id = '0b86f508-5df9-4a46-bc59-5b9536dbde9f'
+dataset_dir = Path('/data3/crdavids/refAV/dataset/test')
+output_dir = Path("output/visualization")
+log_id = 'b40c0cbf-5d35-30df-9f63-de088ada278e'
 log_dir = dataset_dir / log_id
 
-scenarios = [0,1,2,3,4,5,6,7,8,9,10]
+scenarios = [5]
 
 
 #Secenario 1: vehicle in the wrong lane
@@ -62,7 +62,7 @@ if 5 in scenarios:
 
     vehicle_uuids = get_objects_of_category(log_dir, category='VEHICLE')
     left_turn = turning(vehicle_uuids, log_dir, direction='left')
-    output_scenario(left_turn, description, log_dir, output_dir,relationship_edges=True)
+    output_scenario(left_turn, description, log_dir, output_dir, visualize=True)
 
 
 #Scenario 6: waiting_for_pedestrian_to_cross
