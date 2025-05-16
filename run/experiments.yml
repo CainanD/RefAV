@@ -255,6 +255,59 @@ exp46:
   tracker: Valeo4Cast_Tracking_clip
 
 
+exp47:
+  name: exp47
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections_2hz
+
+exp48:
+  name: exp48
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections_2hz
+
+exp49:
+  name: exp49
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: BEVFusion_Detections_2hz
+
+exp50:
+  name: exp50
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections_2hz
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # bottom k filtering, ignore these results
 exp11:

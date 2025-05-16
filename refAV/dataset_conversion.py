@@ -130,7 +130,7 @@ def filter_ids_by_score(track_data):
         else:
             topk = 100
         for i in range(min(topk, len(sorted_ids))):
-            print(sorted_ids[i][1])
+            #print(sorted_ids[i][1])
             kept_ids.append(sorted_ids[i][0])
             id_timestamps = id_stats[sorted_ids[i][0]][0]
             for timestamp in id_timestamps:
@@ -145,7 +145,7 @@ def filter_ids_by_score(track_data):
                         kept_ids_per_timestamp[id_timestamp].append(sorted_ids[i][0])
                 i += 1
 
-    print(f'filtered from {len(id_stats.keys())} to {len(kept_ids)} ids')
+    #print(f'filtered from {len(id_stats.keys())} to {len(kept_ids)} ids')
 
     return kept_ids
 
@@ -253,12 +253,12 @@ def process_sequences(log_id, track_data, dataset_dir, base_output_dir, filter=T
         
         output_path = log_dir / "annotations.feather"
         df.to_feather(output_path)
-        print(f"Created feather file: {output_path}")
+        #print(f"Created feather file: {output_path}")
 
         add_ego_to_annotation(output_path.parent, output_path.parent)
         output_path.unlink()
 
-    print(f'Tracking predictions processed for log-id {log_id}')
+    #print(f'Tracking predictions processed for log-id {log_id}')
 
 
 
@@ -272,7 +272,7 @@ def pickle_to_feather(dataset_dir, input_pickle_path, base_output_dir="output"):
         base_output_dir: Base directory for output folders
     """
 
-    print(f"Reading pickle file: {input_pickle_path}")
+    #print(f"Reading pickle file: {input_pickle_path}")
 
     with open(input_pickle_path, 'rb') as f:
         data = pickle.load(f)
@@ -312,14 +312,14 @@ def add_ego_to_annotation(log_dir:Path, output_dir:Path=Path('output')):
 
     combined_df = pd.concat([annotations_df, ego_df], ignore_index=True)
     feather.write_feather(combined_df, output_dir / 'sm_annotations.feather')
-    print(f'Successfully added ego to annotations for log {log_dir.name}.')
+    #print(f'Successfully added ego to annotations for log {log_dir.name}.')
 
 
 def feather_to_csv(feather_path, output_dir):
     df:pd.DataFrame = feather.read_feather(feather_path)
     output_filename = output_dir + '/output.csv'
     df.to_csv('output.csv', index=False)
-    print(f'Successfully saved to {output_filename}')
+    #print(f'Successfully saved to {output_filename}')
 
 
 def mining_category_from_df(df:pd.DataFrame, mining_category:str):
@@ -465,7 +465,7 @@ def create_gt_mining_pkls_parallel(scenario_mining_annotations_path, output_dir:
     )
     
     # Display a progress bar for the overall process
-    print(f"Processing {len(tasks)} log-prompt combinations using {num_processes} processes")
+    #print(f"Processing {len(tasks)} log-prompt combinations using {num_processes} processes")
     
     # Use a Pool of workers to process in parallel
     with mp.Pool(processes=num_processes) as pool:

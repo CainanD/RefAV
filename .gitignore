@@ -8,6 +8,7 @@
 *.csv
 *.pt
 *.png
+*.gz
 
 */output/
 output/

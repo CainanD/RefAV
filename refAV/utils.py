@@ -1009,6 +1009,7 @@ def get_log_split(log_dir:Union[str,Path]):
 @cache_manager.create_cache('get_map')
 def get_map(log_dir: Path):
 
+    log_dir = Path(log_dir)
     try:
         avm = ArgoverseStaticMap.from_map_dir(log_dir / 'map', build_raster=True)
     except:
@@ -1020,6 +1021,8 @@ def get_map(log_dir: Path):
 
 def get_ego_SE3(log_dir:Path):
     """Returns list of ego_to_city SE3 transformation matrices"""
+
+    log_dir = Path(log_dir)
     try:
         ego_poses = read_city_SE3_ego(log_dir)
     except:
