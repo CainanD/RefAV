@@ -376,7 +376,7 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     related_dict = key_by_timestamps(relationship_dict)
 
     ego_uuid = get_ego_uuid(log_dir)
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     ego_df = df[df['track_uuid'] == ego_uuid]
     timestamps = sorted(ego_df['timestamp_ns'])
     frequency = 1/(float(timestamps[1] - timestamps[0])/1E9)
@@ -519,7 +519,7 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
      
 
 def append_relationship_edges(relationship_edge_mesh:pv.PolyData, track_uuid, related_uuids, log_dir, timestamp, transform:SE3):
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
     track_df = df[df['track_uuid'] == track_uuid]
     timestamped_track = track_df[track_df['timestamp_ns'] == timestamp]
     track_pos = timestamped_track[['tx_m', 'ty_m', 'tz_m']].to_numpy()
@@ -591,7 +591,7 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
     related_transforms = []
 
     ego_poses = get_ego_SE3(log_dir)
-    df = read_feather(log_dir / 'annotations_with_ego.feather')
+    df = read_feather(log_dir / 'sm_annotations.feather')
 
     for track_uuid, timestamp in track_first_appearences.items():
         track_df = df[df['track_uuid'] == track_uuid]
@@ -622,7 +622,7 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
         for j in range(5):
             plotter.write_frame()
 
-
+"""
 def visualize_rgb(
     dataset_dir: Path,
     cuboid_csv: Path,
@@ -631,10 +631,10 @@ def visualize_rgb(
     description: str,
     annotation_dir = Path('/data3/crdavids/refAV/dataset/test/'),
     ) -> None:
-    """
+    
     Generates videos visualizing the 3D bounding boxes from an output feather file.
     Only used for visualizing the ground truth
-    """
+    
     print(f"Generating visualization for {log_id} - {description}...")
 
     if not cuboid_csv.exists():
@@ -678,7 +678,7 @@ def visualize_rgb(
 
     i = log_id_to_start_index[log_id]
     datum = dataloader[i]
-    annotations_path = annotation_dir / log_id / 'annotations_with_ego.feather'
+    annotations_path = annotation_dir / log_id / 'sm_annotations.feather'
     anno_df = pd.read_feather(annotations_path)
 
     while datum.log_id == log_id:
@@ -749,3 +749,4 @@ if __name__ == "__main__":
 
 
     pass
+"""
