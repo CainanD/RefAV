@@ -59,10 +59,11 @@ if 4 in scenarios:
 if 5 in scenarios:
 
     description='turning left'
-
+    ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
     vehicle_uuids = get_objects_of_category(log_dir, category='VEHICLE')
     left_turn = turning(vehicle_uuids, log_dir, direction='left')
-    output_scenario(left_turn, description, log_dir, output_dir, visualize=True)
+    near_ego = near_objects(left_turn, ego, log_dir, distance_thresh=20)
+    output_scenario(near_ego, description, log_dir, output_dir, visualize=True, with_map=False, with_lidar=True)
 
 
 #Scenario 6: waiting_for_pedestrian_to_cross

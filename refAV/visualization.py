@@ -333,7 +333,7 @@ def plot_map_pv(avm:ArgoverseStaticMap, plotter:pv.Plotter) -> list[vtk.vtkActor
     return actors
 
 def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=True, description='scenario visualization',
-                        with_map=True, with_cf=False, with_lidar=False, relationship_edges=False, stride=1, av2_log_dir=None,
+                        with_map=True, with_cf=False, with_lidar=True, relationship_edges=False, stride=3, av2_log_dir=None,
                         display_progress=True):
     """
     Generate a birds-eye-view video of a series of LiDAR scans.
@@ -359,8 +359,8 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     log_id = log_dir.name
 
     set_camera_position_pv(plotter, scenario_dict, relationship_dict, log_dir)
-    plotter.add_legend([(description,'black'),(log_dir.name,'black')],
-                        bcolor='white', border=True, loc='upper left',size=(.7,.1))
+    #plotter.add_legend([(description,'black'),(log_dir.name,'black')],
+    #                    bcolor='white', border=True, loc='upper left',size=(.7,.1))
 
     if with_map:
         avm = get_map(log_dir)
@@ -513,8 +513,8 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
 
     scenario_center = np.concatenate(((tr_corner+bl_corner)/2, [scenario_height]))
     height_above_scenario = 1.1*(np.linalg.norm(tr_corner-bl_corner))/(2*np.tan(np.deg2rad(plotter.camera.view_angle)/2))
-
-    camera_height = min(max(scenario_height+height_above_scenario, scenario_height+100), scenario_height+400)
+    print(scenario_height)
+    camera_height = min(max(scenario_height+height_above_scenario-20, scenario_height), scenario_height+100)
     plotter.camera_position = [tuple(scenario_center+[0,0,camera_height]), (scenario_center), (0, 1, 0)]
      
 
@@ -684,7 +684,7 @@ def visualize_rgb(
     while datum.log_id == log_id:
 
         try:
-            i += 5
+            i += 2
             datum = dataloader[i]
             timestamp = datum.timestamp_ns
             timestamp_df = df[df['timestamp_ns'] == timestamp]
@@ -717,16 +717,15 @@ def visualize_rgb(
                             city_SE3_ego_cam_t,
                         )
                         cam_name_to_img[cam_name] = img
+                                        # Save the frame
+
+                        out_path = output_log_dir / cam_name / f"{description}_{timestamp}.png"
+                        out_path.parent.mkdir(parents=True, exist_ok=True)
+                        cv2.imwrite(str(out_path), img)
             
                 if len(cam_name_to_img) < len(cam_names):
                     continue
 
-                tiled_img = tile_cameras(cam_name_to_img, bev_img=None)
-
-                # Save the frame
-                out_path = output_log_dir / f"{timestamp}.png"
-                cv2.imwrite(str(out_path), tiled_img)
-                rendered_count += 1
 
         except Exception as e:
             print(f"\nError during rendering frame {i} for log {log_id}: {e}")
