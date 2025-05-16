@@ -170,22 +170,42 @@ def eval_prompt(prompt, log_ids, tracker, split, load_model, device):
     return clip_scores
 
 
-def eval_similarity_scores(tracker_json, k):
+def eval_prompt_bow(prompt, log_ids, tracker, split, load_model, device):
 
-    #Given a json file with structure {prompt:{log_id:{track_uuid:{timestamp:confidence},},},}
-    # we want to assign a yes/no per track
+    print(f"Worker process {os.getpid()} is using device {device}")
 
-    #For each prompt, we have all of the tracks in each associated log.
-    #Each track is split into timestamps and given a confidence value for each timestamp.
-    #For each prompt,
-    # 1. Lay out the confidence scores along a number line
-    # 2. Cluster the confidence scores and select the the top k clusters
-    # 3. If the majority of the track applies to the topk clusters, store that track_id
-    # 4. Add visualization for the number line.
+    if load_model:
+        model, preprocess = clip.load("ViT-L/14", device=device)
+        data_loader = AV2SensorDataLoader(data_dir=paths.AV2_DATA_DIR / split, labels_dir=paths.AV2_DATA_DIR / split)
+    else:
+        model = None
+        preprocess = None
+        data_loader = None
+        device = 'cpu'
 
-    # output a json file with the structure {prompt:{log_id:[track_uuid,],},}
+    clip_scores = {}
+    clip_scores[prompt] = {}
 
-    pass
+    description_features = get_description_features(prompt, model, device)
+    #print(description_features)
+    
+    np.random.shuffle(log_ids)
+    for log_id in log_ids:
+        log_dir = paths.TRACKER_PRED_DIR / tracker / split / log_id
+        track_features = get_track_features(log_dir, data_loader, model, preprocess, device)
+        for track_uuid, timestamped_features in track_features.items():
+            for timestamp, image_features in timestamped_features.items():
+
+                cos_similarity = torch.cosine_similarity(description_features.flatten(), image_features.flatten(), dim=0)
+
+                if log_id not in clip_scores[prompt]:
+                    clip_scores[prompt][log_id] = {}
+                if track_uuid not in clip_scores[prompt][log_id]:
+                    clip_scores[prompt][log_id][track_uuid] = {}
+                clip_scores[prompt][log_id][track_uuid][timestamp] = cos_similarity.item()
+
+    return clip_scores
+
 
 
 if __name__ == '__main__':
@@ -199,6 +219,8 @@ if __name__ == '__main__':
     parser.add_argument("--start_index", type=int, default=0, help="Enter the name of the experiment from experiments.yml you would like to run.")
     parser.add_argument("--end_index", type=int, default=500, help="Enter the name of the experiment from experiments.yml you would like to run.")
     parser.add_argument("--load_model", type=bool, default=True, help="Enter the name of the experiment from experiments.yml you would like to run.")
+    parser.add_argument("--bow", type=bool, default=True, help="Enter the name of the experiment from experiments.yml you would like to run.")
+
 
     args = parser.parse_args()
 
@@ -217,9 +239,14 @@ if __name__ == '__main__':
 
     # Now pass necessary arguments to the worker function
     # The worker function will load the model and dataloader itself
+    if args.bow:
+        similarity_func = eval_prompt_bow
+    else:
+        similarity_func = eval_prompt
+
     with Pool(processes=os.cpu_count()//10) as pool:
         # Pass args needed to initialize dataloader and model in worker
-        clip_scores = pool.starmap(eval_prompt, 
+        clip_scores = pool.starmap(similarity_func, 
                 [(prompt, log_ids, args.tracker, args.split, args.load_model, main_process_device) 
                  for i, (prompt, log_ids) in enumerate(plp.items())])
 
@@ -230,5 +257,11 @@ if __name__ == '__main__':
     all_clip_scores = convert_numpy_types(all_clip_scores)
 
     # Ensure you are writing to the file, not opening with 'rb'
-    with open(f'baselines/clip_track/similarity_scores/{args.tracker}_{args.start_index}_{args.end_index}.json', 'w') as file:
+    if args.bow:
+        output_path = Path(f'baselines/clip_track/similarity_scores/bow/{args.tracker}_{args.split}_{args.start_index}_{args.end_index}.json')
+    else:
+        output_path = Path(f'baselines/clip_track/similarity_scores/{args.tracker}_{args.split}_{args.start_index}_{args.end_index}.json')
+
+    output_path.mkdir(parents=True, exist_ok=True)
+    with open(output_path, 'w') as file:
         json.dump(all_clip_scores, file, indent=4) 

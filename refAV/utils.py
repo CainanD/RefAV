@@ -1667,7 +1667,7 @@ def get_related_objects(relationship_dict):
 
 
 def get_objects_of_prompt(log_dir, prompt):
-    return to_scenario_dict(get_uuids_of_category(log_dir, prompt), log_dir)
+    return to_scenario_dict(get_uuids_of_prompt(log_dir, prompt), log_dir)
 
 def get_uuids_of_prompt(log_dir, prompt):
     df = read_feather(log_dir / 'sm_annotations.feather')
@@ -1746,7 +1746,7 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
             yaw = Rotation.from_matrix(ego_to_city.compose(cuboid.dst_SE3_object).rotation).as_euler('zxy')[0]
 
             if timestamp in referred_objects and track_uuid in referred_objects[timestamp]:
-                category = "REFERRED_OBJECT"
+                category = "REFERRED_OBJECT"                                                                                                                            
                 label = 0
             elif timestamp in related_objects and track_uuid in related_objects[timestamp]:
                 category = "RELATED_OBJECT"

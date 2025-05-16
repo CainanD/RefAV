@@ -14,7 +14,7 @@ import shutil
 
 from av2.evaluation.scenario_mining.eval import evaluate
 from av2.datasets.sensor.splits import TEST, TRAIN, VAL
-from refAV.utils import cache_manager, get_log_split
+from refAV.utils import cache_manager, get_log_split, get_objects_of_prompt
 from refAV.code_generation import predict_scenario_from_description
 from refAV.atomic_functions import *
 import refAV.paths as paths
@@ -288,8 +288,11 @@ if __name__ == '__main__':
         total_lpp += len(prompts)
 
     i = 0
-    for log_id, prompts in log_prompts.items():
+    log_prompt_pairs = list(log_prompts.items())
+    np.random.shuffle(log_prompt_pairs)
+    for (log_id, prompts) in log_prompt_pairs:
         cache_manager.clear_all()
+        np.random.shuffle(prompts)
         for prompt in tqdm(prompts, desc=f'{i}/{total_lpp}'):
             create_baseline_prediction(prompt, log_id, llm_name, tracker_name, exp_name)
             i += 1

@@ -2,6 +2,8 @@ import json
 import numpy as np
 from sklearn.cluster import KMeans
 from collections import defaultdict
+import warnings
+import regex as re
 import os
 import matplotlib
 import pandas as pd
@@ -12,8 +14,6 @@ from refAV.utils import get_log_split, swap_keys_and_listed_values
 from tqdm import tqdm
 import refAV.paths as paths
 from refAV.atomic_functions import output_scenario, get_objects_of_category
-import warnings
-warnings.filterwarnings("ignore")
 
 
 def eval_similarity_scores(
@@ -34,7 +34,7 @@ def eval_similarity_scores(
     """
     output_json_path = Path(output_json_path)
     input_json_path = Path(input_json_path)
-    #log_id_feather = {}
+    log_id_feather = {}
 
     # Load input JSON
     try:
@@ -73,7 +73,7 @@ def eval_similarity_scores(
             #split = get_log_split(log_id)
             #if log_id not in log_id_feather:
             #    log_id_feather[log_id] = pd.read_feather(
-            #        paths.TRACKER_PRED_DIR / (input_json_path.stem.split('_')[0] + '_' + input_json_path.stem.split('_')[1]) / split / log_id / 'sm_annotations.feather')
+            #        paths.TRACKER_PRED_DIR / input_json_path.stem / split / log_id / 'sm_annotations.feather')
 
             output_data[prompt_id][log_id] = []
             if not isinstance(tracks_in_log, dict):
@@ -94,13 +94,10 @@ def eval_similarity_scores(
                     )
                     continue
                 
-                #Reduces the amount of length 1 tracks that make it through to the final set
-                modifier = -0.05/len(timestamps)
-                modifier = 0
                 for _, confidence in timestamps.items():
                     if isinstance(confidence, (int, float)):
-                        all_confidence_scores_for_prompt.append(confidence + modifier)
-                        current_track_scores.append(confidence + modifier)
+                        all_confidence_scores_for_prompt.append(confidence)
+                        current_track_scores.append(confidence)
                     else:
                         warnings.warn(
                             f"Warning: Invalid confidence value '{confidence}' (type: {type(confidence)}) "
@@ -119,7 +116,6 @@ def eval_similarity_scores(
             #category = track_pred_df[track_pred_df['track_uuid'] == track_uuid]['category'].unique()[0]
 
             if (np.sum(np.where(track_scores > threshold, 1, 0))/len(track_scores)) > 0.5:
-                #print(f'{prompt_id}: {category}')
                 output_data[prompt_id][log_id].append(track_uuid)
 
         output_file = output_json_path / input_json_path.stem / f'{prompt_id}.json'
@@ -129,55 +125,55 @@ def eval_similarity_scores(
 
     return output_data
 
-def convert_similarity_scores_to_tracker(tracker, log_prompt_pairs_path):
+def convert_detections_to_tracker(log_prompt_pairs_path, detections_dir:Path):
 
     with open(log_prompt_pairs_path, 'rb') as file:
         lpp = json.load(file)
 
-    split = get_log_split(list(lpp.keys())[0])
-    plp = swap_keys_and_listed_values(lpp)
+    num_found = 0
+    print(len(list(detections_dir.iterdir())))
+    for log_id, prompts in lpp.items():
+        split = get_log_split(log_id)
+        log_df = None
 
-    log_id_to_tracker_feather = {}
-    log_id_to_clip_feather = {}
-    for prompt, log_ids in tqdm(list(plp.items())):
-        with open(f'baselines/clip_track/similarity_scores/{tracker}_{split}/{prompt}.json', 'rb') as file:
-            track_ids = json.load(file)
+        for prompt in prompts:
+            file_found = False
+            for detection_file in detections_dir.iterdir():
+                if not detection_file.is_file():
+                    continue
 
-        for log_id in log_ids:
-            if log_id not in log_id_to_tracker_feather:
-                log_id_to_tracker_feather[log_id] = pd.read_feather(paths.TRACKER_PRED_DIR / tracker / split / log_id / 'sm_annotations.feather')
+                substrings = detection_file.stem.split('_')
+                if len(substrings) < 3 or substrings[1] != log_id:
+                    continue
+                
+                description_substrings = substrings[2:]
+                reconstructed_description = description_substrings[0]
+                for i in range(1, len(description_substrings)):
+                    reconstructed_description += ("_" + description_substrings[i])
 
-            tracker_df = log_id_to_tracker_feather[log_id]
-            clip_df = tracker_df[tracker_df['track_uuid'].isin(track_ids[log_id])]
-            clip_df['prompt'] = prompt
+                safe_prompt = re.sub(r'[^\w\-]+', '_', prompt).strip('_').lower()[:50]
 
-            if log_id not in log_id_to_clip_feather:
-                log_id_to_clip_feather[log_id] = clip_df
-            else:
-                log_id_to_clip_feather[log_id] = pd.concat([log_id_to_clip_feather[log_id], clip_df], axis=0)
+                if reconstructed_description == safe_prompt and '.feather' in detection_file.name:
+                    num_found += 1
+                    file_found=True
+                    prompt_df = pd.read_feather(detection_file)
+                    prompt_df['prompt'] = prompt
+                    prompt_df['category'] = "REFERRED_OBJECT"
 
-    
-    for log_id, clip_df in log_id_to_clip_feather.items():
-        clip_tracker_path = Path(paths.TRACKER_PRED_DIR / (tracker + '_clip') / split / log_id / 'sm_annotations.feather')
-        clip_tracker_path_csv = Path(paths.TRACKER_PRED_DIR / (tracker + '_clip') / split / log_id / 'sm_annotations.csv')
-        clip_tracker_path.parent.mkdir(parents=True, exist_ok=True)
-        print(clip_tracker_path)
-    
-        clip_df.to_csv(clip_tracker_path_csv)
-        clip_df.to_feather(clip_tracker_path)
+                    if log_df is None:
+                        log_df = prompt_df
+                    else:
+                        log_df = pd.concat((log_df, prompt_df))
+                    break
+            if not file_found:
+                print(safe_prompt)
+                print(reconstructed_description)
+                raise Exception(f'{prompt} detection file not found for log {log_id}')
 
+        dest = paths.TRACKER_PRED_DIR / 'groundingSAM' / split / log_id / 'sm_annotations.feather'
+        dest.parent.mkdir(exist_ok=True, parents=True)
+        log_df.to_feather(dest)
 
-#similarity_score_dir = Path('/home/crdavids/Trinity-Sync/refbot/baselines/clip_track/similarity_scores')
-#for file in similarity_score_dir.iterdir():
-#    if not file.is_file():
-#        continue
-
-tracker = 'Valeo4Cast_Tracking'
-split = 'val'
-
-try:
-    eval_similarity_scores(f'/home/crdavids/Trinity-Sync/refbot/baselines/clip_track/similarity_scores/{tracker}_{split}.json',
-                'baselines/clip_track/similarity_scores', majority_threshold=.9)
-    print('Converting to tracker ...')
-    convert_similarity_scores_to_tracker(tracker, f'/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_{split}.json')
-except: pass
+print('Converting to tracker ...')
+convert_detections_to_tracker('/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_test.json',
+                              Path('baselines/groundingSAM/output'))

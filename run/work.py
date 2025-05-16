@@ -1,8 +1,7 @@
-from refAV.eval import combine_pkls, evaluate_pkls, compile_results
+from refAV.eval import combine_pkls, evaluate_pkls
 import numpy as np
 from pathlib import Path
-from refAV.utils import create_mining_pkl, get_log_split, read_feather
-from av2.datasets.sensor.sensor_dataloader import SensorDataloader
+from refAV.utils import create_mining_pkl
 import pickle
 import refAV.paths as paths
 import yaml
@@ -14,46 +13,39 @@ import pickle
 import os
 import concurrent.futures
 from tqdm import tqdm
+from refAV.dataset_conversion import pickle_to_feather
 import time # Added for potential debugging or timing
-from av2.datasets.sensor.splits import TRAIN, TEST, VAL
-
-with open('/home/crdavids/Trinity-Sync/refbot/baselines/groundingSAM/log_id_to_start_index.json') as file:
-    log_id_to_start_index = json.load(file)
 
 
-#create eval timestamps
-eval_timestamps = {}
-dataloader = SensorDataloader(paths.AV2_DATA_DIR, with_annotations=False)
+original_paths = []
+for pkl in list(paths.TRACKER_DOWNLOAD_DIR.iterdir()):
+    original_paths.append(pkl)
 
-for split in [TEST, VAL]:
-    for log_id in tqdm(split):
-        log_split = get_log_split(log_id)
-        sm_data_dir = Path('/data3/crdavids/refAV/dataset')
-        df = read_feather(sm_data_dir / log_split / log_id / 'annotations_with_ego.feather')
-        df_timestamps = sorted(df['timestamp_ns'].unique())[::5]
-        log_eval_timestamps = [int(timestamp) for timestamp in df_timestamps]
-        eval_timestamps[log_id] = log_eval_timestamps
-        print(len(log_eval_timestamps))
-        
-with open('output/eval_timestamps.json', 'w') as file:
-    json.dump(eval_timestamps, file, indent=4)
+for pkl in original_paths:
+    if '.pkl' not in pkl.name or 'Detections' not in pkl.name:
+        continue
+    
+    tracker = pkl.stem.split('_')[0] + '_' + pkl.stem.split('_')[1]
+    split = pkl.stem.split('_')[2]
 
-"""
-all_descriptions = []
-with open('/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_test.json', 'rb') as file:
-    lpp_test = json.load(file)
-with open('/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_val.json', 'rb') as file:
-    lpp_val = json.load(file)
-for lpp in [lpp_test, lpp_val]:
-    for prompts in lpp.values():
-        all_descriptions.extend(prompts)
+    with open(paths.SM_DOWNLOAD_DIR / 'eval_timestamps.json', 'rb') as file:
+        eval_timestamps_by_log_id = json.load(file)
 
-all_descriptions = list(set(all_descriptions))
-code = "objects=get_objects_of_prompt(log_dir, description)\noutput_scenario(objects,description,log_dir,output_dir)"
+    with open(pkl, 'rb') as file:
+        sequences = pickle.load(file)
 
-for description in all_descriptions:
-    output_path = paths.LLM_PRED_DIR / 'objects_of_assigned_description' / (description+'.txt')
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w') as file:
-        file.write(code)
-"""
+    sub_sampled_pkl = {}
+    for sequence_id, frames in sequences.items():
+        log_id = sequence_id
+
+        if sequence_id not in sub_sampled_pkl:
+            sub_sampled_pkl[sequence_id] = []
+        for frame in frames:
+            if frame['timestamp_ns'] in eval_timestamps_by_log_id[log_id]:
+                sub_sampled_pkl[sequence_id].append(frame)
+
+    sub_sampled_pkl_path = paths.TRACKER_DOWNLOAD_DIR / (pkl.stem + '_2hz.pkl')
+    with open(sub_sampled_pkl_path, 'wb') as file:
+        pickle.dump(sub_sampled_pkl, file)
+
+    pickle_to_feather(paths.AV2_DATA_DIR / split, sub_sampled_pkl_path, paths.TRACKER_PRED_DIR / (tracker + '_2hz') / split)

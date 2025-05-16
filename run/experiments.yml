@@ -33,6 +33,10 @@ tracker:
 - ground_truth
 # Baselines
 - Le3DE2D_Tracking_clip
+- ReVoxelDet_Tracking_clip
+- ground_truth_clip
+- TransFusion_Tracking_clip
+- Valeo4Cast_Tracking_clip
 - groundingSAM
 
 #Ground truth experiments
@@ -52,6 +56,12 @@ exp19:
   name: exp19
   LLM: claude-3-7-classes
   split: test
+  tracker: ground_truth
+
+exp25:
+  name: exp25
+  LLM: claude-3-7-sonnet-20250219
+  split: val
   tracker: ground_truth
 
 #from here all experiments are chronological
@@ -117,7 +127,136 @@ exp10:
   split: test
   tracker: ReVoxelDet_Tracking
 
-#Changed to bottomk filtering
+# Changed to topk filtering
+exp26:
+  name: exp26
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp27:
+  name: exp27
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: Valeo4Cast_Tracking
+
+exp28:
+  name: exp28
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections
+
+exp29:
+  name: exp29
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections
+
+exp30: 
+  name: exp30
+  LLM: objects_of_assigned_description
+  tracker: groundingSAM
+  split: test
+
+exp31:
+  name: exp31
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: DGIST_Tracking
+
+exp32:
+  name: exp32
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections
+
+exp33:
+  name: exp33
+  LLM: objects_of_assigned_description
+  split: test
+  tracker: Le3DE2D_Tracking_clip
+
+exp34:
+  name: exp34
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: DGIST_Tracking
+
+exp35:
+  name: exp35
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: TransFusion_Tracking
+
+exp36:
+  name: exp36
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: BEVFusion_Detections
+
+exp37:
+  name: exp37
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: ReVoxelDet_Detections
+
+exp38:
+  name: exp38
+  LLM: claude-3-7-classes
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp39:
+  name: exp39
+  LLM: gemini-2.0-flash
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp40:
+  name: exp40
+  LLM: Qwen2.5-7B-Instruct
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp41:
+  name: exp41
+  LLM: gemini-2.5-flash-preview-04-17
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp42:
+  name: exp42
+  LLM: objects_of_assigned_description
+  split: test
+  tracker: Le3DE2D_Tracking_clip
+
+exp43:
+  name: exp43
+  LLM: objects_of_assigned_description
+  split: test
+  tracker: ReVoxelDet_Tracking_clip
+
+exp44:
+  name: exp44
+  LLM: objects_of_assigned_description
+  split: test
+  tracker: ground_truth_clip
+
+exp45:
+  name: exp45
+  LLM: objects_of_assigned_description
+  split: test
+  tracker: TransFusion_Tracking_clip
+
+exp46:
+  name: exp46
+  LLM: objects_of_assigned_description
+  split: val
+  tracker: Valeo4Cast_Tracking_clip
+
+
+
+# bottom k filtering, ignore these results
 exp11:
   name: exp11
   LLM: claude-3-5-sonnet-20241022
@@ -190,51 +329,3 @@ exp24:
   split: test
   tracker: Le3DE2D_Tracking
 
-exp25:
-  name: exp25
-  LLM: claude-3-7-sonnet-20250219
-  split: val
-  tracker: ground_truth
-
-# Changed to topk filtering
-exp26:
-  name: exp26
-  LLM: claude-3-5-sonnet-20241022
-  split: test
-  tracker: Le3DE2D_Tracking
-
-exp27:
-  name: exp27
-  LLM: claude-3-7-sonnet-20250219
-  split: val
-  tracker: Valeo4Cast_Tracking
-
-exp28:
-  name: exp28
-  LLM: claude-3-7-sonnet-20250219
-  split: test
-  tracker: Valeo4Cast_Detections
-
-exp29:
-  name: exp29
-  LLM: claude-3-7-sonnet-20250219
-  split: test
-  tracker: LT3D_Detections
-
-exp30: 
-  name: exp30
-  LLM: all-objects
-  tracker: groundingSAM
-  split: test
-
-exp31:
-  name: exp31
-  LLM: claude-3-7-sonnet-20250219
-  split: val
-  tracker: DGIST_Tracking
-
-exp32:
-  name: exp32
-  LLM: claude-3-7-sonnet-20250219
-  split: test
-  tracker: Le3DE2D_Detections

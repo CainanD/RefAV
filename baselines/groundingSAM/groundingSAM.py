@@ -551,16 +551,13 @@ def generate_sensor_dataset_visualizations(
     valid_ring = {x.value for x in RingCameras}
     cam_names_str = tuple(x.value for x in RingCameras)
     cam_enums = [RingCameras(cam) for cam in cam_names_str if cam in valid_ring]
-    cam_names_enum = tuple(cam_enums)
+    cam_names=tuple(cam_enums)
 
     # Load AV2 dataloader for the specific log
     try:
         dataloader = SensorDataloader(
             dataset_dir, # Should be the root AV2 'Sensor' directory
-            log_ids=[log_id], # Load only the relevant log
-            cam_names=cam_names_enum,
             with_annotations=False, # We load annotations from our CSV
-            verbose=False
         )
     except Exception as e:
         print(f"Error initializing SensorDataloader for log {log_id}: {e}")
@@ -591,16 +588,23 @@ def generate_sensor_dataset_visualizations(
         return
 
     # --- Rendering Loop ---
-    output_log_dir = output_vis_dir / f"{log_id}_{description.replace(' ', '_')[:30]}" # Shorten desc for filename
+    output_log_dir = output_vis_dir / f"{log_id}_{description}" # Shorten desc for filename
     output_log_dir.mkdir(parents=True, exist_ok=True)
     rendered_count = 0
 
-    for i in track(range(len(dataloader)), description=f"Rendering {log_id[:8]}..."):
+    with open('baselines/groundingSAM/log_id_to_start_index.json', 'rb') as file:
+        log_id_to_start_index = json.load(file)
+
+    i = log_id_to_start_index[log_id]
+    datum = dataloader[i]
+
+    while datum.log_id == log_id:
         if rendered_count >= frames_to_render:
             print(f"Reached render limit ({frames_to_render}) for {log_id}")
             break
 
         try:
+            i += 5
             datum = dataloader[i]
             lidar_timestamp_ns = datum.timestamp_ns
 
@@ -613,47 +617,29 @@ def generate_sensor_dataset_visualizations(
             timestamp_city_SE3_ego_dict = datum.timestamp_city_SE3_ego_dict
             synchronized_imagery = datum.synchronized_imagery
 
-            if synchronized_imagery is None:
-                continue
-
-            cam_name_to_img = {}
-            valid_frame = True
-            for cam_name_enum in cam_names_enum:
-                cam_name_str = cam_name_enum.value
-                if cam_name_str in synchronized_imagery:
-                    cam_data = synchronized_imagery[cam_name_str]
-                    if cam_data.timestamp_ns in timestamp_city_SE3_ego_dict:
-                        city_SE3_ego_cam_t = timestamp_city_SE3_ego_dict[cam_data.timestamp_ns]
-                        img = cam_data.img.copy()
-
-                        # Project cuboids onto this camera image
-                        img = current_cuboid_list.render_on_image(
+            if synchronized_imagery is not None:
+                cam_name_to_img = {}
+                for cam_name, cam in synchronized_imagery.items():
+                    if cam.timestamp_ns in timestamp_city_SE3_ego_dict:
+                        city_SE3_ego_cam_t = timestamp_city_SE3_ego_dict[cam.timestamp_ns]
+                        img = cam.img.copy()
+                        img = current_cuboid_list.project_to_cam(
                             img,
-                            cam_data.camera_model,
-                            city_SE3_ego_t=city_SE3_ego_cam_t,
-                            city_SE3_ego_rendering_t=city_SE3_ego_cam_t, # Assuming rendering at camera time
-                            thickness=2 # Use the monkey-patched default or set explicitly
+                            cam.camera_model,
+                            city_SE3_ego_cam_t,
+                            city_SE3_ego_cam_t,
                         )
-                        cam_name_to_img[cam_name_str] = img
-                    else:
-                        #print(f"Missing pose for camera {cam_name_str} at ts {cam_data.timestamp_ns}")
-                        valid_frame = False
-                        break
-                else:
-                    #print(f"Missing synchronized image for camera {cam_name_str}")
-                    valid_frame = False
-                    break
+                        cam_name_to_img[cam_name] = img
             
-            if not valid_frame or len(cam_name_to_img) != len(cam_names_enum):
-                continue # Skip if any camera is missing or poses are missing
+                if len(cam_name_to_img) < len(cam_names):
+                    continue
 
-            # Tile the images
-            tiled_img = tile_cameras(cam_name_to_img, list(cam_names_str)) # Pass camera order explicitly
+                tiled_img = tile_cameras(cam_name_to_img, bev_img=None)
 
-            # Save the frame
-            out_path = output_log_dir / f"{lidar_timestamp_ns}.png"
-            cv2.imwrite(str(out_path), tiled_img)
-            rendered_count += 1
+                # Save the frame
+                out_path = output_log_dir / f"{lidar_timestamp_ns}.png"
+                cv2.imwrite(str(out_path), tiled_img)
+                rendered_count += 1
 
         except Exception as e:
             print(f"\nError during rendering frame {i} for log {log_id}: {e}")
@@ -765,6 +751,7 @@ def main(log_id, gpu_id, args):
         output_feather = output_dir / f"{output_stem}.feather"
         output_vis_dir = output_dir / "visualizations_3d"
 
+        print(f'{log_id}, {description}')
         if output_csv.exists() and output_feather.exists() and not args.overwrite:
             print(f"    Output files exist, skipping generation.")
             # Still run visualization if requested and vis output doesn't exist
@@ -947,7 +934,7 @@ if __name__ == "__main__":
     parser.add_argument("--overwrite", default=False, help="Overwrite existing output CSV/Feather files.")
     parser.add_argument("--visualize_groundingdino", default=False, help="Save annotated images from GroundingDINO.")
     parser.add_argument("--visualize_sam", default=False, help="Save annotated images with SAM masks.")
-    parser.add_argument("--visualize_output", default=False, help="Generate 3D bounding box visualizations on camera images after processing.")
+    parser.add_argument("--visualize_output", default=True, help="Generate 3D bounding box visualizations on camera images after processing.")
     parser.add_argument("--vis_frames", type=int, default=50, help="Maximum number of frames to render for 3D visualization per log/prompt.")
 
     args = parser.parse_args()
