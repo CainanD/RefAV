@@ -166,18 +166,13 @@ def convert_similarity_scores_to_tracker(tracker, log_prompt_pairs_path):
         clip_df.to_csv(clip_tracker_path_csv)
         clip_df.to_feather(clip_tracker_path)
 
+if __name__ == "__main__":
+    tracker = 'Valeo4Cast_Tracking'
+    split = 'val'
 
-#similarity_score_dir = Path('/home/crdavids/Trinity-Sync/refbot/baselines/clip_track/similarity_scores')
-#for file in similarity_score_dir.iterdir():
-#    if not file.is_file():
-#        continue
-
-tracker = 'Valeo4Cast_Tracking'
-split = 'val'
-
-try:
-    eval_similarity_scores(f'/home/crdavids/Trinity-Sync/refbot/baselines/clip_track/similarity_scores/{tracker}_{split}.json',
-                'baselines/clip_track/similarity_scores', majority_threshold=.9)
-    print('Converting to tracker ...')
-    convert_similarity_scores_to_tracker(tracker, f'/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_{split}.json')
-except: pass
+    try:
+        eval_similarity_scores(f'/home/crdavids/Trinity-Sync/refbot/baselines/clip_track/similarity_scores/{tracker}_{split}.json',
+                    'baselines/clip_track/similarity_scores', majority_threshold=.9)
+        print('Converting to tracker ...')
+        convert_similarity_scores_to_tracker(tracker, f'/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_{split}.json')
+    except: pass

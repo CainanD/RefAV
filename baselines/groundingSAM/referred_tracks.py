@@ -1,19 +1,15 @@
 import json
 import numpy as np
-from sklearn.cluster import KMeans
 from collections import defaultdict
 import warnings
 import regex as re
-import os
 import matplotlib
 import pandas as pd
 matplotlib.use('Agg') # Use a non-interactive backend for saving plots to files
 import matplotlib.pyplot as plt
 from pathlib import Path
 from refAV.utils import get_log_split, swap_keys_and_listed_values
-from tqdm import tqdm
 import refAV.paths as paths
-from refAV.atomic_functions import output_scenario, get_objects_of_category
 
 
 def eval_similarity_scores(
@@ -174,6 +170,7 @@ def convert_detections_to_tracker(log_prompt_pairs_path, detections_dir:Path):
         dest.parent.mkdir(exist_ok=True, parents=True)
         log_df.to_feather(dest)
 
-print('Converting to tracker ...')
-convert_detections_to_tracker('/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_test.json',
-                              Path('baselines/groundingSAM/output'))
+if __name__ == "__main__":
+    print('Converting to tracker ...')
+    convert_detections_to_tracker('/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_test.json',
+                                Path('baselines/groundingSAM/output'))

@@ -1,5 +1,5 @@
 *.pkl
-*.feather
+*.feather 
 *.json
 *.mp4
 *.pyc
@@ -18,5 +18,4 @@ refav/__pycache__/
 evaluation/
 ModelOutputs/
 docs/
-requirements.txt
-work.py
+run/work.py
