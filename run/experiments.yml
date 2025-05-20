@@ -31,6 +31,12 @@ tracker:
 - ReVoxelDet_Detections
 - LT3D_Detections
 - ground_truth
+- AV2_Detections_2hz
+- BEVFusion_Detections_2hz
+- Le3DE2D_Detections_2hz
+- Valeo4Cast_Detections_2hz
+- ReVoxelDet_Detections_2hz
+- LT3D_Detections_2hz
 # Baselines
 - Le3DE2D_Tracking_clip
 - ReVoxelDet_Tracking_clip
@@ -254,7 +260,6 @@ exp46:
   split: val
   tracker: Valeo4Cast_Tracking_clip
 
-
 exp47:
   name: exp47
   LLM: claude-3-7-sonnet-20250219
@@ -280,15 +285,56 @@ exp50:
   tracker: LT3D_Detections_2hz
 
 
+# Round 2 of 2hz vs 10hz experiments
+# Features 2hz detections, no RefProg filtering,
+# and equivalent timestamp dilation
+exp51:
+  name: exp51
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections_2hz
 
+exp52:
+  name: exp52
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections_2hz
 
+exp53:
+  name: exp53
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: BEVFusion_Detections_2hz
 
+exp54:
+  name: exp54
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections_2hz
 
+exp55:
+  name: exp55
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections
 
+exp56:
+  name: exp56
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections
 
+exp57:
+  name: exp57
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: BEVFusion_Detections
 
-
-
+exp58:
+  name: exp58
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections
 
 
 

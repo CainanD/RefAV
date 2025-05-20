@@ -17,5 +17,4 @@ refav/refAV.egg-info/
 refav/__pycache__/
 evaluation/
 ModelOutputs/
-docs/
 run/work.py

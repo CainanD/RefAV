@@ -1230,10 +1230,10 @@ def post_process_scenario(scenario, log_dir) -> dict:
     if dict_empty(scenario):
         return True
 
-    remove_empty_branches(scenario)
-    filter_by_length(scenario, min_timesteps=2)
+    #remove_empty_branches(scenario)
+    #filter_by_length(scenario, min_timesteps=2)
     filter_by_relationship_distance(scenario, log_dir, max_distance=50)
-    dilate_timestamps(scenario, log_dir, min_length=3)
+    dilate_timestamps(scenario, log_dir, min_timespan_s=1.5)
 
     if dict_empty(scenario):
         return False
@@ -1269,14 +1269,18 @@ def filter_by_relationship_distance(scenario, log_dir, max_distance=50):
                     scenario[track_uuid].pop(related_uuid)
 
 
-def dilate_timestamps(scenario, log_dir, min_length=15, log_df = None):
+def dilate_timestamps(scenario, log_dir, min_timespan_s:float=1.5, log_df = None):
 
     if log_df is None:
         log_df = read_feather(log_dir / 'sm_annotations.feather')
 
+    timestamps = sorted(log_df['timestamp_ns'].unique())
+    timestep_s = 1E-9*(timestamps[1]-timestamps[0])
+    min_length = round(min_timespan_s/timestep_s)
+
     for track_uuid, related_objects in scenario.items():
         if isinstance(related_objects, dict):
-            dilate_timestamps(related_objects, log_dir, min_length, log_df=log_df)
+            dilate_timestamps(related_objects, log_dir, min_timespan_s, log_df=log_df)
 
         elif isinstance(related_objects, list):
             referred_timestamps = sorted(related_objects)
