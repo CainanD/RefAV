@@ -1,7 +1,7 @@
 ## RefAV: Mining Referred Scenarios in Autonomous Vehicle Datasets using LLMs
 
 <p align="center">
-  <img src="docs/figures/pipeline.png" alt="RefAV Method">
+  <img src="pipeline.png" alt="RefAV Method">
 </p>
 
 A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios -- the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrive and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
@@ -16,7 +16,7 @@ RefAV serves as the baseline for the 2025 Argoverse2 Scenario Mining Challenge. 
 
 :3rd_place_medal: 3rd Place: $2,000
 
-To be eligible for prizes, teams must submit a technical report, open source their code, and provide instructions on how to reproduce their results. 
+To be eligible for prizes, teams must submit a technical report, open source their code, and provide instructions on how to reproduce their results. Teams must also beat our best performing official baseline and make their submission visible by the end of the competition to be eligible for prizes.
 
 The scenario mining test split and EvalAI leaderboard will both open on May 7th, 2025. The scenario mining train and val split are available for download now. You may test your method using the available val leaderboard. The val split results are not factored into the competition. 
 
@@ -52,6 +52,8 @@ s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
 
 ### Generating Detections and Tracks
 See the [LT3D repository](https://github.com/neeharperi/LT3D) for information on training a baseline detector and tracker on the Argoverse 2 dataset. The tutorial notebook includes code to download a sample set of tracks.
+
+We provide additional tracking outputs from previous winning Argoverse submissions on the test set [here](https://drive.google.com/file/d/1X19D5pBBO56eb_kvPOePLLhHDCsY0yql/view)
 
 ### Running the Code
 
@@ -151,4 +153,16 @@ The ego vehicle has the following bounding box across all logs and timestamps
 Any questions or discussion are welcome! Please raise an issue (preferred), or send me an email.
 
 Cainan Davidson [crdavids@andrew.cmu.edu]
+
+## Citation
+If you find our paper and code repository useful, please cite us:
+```bib
+@article{davidson2025refav,
+  title={RefAV: Towards Planning-Centric Scenario Mining},
+  author={Davidson, Cainan and Ramanan, Deva and Peri, Neehar},
+  journal={arXiv preprint arXiv:2505.20981},
+  year={2025}
+}
+```
+
 
