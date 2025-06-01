@@ -1,7 +1,7 @@
 ## RefAV: Mining Referred Scenarios in Autonomous Vehicle Datasets using LLMs
 
 <p align="center">
-  <img src="figures/baseline.pdf" alt="RefAV Method">
+  <img src="pipeline.png" alt="RefAV Method">
 </p>
 
 A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios -- the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrive and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
@@ -51,7 +51,7 @@ s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
 ```
 
 ### Generating Detections and Tracks
-See the [LT3D repository](https://github.com/neeharperi/LT3D) for information on training a baseline detector and tracker on the Argoverse 2 dataset. Predictions from several baseline trackers for both the test and val sets can be downloaded from [Google Drive](https://drive.google.com/file/d/1X19D5pBBO56eb_kvPOePLLhHDCsY0yql/view).
+See the [LT3D repository](https://github.com/neeharperi/LT3D) for information on training a baseline detector and tracker on the Argoverse 2 dataset.
 
 We provide additional tracking outputs from previous winning Argoverse submissions on the test set [here](https://drive.google.com/file/d/1X19D5pBBO56eb_kvPOePLLhHDCsY0yql/view)
 
