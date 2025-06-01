@@ -9,7 +9,7 @@ from copy import deepcopy
 from functools import wraps
 import scipy
 import json
-import pandas as pd
+import pickle
 from collections import OrderedDict
 
 from av2.structures.cuboid import Cuboid, CuboidList
@@ -1695,9 +1695,6 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
     """
 
     log_id = log_dir.name
-
-    #data_columns = ['log_id', 'prompt', 'track_uuid', 'mining_category', 'timestamp_ns']
-    all_data = []
     frames = []
     (output_dir / log_id).mkdir(exist_ok=True)
     
@@ -1777,8 +1774,6 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
             except:
                 frame['score'][i] = 1.0
 
-            all_data.append([log_id, description, track_uuid, category, timestamp])
-
         frames.append(frame)
 
     sequences = {(log_id, description): frames}
@@ -1787,3 +1782,109 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
 
     return True
 
+
+def fix_pred_pkl(prediction_pkl:Path, label_pkl:Path, output_filename:Path) -> None:
+    """
+    Aligns the sequences and timestamps between a prediction PKL file with the label PKL file. 
+    Pads the prediction pkl with a default prediction for timestamps and log-prompt pairs that are in the annotations
+    PKL but not the prediction PKL. Remove timestamps found within the prediction PKL that are not within the label PKL
+    """
+
+    with open(prediction_pkl, 'rb') as file:
+        predictions:dict = pickle.load(file)
+
+    with open(label_pkl, 'rb') as file:
+        labels:dict = pickle.load(file)   
+
+    #Remove sequences and timestamps from the predictions that are not in the labels 
+    filtered_predictions = {}
+
+    for seq_id, pred_frames in predictions.items():
+        if seq_id not in labels:
+            continue
+
+        label_frames = labels[seq_id]
+        label_timestamps = []
+        for frame in label_frames:
+            label_timestamps.append(frame['timestamp_ns'])
+
+        filtered_frames = []
+        for frame in pred_frames:
+            if frame['timestamp_ns'] in label_timestamps:
+                filtered_frames.append(frame)
+
+        filtered_predictions[seq_id] = filtered_frames
+
+    if not filtered_predictions:
+        print('Supplied prediction pkl and label pkl have no overlap! Make sure you are supplying the correct combination' \
+        'of predictions and labels.')
+        return
+
+    #Add default sequences and timestamps that are in the labels but not in the timestamps
+    fixed_predictions = {}
+
+    for seq_id, label_frames in labels.items():
+        frame_infos_dict = {}
+        for frame in label_frames:
+            timestamp = frame['timestamp_ns']
+            frame_infos_dict[timestamp] = {
+                'timestamp_ns': timestamp,
+                'seq_id': frame['seq_id'],
+                'ego_translation_m': frame['ego_translation_m']
+            }
+            if 'description' in frame:
+                frame_infos_dict[timestamp]['description'] = frame['description']
+
+
+        if seq_id not in filtered_predictions:
+            default_sequence = create_default_sequence(frame_infos_dict)
+            fixed_predictions[seq_id] = default_sequence
+            continue
+
+        pred_frames = filtered_predictions[seq_id]
+        pred_timestamps = []
+        for frame in pred_frames:
+            pred_timestamps.append(frame['timestamp_ns'])
+
+        for frame in label_frames:
+            timestamp = frame['timestamp_ns']
+            if timestamp not in pred_timestamps:
+                print(f'Timestamp {timestamp} appended')
+                pred_frames.append(create_default_frame(frame_infos_dict[timestamp]))
+
+        assert len(pred_frames) == len(label_frames)
+        fixed_predictions[seq_id] = pred_frames
+    assert len(fixed_predictions) == len(labels)
+
+    with open(output_filename, 'wb') as file:
+        pickle.dump(fixed_predictions, file)
+
+
+def create_default_frame(frame_infos) -> dict:
+
+    frame = {}
+    frame['seq_id'] = frame_infos['seq_id']
+    frame['timestamp_ns'] = frame_infos['timestamp_ns']
+    frame['ego_translation_m'] = frame_infos['ego_translation_m']
+    if 'description' in frame_infos:
+        frame['description'] = frame_infos['description']
+
+    frame['translation_m'] = np.zeros((1, 3))
+    frame['translation_m'][0] = frame['ego_translation_m']
+    frame['velocity_m_per_s'] = np.zeros((1,3), dtype=np.float32)
+    frame['size'] = np.zeros((1,3), dtype=np.float32)
+    frame['yaw'] = np.zeros(1, dtype=np.float32)
+    frame['label'] = np.array([2], dtype=np.int32)
+    frame['name'] = np.array(['OTHER_OBJECT'], dtype='<U31')
+    frame['track_id'] = np.zeros(1, dtype=np.int32)
+    frame['score'] = np.zeros(1, dtype=np.float32)
+
+    return frame
+
+
+def create_default_sequence(frame_infos_dict:dict) -> list:
+    sequence = []
+    for frame_infos in frame_infos_dict.values():
+        sequence.append(create_default_frame(frame_infos))
+
+    return sequence

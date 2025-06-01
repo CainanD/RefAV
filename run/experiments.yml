@@ -31,6 +31,7 @@ tracker:
 - ReVoxelDet_Detections
 - LT3D_Detections
 - ground_truth
+- ground_truth_2hz
 - AV2_Detections_2hz
 - BEVFusion_Detections_2hz
 - Le3DE2D_Detections_2hz
@@ -335,6 +336,12 @@ exp58:
   LLM: claude-3-7-sonnet-20250219
   split: test
   tracker: LT3D_Detections
+
+exp59:
+  name: exp59
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: ground_truth_2hz
 
 
 

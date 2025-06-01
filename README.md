@@ -1,7 +1,7 @@
 ## RefAV: Mining Referred Scenarios in Autonomous Vehicle Datasets using LLMs
 
 <p align="center">
-  <img src="docs/figures/pipeline.png" alt="RefAV Method">
+  <img src="docs/figures/pipeline.PNG" alt="RefAV Method">
 </p>
 
 A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios -- the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrive and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
@@ -51,7 +51,7 @@ s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
 ```
 
 ### Generating Detections and Tracks
-See the [LT3D repository](https://github.com/neeharperi/LT3D) for information on training a baseline detector and tracker on the Argoverse 2 dataset. The tutorial notebook includes code to download a sample set of tracks.
+See the [LT3D repository](https://github.com/neeharperi/LT3D) for information on training a baseline detector and tracker on the Argoverse 2 dataset. Predictions from several baseline trackers for both the test and val sets can be downloaded from [Google Drive](https://drive.google.com/file/d/1X19D5pBBO56eb_kvPOePLLhHDCsY0yql/view).
 
 ### Running the Code
 
@@ -59,16 +59,26 @@ All of the code necessary for unpacking the dataset, generating referred track p
 and evaluating the predictions against the ground truth can be found in the `tutorial.ipynb` file.
 It also includes some basic tutorials about how to define and visualize a scenario.
 
+Our experimental results and test/val submissions can be reproduced directly by running `python run_experiment.py --exp_name <exp_name>`. All experiments are found in the `experiments.yml` file.
+
 ### Benchmark Evaluation
 
 | **Metric** | **Description** |
 |------------|-----------------|
-| HOTA-Temporal | HOTA on temporally localized tracks. |
-| HOTA | HOTA on the full length of a track |
-| Timestamp F1 | Timestamp level classification metric |
-| Scenario F1 | Scenario level classification metric. |
+| HOTA-Temporal | HOTA on temporally localized tracks |
+| HOTA-Track | HOTA on the full length of a track |
+| Timestamp Balanced Accuracy | Timestamp level classification metric |
+| Log Balanced Accuracy | Data log/scenario level classification metric |
 
 ### Submission Format
+
+Submissions can be made through through the [EvalAI](https://eval.ai/) CLI. To submit to the to the validation and test sets respectively, create an EvalAI profile and run
+```bash
+pip install evalai
+evalai set_token <EvalAI_account_token>
+evalai challenge 2469 phase 4899 submit --file /path/to/submission_val.pkl --large
+evalai challenge 2469 phase 4898 submit --file /path/to/submission_test.pkl --large
+```
 
 The evaluation expects a dictionary of lists of dictionaries
 ```python
@@ -98,7 +108,6 @@ name: Object class name.
 translation_m: xyz-components of the object translation in the city reference frame, in meters.  
 size: Object extent along the x,y,z axes in meters.  
 yaw: Object heading rotation along the z axis.  
-An example looks like this:
 
 ### Example Submission
 ```python

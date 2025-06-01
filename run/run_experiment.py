@@ -8,8 +8,8 @@ from refAV.parallel_scenario_prediction import run_parallel_eval
 from refAV.eval import evaluate_pkls, combine_pkls
 
 parser = argparse.ArgumentParser(description="Example script with arguments")
-parser.add_argument("--exp_name", type=str, required=True, help="Enter the name of the experiment from experiments.yml you would like to run.")
-parser.add_argument("--procs_per_task", type=int, default=3, help="Enter the name of the experiment from experiments.yml you would like to run.")
+parser.add_argument("--exp_name", type=str, default='exp53', help="Enter the name of the experiment from experiments.yml you would like to run.")
+parser.add_argument("--procs_per_task", type=int, default=3, help="The number of processes your eval script should launch with")
 args = parser.parse_args()
 
 with open(paths.EXPERIMENTS, 'rb') as file:

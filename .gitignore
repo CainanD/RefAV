@@ -12,9 +12,11 @@
 
 */output/
 output/
+output/visualization
 refav/evaluation/
 refav/refAV.egg-info/
 refav/__pycache__/
 evaluation/
 ModelOutputs/
 run/work.py
+tracker_downloads/
