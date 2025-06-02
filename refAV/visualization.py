@@ -102,7 +102,7 @@ def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE
                 font_size=10,
                 show_points=False,
                 shape_opacity=0.3,     # Semi-transparent background
-                font_family='arial'
+                font_family='times'
             )
             actors.append(labels)
         
@@ -333,8 +333,8 @@ def plot_map_pv(avm:ArgoverseStaticMap, plotter:pv.Plotter) -> list[vtk.vtkActor
     return actors
 
 def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=True, description='scenario visualization',
-                        with_map=True, with_cf=False, with_lidar=True, relationship_edges=False, stride=3, av2_log_dir=None,
-                        display_progress=True):
+                        with_map=True, with_cf=False, with_lidar=True, relationship_edges=False, stride=1, av2_log_dir=None,
+                        display_progress=True, save_pdfs=False):
     """
     Generate a birds-eye-view video of a series of LiDAR scans.
     
@@ -459,8 +459,10 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
         num_frames = max(1,int(FPS//frequency))
         for _ in range(num_frames):
             plotter.write_frame()
+    
+        if save_pdfs:
+            plotter.save_graphic(output_dir / f'{description}_{timestamp}.pdf')
 
-        # Add point cloud to the plotter
         plotter.remove_actor(timestamp_actors)
 
     # Finalize and close movie
@@ -543,30 +545,30 @@ def append_relationship_edges(relationship_edge_mesh:pv.PolyData, track_uuid, re
 
 def animate_legend_intro(plotter:pv.plotter):
     plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle'), ('3', 'red')],
-            bcolor='white', border=True, loc='upper left',size=(.267,.13))
+            bcolor='white', border=True, loc='upper left',size=(.267,.13), font_family='times')
     
     for j in range(3):
         plotter.write_frame()
 
     plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle'), (' 2', 'orange')],
-            bcolor='white', border=True, loc='upper left',size=(.267,.13))
+            bcolor='white', border=True, loc='upper left',size=(.267,.13),font_family='times')
     
     for j in range(3):
         plotter.write_frame()        
 
     plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle'), ('  1', 'yellow')],
-            bcolor='white', border=True, loc='upper left',size=(.267,.13))
+            bcolor='white', border=True, loc='upper left',size=(.267,.13),font_family='times')
     
     for j in range(3):
         plotter.write_frame()
     plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle'), ('   GO!', 'green')],
-            bcolor='white', border=True, loc='upper left',size=(.267,.13))
+            bcolor='white', border=True, loc='upper left',size=(.267,.13),font_family='times')
     
     for j in range(3):
         plotter.write_frame()
 
     plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle')],
-        bcolor='white', border=True, loc='upper left',size=(.2,.1))
+        bcolor='white', border=True, loc='upper left',size=(.2,.1),font_family='times')
 
 
 def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, related_dict:dict[str,dict]={}, description='scenario visualization'):
@@ -606,7 +608,7 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
         related_transforms.append(ego_poses[timestamp])
 
     plotter.add_legend([(description,'black'),(log_dir.name,'black')],
-                        bcolor='white', border=True, loc='upper left',size=(.7,.1))
+                        bcolor='white', border=True, loc='upper left',size=(.7,.1),font_family='times')
 
     for i in range(4):
         actors = []

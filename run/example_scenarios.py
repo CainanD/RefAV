@@ -5,7 +5,11 @@ from refAV.atomic_functions import *
 import refAV.paths as paths
 
 
+#Ground truth visualizations for paper
 dataset_dir = Path('/data3/crdavids/refAV/dataset/test')
+
+#Extracted data directory after following first steps of tutorial
+#dataset_dir = paths.SM_DATA_DIR / 'val'
 output_dir = Path("output/visualization")
 log_id = 'b40c0cbf-5d35-30df-9f63-de088ada278e'
 log_dir = dataset_dir / log_id
@@ -63,7 +67,7 @@ if 5 in scenarios:
     vehicle_uuids = get_objects_of_category(log_dir, category='VEHICLE')
     left_turn = turning(vehicle_uuids, log_dir, direction='left')
     near_ego = near_objects(left_turn, ego, log_dir, distance_thresh=20)
-    output_scenario(near_ego, description, log_dir, output_dir, visualize=True, with_map=False, with_lidar=True)
+    output_scenario(near_ego, description, log_dir, output_dir, visualize=True, with_map=False, with_lidar=True, with_intro=False, save_pdfs=True)
 
 
 #Scenario 6: waiting_for_pedestrian_to_cross

@@ -89,8 +89,8 @@ def predict_scenario_from_description(natural_language_description, output_dir:P
     with open(paths.PREDICTION_EXAMPLES, 'r') as f:
         prediction_examples = f.read().format()
 
-    #prompt = f"Please use the following functions to find instances of a referred object in an autonomous driving dataset. Be precise to the description, try to avoid returning false positives. {refav_context} \n {av2_categories}\n Define a single scenario for the description:{natural_language_description}\n Here is a list of examples: {prediction_examples}. Only output code and comments as part of a Python block. Feel free to use a liberal amount of comments. Do not define any additional functions, or filepaths. Do not include imports. Assume the log_dir and output_dir variables are given. Wrap all code in one python block and do not provide alternatives. Output code even if the given functions are not expressive enough to find the scenario. "
-    prompt = f"{av2_categories}\n Please select the one category that most corresponds to the object of focus in the description:{natural_language_description}\n As an example, for the description 'vehicle turning at intersection with nearby pedestrians' your output would be VEHICLE. For the description 'ego vehicle near construction barrel' your output would be EGO_VEHICLE. Your only output should be the category name, in all capital letters and including underscores if necessary. "
+    prompt = f"Please use the following functions to find instances of a referred object in an autonomous driving dataset. Be precise to the description, try to avoid returning false positives. {refav_context} \n {av2_categories}\n Define a single scenario for the description:{natural_language_description}\n Here is a list of examples: {prediction_examples}. Only output code and comments as part of a Python block. Feel free to use a liberal amount of comments. Do not define any additional functions, or filepaths. Do not include imports. Assume the log_dir and output_dir variables are given. Wrap all code in one python block and do not provide alternatives. Output code even if the given functions are not expressive enough to find the scenario. "
+    #prompt = f"{av2_categories}\n Please select the one category that most corresponds to the object of focus in the description:{natural_language_description}\n As an example, for the description 'vehicle turning at intersection with nearby pedestrians' your output would be VEHICLE. For the description 'ego vehicle near construction barrel' your output would be EGO_VEHICLE. Your only output should be the category name, in all capital letters and including underscores if necessary. "
 
     if 'gemini' in model_name.lower():
         response = predict_scenario_gemini(prompt, model_name)
@@ -100,10 +100,10 @@ def predict_scenario_from_description(natural_language_description, output_dir:P
         response = predict_scenario_claude(prompt, model_name)
 
     try:
-        #definition_filename = extract_and_save_code_blocks(response, output_dir=output_dir, #description=natural_language_description)[-1]
-        output_path = output_dir / (natural_language_description + '.txt')
-        with open(output_path, 'w') as file:
-            file.write(response)
+        definition_filename = extract_and_save_code_blocks(response, output_dir=output_dir, description=natural_language_description)[-1]
+        #output_path = output_dir / (natural_language_description + '.txt')
+        #with open(output_path, 'w') as file:
+        #    file.write(response)
         print(f'{natural_language_description} definition saved to {output_dir}')
         return definition_filename
     except Exception as e:
@@ -379,7 +379,7 @@ if __name__ == '__main__':
 
     print(len(all_descriptions))
 
-    output_dir = paths.LLM_PRED_DIR / 'classes2'
+    output_dir = paths.LLM_PRED_DIR / 'claude-3-7-sonnet-20250219'
     for description in all_descriptions:
         #break
         #predict_scenario_from_description(description, output_dir, model_name='claude-3-5-sonnet-20241022')
