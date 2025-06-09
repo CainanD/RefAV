@@ -1,7 +1,6 @@
 *.pkl
 *.feather 
 *.json
-*.mp4
 *.pyc
 *.pdf
 *.log
@@ -10,6 +9,7 @@
 *.png
 *.gz
 
+!eval_timestamps.json
 */output/
 output/
 output/visualization

@@ -1844,6 +1844,9 @@ def fix_pred_pkl(prediction_pkl:Path, label_pkl:Path, output_filename:Path) -> N
         pred_frames = filtered_predictions[seq_id]
         pred_timestamps = []
         for frame in pred_frames:
+            if len(frame['track_id'] == 0):
+                print('Zero-length frame changed')
+                frame = create_default_frame(frame_infos_dict[frame['timestamp_ns']])
             pred_timestamps.append(frame['timestamp_ns'])
 
         for frame in label_frames:
@@ -1852,6 +1855,8 @@ def fix_pred_pkl(prediction_pkl:Path, label_pkl:Path, output_filename:Path) -> N
                 print(f'Timestamp {timestamp} appended')
                 pred_frames.append(create_default_frame(frame_infos_dict[timestamp]))
 
+        print(len(label_frames))
+        print(len(pred_frames))
         assert len(pred_frames) == len(label_frames)
         fixed_predictions[seq_id] = pred_frames
     assert len(fixed_predictions) == len(labels)

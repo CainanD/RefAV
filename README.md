@@ -1,7 +1,7 @@
 ## RefAV: Mining Referred Scenarios in Autonomous Vehicle Datasets using LLMs
 
 <p align="center">
-  <img src="pipeline.png" alt="RefAV Method">
+  <img src="figures/pipeline.png" alt="RefAV Method">
 </p>
 
 A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios -- the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrive and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
@@ -24,14 +24,15 @@ The scenario mining test split and EvalAI leaderboard will both open on May 7th,
 
 Using [Conda](https://anaconda.org/anaconda/conda) is recommended for environment management
 ```
-conda create -n refav python=3.10
-conda activate refav
+conda create -n refAV python=3.10
+conda activate refAV
 ```
 
 All of the required libaries and packages can be installed with
 
 ```
 pip install -r requirements.txt
+export PYTHONPATH=.
 ```
 
 Running this code requires downloading the Argoverse2 test and val splits. Run the commands below to download the entire sensor dataset.

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RefAV: Towards Planning-Centric Scenario Mining</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0; /* Remove default body margin */
+            line-height: 1.6;
+            background-color: #f9f9f9; /* Light background for better contrast */
+        }
+        /* Main container to center all content and limit width */
+        .container {
+            max-width: 960px; /* Max width for readability */
+            margin: 2em auto; /* Center the container and add vertical margin */
+            padding: 1.5em;
+            background-color: #ffffff; /* White background for content */
+            border-radius: 8px; /* Slightly rounded corners for the content box */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); /* Subtle shadow */
+            text-align: center; /* Center align all text within the container by default */
+        }
+        h1, h2, h3 {
+            color: #333;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        p {
+            text-align: left; /* Override for paragraphs to align left */
+            margin-bottom: 1em;
+        }
+        .authors {
+            margin-bottom: 0.5em;
+        }
+        .author {
+            display: inline-block;
+            margin: 0 0.75em;
+        }
+        .author a, .section-links a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .author a:hover, .section-links a:hover {
+            text-decoration: underline;
+        }
+        .affiliation {
+            margin-bottom: 1em;
+            color: #555;
+        }
+        .section-links {
+            margin-bottom: 2em;
+        }
+        .section-links a {
+            margin: 0 1em;
+            padding: 0.5em 1em;
+            border: 1px solid #007bff;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .section-links a:hover {
+            background-color: #e6f2ff;
+        }
+        .figure-container {
+            margin: 2em auto; /* Center the figure container */
+            text-align: center;
+        }
+        .figure-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
+            gap: 1em;
+            margin: 1em auto; /* Center the grid container */
+            max-width: 800px; /* Limit grid width if needed */
+        }
+        .grid-item {
+            border: 1px solid #ddd;
+            padding: 0.5em;
+            text-align: center;
+            border-radius: 5px;
+            background-color: #fefefe;
+        }
+        .grid-item img {
+            max-width: 100%;
+            height: auto;
+            display: block; /* Remove extra space below image */
+            margin: 0 auto;
+        }
+        table {
+            width: 90%; /* Adjust width to make it fit better, then center */
+            border-collapse: collapse;
+            margin: 1.5em auto; /* Center the table */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            text-align: left; /* Align table content left by default */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+            word-wrap: break-word; /* Ensure long text wraps */
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            color: #444;
+        }
+        td {
+            background-color: #fff;
+        }
+        tr:nth-child(even) td {
+            background-color: #f8f8f8; /* Stripe effect for rows */
+        }
+        pre {
+            background-color: #eef;
+            padding: 1.5em;
+            border-radius: 5px;
+            overflow-x: auto;
+            text-align: left; /* Ensure code block text aligns left */
+            margin: 1.5em auto;
+            max-width: 90%; /* Adjust width for code block */
+        }
+        hr {
+            border: 0;
+            height: 1px;
+            background: #eee;
+            margin: 3em 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>RefAV: Towards Planning-Centric Scenario Mining</h1>
+
+        <div class="authors">
+            <div class="author"><a href="https://www.ri.cmu.edu/ri-people/cainan-ryan-davidson/" target="_blank">Cainan Davidson</a></div>
+            <div class="author"><a href="https://www.neeharperi.com/" target="_blank">Neehar Peri</a></div>
+            <div class="author"><a href="https://www.cs.cmu.edu/~deva/" target="_blank">Deva Ramanan</a></div>
+        </div>
+
+        <div class="affiliation">
+            Carnegie Mellon University
+        </div>
+
+        <div class="section-links">
+            <a href="https://github.com/CainanD/RefAV" target="_blank">Code</a>
+            <a href="https://argoverse.github.io/user-guide/tasks/scenario_mining.html#downloading-scenario-mining-annotations" target="_blank">Dataset</a>
+            <a href="https://arxiv.org/abs/2505.20981" target="_blank">arXiv</a>
+        </div>
+
+        <div class="figure-container">
+            <img src="figures/teaser.pdf" alt="Dataset Teaser">
+            <p><em>An example from the RefAV dataset.</em></p>
+        </div>
+
+        <hr>
+
+        <h2>Abstract</h2>
+        <p>
+            Autonomous Vehicles (AVs) collect and pseudo-label terabytes of multi-modal data localized to HD maps during normal fleet testing. However, identifying interesting and safety-critical scenarios from uncurated driving logs remains a significant challenge. Traditional scenario mining techniques are error-prone and prohibitively time-consuming, often relying on hand-crafted structured queries. In this work, we revisit spatio-temporal scenario mining through the lens of recent vision-language models (VLMs) to detect whether a described scenario occurs in a driving log and, if so, precisely localize it in both time and space. To address this problem, we introduce RefAV, a large-scale dataset of $10,000$ diverse natural language queries that describe complex multi-agent interactions relevant to motion planning derived from $1000$ driving logs in the Argoverse 2 Sensor dataset. We evaluate several referential multi-object trackers and present an empirical analysis of our baselines. Notably, we find that naively repurposing off-the-shelf VLMs yields poor performance, suggesting that scenario mining presents unique challenges.
+        </p>
+
+        <hr>
+
+        <h2>The RefAV Dataset</h2>
+        <p>
+            RefAV contains 10000 object-centric scenarios. Given a language prompt, we annotate the referred objects and timestamps that correspond to the prompt. We also annotate secondary objects that are related to the objects within the prompt.
+        </p>
+        <div class="grid-container">
+            <div class="grid-item"><img src="figures/passenger vehicle near stroller in road_n9.mp4" alt="Passenger vehicle near stroller in road"></div>
+            <div class="grid-item"><img src="figures/pedestrian with multiple dogs_n1.mp4" alt="Pedestrian with multiple dogs"></div>
+            <div class="grid-item"><img src="figures/ego vehicle merging between two regular vehicles_n1.mp4" alt="Ego vehicle merging between two regular vehicles"></div>
+            <div class="grid-item"><img src="figures/bicycle passing between bus and construction barrier_n2.mp4" alt="Bicycle passing between bus and construction barrier"></div>
+            <div class="grid-item"><img src="figures/ego vehicle approaching construction zone with traffic controller.mp4" alt="Ego vehicle approaching construction zone with traffic controller"></div>
+            <div class="grid-item"><img src="figures/Pedestrians walking between two stopped vehicles_0ab21841.mp4" alt="Pedestrian walking between two stopped vehicles"></div>
+        </div>
+
+        <hr>
+
+        <h2>RefProg: Referential Program Synthesis</h2>
+        <div class="figure-container">
+            <img src="figures/pipeline.png" alt="Refprog Figure">
+            <p><em>RefProg Method</em></p>
+        </div>
+        <p>
+            RefProg is a dual-path method that independently generates 3D perception outputs and Python-based programs for referential grounding. Given raw LiDAR and RGB inputs, RefProg runs a offline 3D perception model to generate high quality 3D tracks. In parallel, it prompts an LLM to generate code to identify the referred track. Finally, the generated code is executed to filter the output of the offline 3D perception model to produce a final set of {\tt referred objects} (shown in green), related objects (shown in blue), and {\tt other objects} (shown in red).
+        </p>
+
+        <hr>
+
+        <h2>Qualitative Results</h2>
+
+        <div class="grid-container">
+            <div class="grid-item"><img src="figures/group of at least 3 moving bicyclists within 5 meters of each other_n3.mp4" alt="Unambiguous Scenario"></div>
+            <div class="grid-item"><img src="figures/ego vehicle approaching construction zone with traffic controller.mp4" alt="Nested Relationships"></div>
+        </div>
+
+        <div class="grid-container">
+            <div class="grid-item"><img src="figures/car following closely behind bicyclist_n2.mp4" alt="Semantics"></div>
+            <div class="grid-item"><img src="figures/pulling out of parallel parking onto road_n0.mp4" alt="Expressivity"></div>
+        </div>
+
+        <hr>
+
+        <h2>Argoverse 2 Scenario Mining Competition 2025</h2>
+        <p>
+            Eight teams submitted to our benchmark as part of a CVPR 2025 Workshop on Autonomous Driving (WAD) competition. Thank you to all of those who participated!
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Participant team</th>
+                    <th>HOTA-Temporal (↑)</th>
+                    <th>HOTA-Track (↑)</th>
+                    <th>Timestamp Bal. Acc. (↑)</th>
+                    <th>Log Bal. Acc. (↑)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>Zeekr_UMCV (Zeekr_UMCV_v1.2)</td>
+                    <td>53.38</td>
+                    <td>51.05</td>
+                    <td>76.62</td>
+                    <td>66.34</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Mi3 UCM_AV2 (Mi3_test_v1)</td>
+                    <td>52.37</td>
+                    <td>51.53</td>
+                    <td>77.48</td>
+                    <td>65.82</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>zxh</td>
+                    <td>52.09</td>
+                    <td>50.24</td>
+                    <td>76.12</td>
+                    <td>66.52</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>LiDAR_GPT_VLM (v2)</td>
+                    <td>51.92</td>
+                    <td>51.91</td>
+                    <td>76.90</td>
+                    <td>66.74</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>RefProg</td>
+                    <td>50.15</td>
+                    <td>51.13</td>
+                    <td>74.03</td>
+                    <td>68.31</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <hr>
+
+        <h2>Citation</h2>
+        <p>If you find our paper and code repository useful, please cite us:</p>
+<pre><code>@article{davidson2025refav,
+  title={RefAV: Towards Planning-Centric Scenario Mining},
+  author={Davidson, Cainan and Ramanan, Deva and Peri, Neehar},
+  journal={arXiv preprint arXiv:2505.20981},
+  year={2025}
+}
+</code></pre>
+
+    </div> <!-- End of container -->
+
+</body>
+</html>
