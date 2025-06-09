@@ -9,6 +9,7 @@
 *.png
 *.gz
 
+!pipeline.png
 !eval_timestamps.json
 */output/
 output/
