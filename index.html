@@ -6,10 +6,11 @@
     <title>RefAV: Towards Planning-Centric Scenario Mining</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: "Times New Roman", Times, serif; /* Changed font to Times New Roman */
             margin: 0; /* Remove default body margin */
             line-height: 1.6;
             background-color: #f9f9f9; /* Light background for better contrast */
+            font-size: 1.1em; /* Slightly increased base font size */
         }
         /* Main container to center all content and limit width */
         .container {
@@ -67,17 +68,24 @@
             text-align: center;
         }
         .figure-container img {
-            max-width: 100%;
+            max-width: 100%; /* Ensures responsiveness */
             height: auto;
             border-radius: 5px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         .grid-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
             gap: 1em;
             margin: 1em auto; /* Center the grid container */
             max-width: 800px; /* Limit grid width if needed */
+        }
+        /* Specific styling for the dataset grid to force 2 columns */
+        .dataset-grid {
+            grid-template-columns: repeat(2, 1fr); /* Forces a 2-column layout for dataset videos */
+        }
+        /* Styling for qualitative results grids */
+        .qualitative-grid {
+            grid-template-columns: repeat(2, 1fr); /* Default 2 columns for qualitative results */
         }
         .grid-item {
             border: 1px solid #ddd;
@@ -85,12 +93,25 @@
             text-align: center;
             border-radius: 5px;
             background-color: #fefefe;
+            display: flex; /* Use flex for vertical centering of content */
+            flex-direction: column;
+            justify-content: space-between; /* Pushes content and caption apart */
         }
-        .grid-item img {
+        .grid-item video {
             max-width: 100%;
             height: auto;
-            display: block; /* Remove extra space below image */
+            display: block; /* Remove extra space below video */
             margin: 0 auto;
+            border-radius: 3px; /* Slightly rounded corners for media */
+            object-fit: cover; /* Ensures video covers the area without distortion */
+            flex-grow: 1; /* Allows video to take available space */
+        }
+        .grid-item p {
+            margin-top: 0.5em;
+            margin-bottom: 0;
+            text-align: center; /* Center caption text */
+            font-size: 0.9em; /* Slightly smaller font for captions */
+            color: #666;
         }
         table {
             width: 90%; /* Adjust width to make it fit better, then center */
@@ -155,8 +176,11 @@
         </div>
 
         <div class="figure-container">
-            <img src="figures/teaser.pdf" alt="Dataset Teaser">
-            <p><em>An example from the RefAV dataset.</em></p>
+            <!-- Changed to .jpg as PDF in <img> is not standard and added responsive styles -->
+            <img src="figures/teaser.jpg" alt="Teaser figure">
+            <p>
+                An example from the RefAV dataset.
+            </p>
         </div>
 
         <hr>
@@ -172,20 +196,51 @@
         <p>
             RefAV contains 10000 object-centric scenarios. Given a language prompt, we annotate the referred objects and timestamps that correspond to the prompt. We also annotate secondary objects that are related to the objects within the prompt.
         </p>
-        <div class="grid-container">
-            <div class="grid-item"><img src="figures/passenger vehicle near stroller in road_n9.mp4" alt="Passenger vehicle near stroller in road"></div>
-            <div class="grid-item"><img src="figures/pedestrian with multiple dogs_n1.mp4" alt="Pedestrian with multiple dogs"></div>
-            <div class="grid-item"><img src="figures/ego vehicle merging between two regular vehicles_n1.mp4" alt="Ego vehicle merging between two regular vehicles"></div>
-            <div class="grid-item"><img src="figures/bicycle passing between bus and construction barrier_n2.mp4" alt="Bicycle passing between bus and construction barrier"></div>
-            <div class="grid-item"><img src="figures/ego vehicle approaching construction zone with traffic controller.mp4" alt="Ego vehicle approaching construction zone with traffic controller"></div>
-            <div class="grid-item"><img src="figures/Pedestrians walking between two stopped vehicles_0ab21841.mp4" alt="Pedestrian walking between two stopped vehicles"></div>
+        <!-- Applied dataset-grid class for 3x2 layout -->
+        <div class="grid-container dataset-grid">
+            <div class="grid-item">
+                <video src="figures/passenger vehicle near stroller in road_n9.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Passenger vehicle near stroller in road</p>
+            </div>
+            <div class="grid-item">
+                <video src="figures/pedestrian with multiple dogs_n1.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Pedestrian with multiple dogs</p>
+            </div>
+            <div class="grid-item">
+                <video src="figures/ego vehicle merging between two regular vehicles_n1.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Ego vehicle merging between two regular vehicles</p>
+            </div>
+            <div class="grid-item">
+                <video src="figures/bicycle passing between bus and construction barrier_n2.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Bicycle passing between bus and construction barrier</p>
+            </div>
+            <div class="grid-item">
+                <video src="figures/ego vehicle approaching construction zone with traffic controller.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Ego vehicle approaching construction zone with traffic controller</p>
+            </div>
+            <div class="grid-item">
+                <video src="figures/Pedestrians walking between two stopped vehicles_0ab21841.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Pedestrians walking between two stopped vehicles</p>
+            </div>
         </div>
 
         <hr>
 
         <h2>RefProg: Referential Program Synthesis</h2>
         <div class="figure-container">
-            <img src="figures/pipeline.png" alt="Refprog Figure">
+            <img src="./figures/pipeline.png" alt="Refprog Figure">
             <p><em>RefProg Method</em></p>
         </div>
         <p>
@@ -196,14 +251,36 @@
 
         <h2>Qualitative Results</h2>
 
-        <div class="grid-container">
-            <div class="grid-item"><img src="figures/group of at least 3 moving bicyclists within 5 meters of each other_n3.mp4" alt="Unambiguous Scenario"></div>
-            <div class="grid-item"><img src="figures/ego vehicle approaching construction zone with traffic controller.mp4" alt="Nested Relationships"></div>
+        <h3>Strengths</h3>
+        <div class="grid-container qualitative-grid">
+            <div class="grid-item">
+                <video src="figures/group of at least 3 moving bicyclists within 5 meters of each other_n3.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Unambiguous Scenario</p>
+            </div>
+            <div class="grid-item">
+                <video src="figures/ego vehicle approaching construction zone with traffic controller.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Nested Relationships</p>
+            </div>
         </div>
 
-        <div class="grid-container">
-            <div class="grid-item"><img src="figures/car following closely behind bicyclist_n2.mp4" alt="Semantics"></div>
-            <div class="grid-item"><img src="figures/pulling out of parallel parking onto road_n0.mp4" alt="Expressivity"></div>
+        <h3>Weaknesses</h3>
+        <div class="grid-container qualitative-grid">
+            <div class="grid-item">
+                <video src="figures/car following closely behind bicyclist_n2.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Semantics (e.g., "car following closely")</p>
+            </div>
+            <div class="grid-item">
+                <video src="figures/pulling out of parallel parking onto road_n0.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Expressivity (e.g., complex maneuvers)</p>
+            </div>
         </div>
 
         <hr>
