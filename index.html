@@ -138,19 +138,19 @@
             background-color: #f8f8f8; /* Stripe effect for rows */
         }
         pre {
-            background-color: #eef;
-            padding: 1.5em;
+            background-color: #f0f0f0;
+            padding: 0.5em;
             border-radius: 5px;
             overflow-x: auto;
             text-align: left; /* Ensure code block text aligns left */
-            margin: 1.5em auto;
+            margin: 1em auto;
             max-width: 90%; /* Adjust width for code block */
         }
         hr {
             border: 0;
             height: 1px;
             background: #eee;
-            margin: 3em 0;
+            margin: 2em 0;
         }
     </style>
 </head>
@@ -176,34 +176,20 @@
         </div>
 
         <div class="figure-container">
-            <!-- Changed to .jpg as PDF in <img> is not standard and added responsive styles -->
             <img src="figures/teaser.jpg" alt="Teaser figure">
-            <p>
-                An example from the RefAV dataset.
-            </p>
         </div>
 
         <hr>
 
         <h2>Abstract</h2>
         <p>
-            Autonomous Vehicles (AVs) collect and pseudo-label terabytes of multi-modal data localized to HD maps during normal fleet testing. However, identifying interesting and safety-critical scenarios from uncurated driving logs remains a significant challenge. Traditional scenario mining techniques are error-prone and prohibitively time-consuming, often relying on hand-crafted structured queries. In this work, we revisit spatio-temporal scenario mining through the lens of recent vision-language models (VLMs) to detect whether a described scenario occurs in a driving log and, if so, precisely localize it in both time and space. To address this problem, we introduce RefAV, a large-scale dataset of $10,000$ diverse natural language queries that describe complex multi-agent interactions relevant to motion planning derived from $1000$ driving logs in the Argoverse 2 Sensor dataset. We evaluate several referential multi-object trackers and present an empirical analysis of our baselines. Notably, we find that naively repurposing off-the-shelf VLMs yields poor performance, suggesting that scenario mining presents unique challenges.
+            Autonomous Vehicles (AVs) collect and pseudo-label terabytes of multi-modal data localized to HD maps during normal fleet testing. However, identifying interesting and safety-critical scenarios from uncurated driving logs remains a significant challenge. Traditional scenario mining techniques are error-prone and prohibitively time-consuming, often relying on hand-crafted structured queries. In this work, we revisit spatio-temporal scenario mining through the lens of recent vision-language models (VLMs) to detect whether a described scenario occurs in a driving log and, if so, precisely localize it in both time and space. To address this problem, we introduce RefAV, a large-scale dataset of 10,000 diverse natural language queries that describe complex multi-agent interactions relevant to motion planning derived from 1000 driving logs in the Argoverse 2 Sensor dataset. We evaluate several referential multi-object trackers and present an empirical analysis of our baselines. Notably, we find that naively repurposing off-the-shelf VLMs yields poor performance, suggesting that scenario mining presents unique challenges.
         </p>
 
         <hr>
 
         <h2>The RefAV Dataset</h2>
-        <p>
-            RefAV contains 10000 object-centric scenarios. Given a language prompt, we annotate the referred objects and timestamps that correspond to the prompt. We also annotate secondary objects that are related to the objects within the prompt.
-        </p>
-        <!-- Applied dataset-grid class for 3x2 layout -->
         <div class="grid-container dataset-grid">
-            <div class="grid-item">
-                <video src="figures/passenger vehicle near stroller in road_n9.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
-                <p>Passenger vehicle near stroller in road</p>
-            </div>
             <div class="grid-item">
                 <video src="figures/pedestrian with multiple dogs_n1.mp4" controls loop muted autoplay playsinline>
                     Your browser does not support the video tag.
@@ -221,6 +207,12 @@
                     Your browser does not support the video tag.
                 </video>
                 <p>Bicycle passing between bus and construction barrier</p>
+            </div>
+            <div class="grid-item">
+                <video src="figures/passenger vehicle near stroller in road_n9.mp4" controls loop muted autoplay playsinline>
+                    Your browser does not support the video tag.
+                </video>
+                <p>Passenger vehicle near stroller in road</p>
             </div>
             <div class="grid-item">
                 <video src="figures/ego vehicle approaching construction zone with traffic controller.mp4" controls loop muted autoplay playsinline>
@@ -241,7 +233,6 @@
         <h2>RefProg: Referential Program Synthesis</h2>
         <div class="figure-container">
             <img src="./figures/pipeline.png" alt="Refprog Figure">
-            <p><em>RefProg Method</em></p>
         </div>
         <p>
             RefProg is a dual-path method that independently generates 3D perception outputs and Python-based programs for referential grounding. Given raw LiDAR and RGB inputs, RefProg runs a offline 3D perception model to generate high quality 3D tracks. In parallel, it prompts an LLM to generate code to identify the referred track. Finally, the generated code is executed to filter the output of the offline 3D perception model to produce a final set of {\tt referred objects} (shown in green), related objects (shown in blue), and {\tt other objects} (shown in red).
@@ -273,13 +264,13 @@
                 <video src="figures/car following closely behind bicyclist_n2.mp4" controls loop muted autoplay playsinline>
                     Your browser does not support the video tag.
                 </video>
-                <p>Semantics (e.g., "car following closely")</p>
+                <p>Semantics</p>
             </div>
             <div class="grid-item">
                 <video src="figures/pulling out of parallel parking onto road_n0.mp4" controls loop muted autoplay playsinline>
                     Your browser does not support the video tag.
                 </video>
-                <p>Expressivity (e.g., complex maneuvers)</p>
+                <p>Expressivity</p>
             </div>
         </div>
 
@@ -346,8 +337,8 @@
 
         <hr>
 
-        <h2>Citation</h2>
-        <p>If you find our paper and code repository useful, please cite us:</p>
+<h2>Citation</h2>
+<p>If you find our paper and code repository useful, please cite us:</p>
 <pre><code>@article{davidson2025refav,
   title={RefAV: Towards Planning-Centric Scenario Mining},
   author={Davidson, Cainan and Ramanan, Deva and Peri, Neehar},
