@@ -28,9 +28,7 @@ from refAV.utils import (
     unwrap_func, dilate_convex_polygon, polygons_overlap, is_point_in_polygon,
     swap_keys_and_listed_values, has_free_will, at_stop_sign_, remove_empty_branches,
     scenario_at_timestamps, reconstruct_track_dict, create_mining_pkl,
-    post_process_scenario, get_object, get_img_crops, get_best_img_bbox,
-    get_img_crop
-)
+    post_process_scenario, get_object, get_img_crops, get_best_bbox_per_timestamp)
 
 
 @composable_relational
@@ -219,8 +217,7 @@ def is_color(
     color:Literal["white", "silver", "black", "red", "yellow", "blue"],
 ) -> dict:
     """
-    Returns objects that are the given color, determined by CLIP. Can also be used
-    if the
+    Returns objects that are the given color, determined by SIGLIP2 feature similarity.
 
     Args:
         track_candidates: The objects you want to filter from (scenario dictionary).
@@ -1036,7 +1033,7 @@ def following(
     candidate_uuids:dict,
     log_dir:Path) -> dict:
     """
-    Returns timestamps when the tracked object is following a lead object
+    Returns timestamps when the tracked object is following a lead object.
     Following is defined simultaneously moving in the same direction and lane.
     """
 
@@ -1068,7 +1065,7 @@ def following(
         overlap_track_vel = track_vel[np.isin(track_timestamps, timestamps)]
         candidate_heading_similarity = np.zeros(len(timestamps))
 
-        candidate_cuboid = get_cuboid_from_uuid(track_uuid, log_dir)
+        candidate_cuboid = get_cuboid_from_uuid(candidate, log_dir)
         candidate_width = candidate_cuboid.width_m/2
 
         for i in range(len(timestamps)):
