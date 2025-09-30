@@ -100,16 +100,16 @@ The evaluation expects a dictionary of lists of dictionaries
 }
 ```
 
-log_id: Log id associated with the track, also called seq_id.  
-prompt: The prompt/description string that describes the scenario associated with the log.  
-timestamp_ns: Timestamp associated with the detections.  
-track_id: Unique id assigned to each track, this is produced by your tracker.  
-score: Track confidence.  
-label: Integer index of the object class. This is 0 for REFERRED_OBJECTs, 1 for RELATED_OBJECTs, and 2 for OTHER_OBJECTs  
-name: Object class name.  
-translation_m: xyz-components of the object translation in the city reference frame, in meters.  
-size: Object extent along the x,y,z axes in meters.  
-yaw: Object heading rotation along the z axis.  
+* log_id: Log id associated with the track, also called seq_id.  
+* prompt: The prompt/description string that describes the scenario associated with the log.  
+* timestamp_ns: Timestamp associated with the detections.  
+* track_id: Unique id assigned to each track, this is produced by your tracker.  
+* score: Track confidence.  
+* label: Integer index of the object class. This is 0 for REFERRED_OBJECTs, 1 for RELATED_OBJECTs, and 2 for OTHER_OBJECTs  
+* name: Object class name.  
+* translation_m: xyz-components of the object translation in the city reference frame, in meters.  
+* size: Object extent along the x,y,z axes in meters.  
+* yaw: Object heading rotation along the z axis.  
 
 ### Example Submission
 ```python
