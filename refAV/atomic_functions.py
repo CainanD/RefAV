@@ -974,7 +974,7 @@ def following(
         overlap_track_vel = track_vel[np.isin(track_timestamps, timestamps)]
         candidate_heading_similarity = np.zeros(len(timestamps))
 
-        candidate_cuboid = get_cuboid_from_uuid(track_uuid, log_dir)
+        candidate_cuboid = get_cuboid_from_uuid(candidate, log_dir)
         candidate_width = candidate_cuboid.width_m/2
 
         for i in range(len(timestamps)):

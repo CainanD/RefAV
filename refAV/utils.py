@@ -419,7 +419,7 @@ def get_scenario_lanes(track_uuid:str, log_dir:Path, avm=None)->dict[int,LaneSeg
 
                 if (turn_direction == 'left' and angular_velocity > 0.15) \
                 or (turn_direction == 'right' and angular_velocity < -0.15) \
-                or (turn_direction == 'straight' and 0.15 < angular_velocity < 0.15):
+                or (turn_direction == 'straight' and -0.15 < angular_velocity < 0.15):
                     most_points = len(lane_timestamps)
                     best_lane_id = lane_id
             

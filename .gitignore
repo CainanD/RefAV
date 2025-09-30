@@ -20,3 +20,4 @@ evaluation/
 ModelOutputs/
 run/work.py
 tracker_downloads/
+run/av2_to_nuscenes_tracking.py
