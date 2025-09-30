@@ -102,6 +102,33 @@ def is_category(track_candidates:dict, log_dir:Path, category:str):
     """
 
 
+def is_color(
+    track_candidates: dict,
+    log_dir: Path,
+    color:Literal["white", "silver", "black", "red", "yellow", "blue"],
+) -> dict:
+    """
+    Returns objects that are the given color, determined by CLIP. Can also be used
+    if the
+    
+    Args:
+        track_candidates: The objects you want to filter from (scenario dictionary).
+        log_dir: Path to scenario logs.
+        color: The color of the objects you want to return. Must be one of 'white', 'silver',
+               'black', 'red', 'yellow', or 'blue'. Inputting a different color defaults to returning all objects.
+    
+    Returns:
+        dict: 
+            A filtered scenario dictionary where:
+            - Keys are track UUIDs that meet the turning criteria.
+            - Values are nested dictionaries containing timestamps.
+    
+    Example:
+        ped_with_blue_shirt = is_color(pedestrians, log_dir, color='blue')
+        red_cars = is_color(cars, log_dir, color='red')
+    """
+
+
 def turning(
     track_candidates: dict,
     log_dir:Path,

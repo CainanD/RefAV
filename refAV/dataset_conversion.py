@@ -39,16 +39,16 @@ def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir
     print(f"Reading input feather file: {input_feather_path}")
     df = pd.read_feather(input_feather_path)
 
-    
     # Get unique log_ids
     unique_log_ids = df['log_id'].unique()
     print(f"Found {len(unique_log_ids)} unique log IDs")
     
     # Columns to exclude
-    exclude_columns = ['log_id', 'prompt', 'mining_category']
+    # TODO: revert back from NuPrompt experiments
+    exclude_columns = ['log_id']#, 'prompt', 'mining_category']
     
     # Process each log_id
-    for log_id in [tqdm(unique_log_ids)]:
+    for log_id in tqdm(unique_log_ids):
         # Create directory for this log_id
         log_dir = base_dir / str(log_id)
         log_dir.mkdir(exist_ok=True, parents=True)
@@ -56,14 +56,14 @@ def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir
         # Get all entries for this log_id
         log_data = df[df['log_id'] == log_id]
         
-        log_prompts = log_data['prompt'].unique()
-        log_data = log_data[log_data['prompt'] == log_prompts[0]]
+        #log_prompts = log_data['prompt'].unique()
+        #log_data = log_data[log_data['prompt'] == log_prompts[0]]
         
         # Keep only the "others" columns
         filtered_data = log_data.drop(columns=exclude_columns)
         
         # Save to a feather file
-        output_path = log_dir / 'sm_annotations.feather'
+        output_path = log_dir / 'city_SE3_egovehicle.feather'
         filtered_data.to_feather(output_path)
         print(f"Saved {output_path}")
     
@@ -484,9 +484,13 @@ if __name__ == "__main__":
     tracking_val_predictions = Path('tracker_predictions/Le3DE2E_tracking_predictions_val.pkl')
     sm_val_feather = Path('av2_sm_downloads/scenario_mining_val_annotations.feather')
 
-    separate_scenario_mining_annotations(sm_val_feather, SM_DATA_DIR)
+    # TODO: revert
+    streamPETR_preds_feather = Path('/home/crdavids/Trinity-Sync/StreamPETR/ego_poses.feather')
+    streamPETR_dir = Path('/home/crdavids/Trinity-Sync/refbot/output/tracker_predictions/StreamPETR_Tracking/nuprompt_val_large')
+
+    separate_scenario_mining_annotations(streamPETR_preds_feather, streamPETR_dir)
     #pickle_to_feather(AV2_DATA_DIR, tracking_val_predictions, SM_PRED_DIR)
-    create_gt_mining_pkls_parallel(sm_val_feather, SM_DATA_DIR, num_processes=max(1, int(.5*os.cpu_count())))
+    #create_gt_mining_pkls_parallel(sm_val_feather, SM_DATA_DIR, num_processes=max(1, int(.5*os.cpu_count())))
 
 
 

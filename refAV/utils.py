@@ -10,8 +10,12 @@ from functools import wraps
 import scipy
 import json
 import pickle
+from transformers import pipeline
 from collections import OrderedDict
+from PIL import Image
 
+from av2.datasets.sensor.av2_sensor_dataloader import AV2SensorDataLoader
+from av2.datasets.sensor.constants import StereoCameras
 from av2.structures.cuboid import Cuboid, CuboidList
 from av2.map.map_api import ArgoverseStaticMap
 from av2.map.lane_segment import LaneSegment
@@ -30,6 +34,7 @@ class CacheManager:
         self.num_processes = max(int(0.9 * os.cpu_count()), 1)
         self.semantic_lane_cache = None
         self.road_side_cache = None
+        self.color_cache = None
 
     def set_num_processes(self, num):
         self.num_processes = max(min(os.cpu_count() - 1, num), 1)
@@ -116,13 +121,33 @@ class CacheManager:
 
     def load_custom_caches(self):
 
-        with open(paths.CACHE_PATH /'semantic_lane_cache.json', 'rb') as file:
-            self.semantic_lane_cache = json.load(file)
+        try:
+            #with open(paths.CACHE_PATH /'semantic_lane_cache.json', 'rb') as file:
+            #    self.semantic_lane_cache = json.load(file)
 
-        with open(paths.CACHE_PATH / 'road_side_cache.json', 'rb') as file:
-            self.road_side_cache = json.load(file)
+            #with open(paths.CACHE_PATH / 'road_side_cache.json', 'rb') as file:
+            #    self.road_side_cache = json.load(file)
+
+            with open(paths.CACHE_PATH / 'color_cache.json', 'rb') as file:
+                self.color_cache = json.load(file)
+        except:
+            print('Cache load failed. Continuing...')
         
 cache_manager = CacheManager()
+cache_manager.load_custom_caches()
+
+class EasyDataLoader(AV2SensorDataLoader):
+
+    def __init__(self, data_dir, labels_dir):
+        super().__init__(data_dir, labels_dir)
+
+    def project_ego_to_img_motion_compensated(self, points_lidar_time, cam_name, timestamp_ns, log_id):
+        img_path = super().get_closest_img_fpath(log_id, cam_name, timestamp_ns)
+        #print(f'{log_id}, {cam_name}, {timestamp_ns}, {img_path}')
+
+        cam_timestamp_ns = int(img_path.stem)
+        return super().project_ego_to_img_motion_compensated(points_lidar_time, cam_name, cam_timestamp_ns, timestamp_ns, log_id)
+
 
 def composable(composable_func):
     """
@@ -290,7 +315,7 @@ def get_uuids_of_category(log_dir:Path, category:str):
     elif category == 'VEHICLE':
 
         uuids = []
-        vehicle_superclass = ["EGO_VEHICLE","ARTICULATED_BUS","BOX_TRUCK","BUS","LARGE_VEHICLE",
+        vehicle_superclass = ["EGO_VEHICLE","ARTICULATED_BUS","BOX_TRUCK","BUS","LARGE_VEHICLE", "CAR",
                               "MOTORCYCLE","RAILED_VEHICLE","REGULAR_VEHICLE","SCHOOL_BUS","TRUCK","TRUCK_CAB"]
         
         for vehicle_category in vehicle_superclass:
@@ -327,6 +352,144 @@ def get_object(track_uuid, log_dir):
     else:
         timestamps = track_df['timestamp_ns']
         return sorted(timestamps)
+
+
+def get_camera_names(log_dir):
+
+    try:
+        intrinsics = read_feather(log_dir/'calibration/intrinsics.feather')
+    except:
+        split = get_log_split(log_dir)
+        intrinsics = read_feather(paths.AV2_DATA_DIR/split/log_dir.name/'calibration/intrinsics.feather')
+
+    camera_names = list(intrinsics['sensor_name'])
+    return camera_names
+
+
+@cache_manager.create_cache('get_img_crops')
+def get_img_crops(track_uuid, log_dir:Path)->dict[str,dict[int,tuple[int,int,int,int]|None]]:
+
+    split = get_log_split(log_dir)
+    dataloader = EasyDataLoader(log_dir.parent, log_dir.parent)
+    camera_names = get_camera_names(log_dir)
+    timestamps = get_timestamps(track_uuid, log_dir)
+
+    img_crops = {}
+    for timestamp in timestamps:
+
+        cuboid = get_cuboid_from_uuid(track_uuid, log_dir, timestamp)
+        points = cuboid.vertices_m
+
+        for cam_name in camera_names:
+            if cam_name not in img_crops:
+                img_crops[cam_name] = {}
+            elif timestamp not in img_crops[cam_name]:
+                img_crops[cam_name][timestamp] = None
+            
+            uv, points_cam, is_valid = dataloader.project_ego_to_img_motion_compensated(points, cam_name, timestamp, log_dir.name)
+
+            if np.sum(is_valid) >= 3:
+                camera = dataloader.get_log_pinhole_camera(log_dir.name, cam_name)
+                W = camera.width_px
+                H = camera.height_px
+
+                #uv = uv[is_valid]
+                
+                #Bypasses the edge case where two points along the same x or y value are the only two valid points
+                x_min = np.min(uv[:,0])
+                x_max = np.max(uv[:,0])
+                y_min = np.min(uv[:,1])
+                y_max = np.max(uv[:,1])
+
+                pad_w = .2*(x_max-x_min)
+                pad_h = .2*(y_max-y_min)
+                
+                x1 = max(0, int(x_min-pad_w))
+                y1 = max(0, int(y_min-pad_h))
+                x2 = min(W, int(x_max+pad_w))
+                y2 = min(H, int(y_max+pad_h))
+
+                if x2 > x1 and y2 > y1:
+                    box = (x1, y1, x2, y2)
+                    img_crops[cam_name][timestamp] = box
+
+    return img_crops    
+
+
+def get_best_bbox_per_timestamp(track_uuid, log_dir)->tuple:
+    """ Returns the timestamp, camera, and image bounding box
+    according to the maximum area of the track bounding box.
+    """
+    img_crops = get_img_crops(track_uuid, log_dir)
+
+    best_cam_per_timestamp = {}
+    for cam_name, timestamped_crops in img_crops.items():
+        if cam_name in [camera.value for camera in StereoCameras]: continue
+
+        for timestamp, box in timestamped_crops.items():
+            if box is None: continue
+
+            if timestamp not in best_cam_per_timestamp:
+                best_cam_per_timestamp[timestamp] = {
+                    "cam_name":cam_name,
+                    "bbox":box
+                }
+            else:
+                new_area = (box[3]-box[1])*(box[2]-box[0])
+
+                prev_box = best_cam_per_timestamp[timestamp]['bbox']
+                prev_area = (prev_box[2]-prev_box[0])*(prev_box[3]-prev_box[1])
+                if prev_area < new_area:
+                    best_cam_per_timestamp[timestamp] = {
+                        "cam_name":cam_name,
+                        "bbox":box
+                    }
+
+    return best_cam_per_timestamp
+
+@cache_manager.create_cache('get_timestamps')
+def get_img_crop(camera, timestamp, log_dir, box=None):
+
+    #split = get_log_split(log_dir)
+    dataloader = EasyDataLoader(log_dir.parent, log_dir.parent)
+
+    img_path = dataloader.get_closest_img_fpath(log_dir.name, camera, timestamp)
+    #print(img_path)
+
+    if img_path is None:
+        return None
+
+    img = Image.open(img_path)
+
+    if box is not None:
+        img = img.crop(box)
+
+    return img
+
+
+def get_clip_colors(images:list, possible_colors:list[str], pipe=None):
+    
+    texts = [f'a {color} object' for color in possible_colors]
+    
+    # Initialize pipeline with device_map for multi-GPU
+    if pipe is None:
+        pipe = pipeline(
+            model="google/siglip2-so400m-patch16-naflex",
+            task="zero-shot-image-classification",
+            device_map="auto",  # Automatically distributes across available GPUs
+            torch_dtype="auto",
+            batch_size=16
+        )
+    
+    outputs = pipe(images, candidate_labels=texts)
+    
+    # Process outputs same as before
+    best_labels = []
+    for output in outputs:
+        best_label = max(output, key=lambda x: x['score'])['label'].split()[1]
+        best_labels.append(best_label)
+
+    return best_labels
 
 
 @cache_manager.create_cache('get_timestamps')   
@@ -784,7 +947,7 @@ def get_nth_pos_deriv(
 
     #Very often, different cuboids are not seen by the ego vehicle at the same time.
     #Only the timestamps where both cuboids are observed are calculated.
-    if type(coordinate_frame) == str and coordinate_frame != get_ego_uuid(log_dir):
+    if type(coordinate_frame) != SE3 and coordinate_frame is not None and coordinate_frame != get_ego_uuid(log_dir):
         if coordinate_frame == 'self':
             coordinate_frame = track_uuid
 
@@ -824,15 +987,16 @@ def get_nth_pos_deriv(
     else:
         pos_deriv = scipy.ndimage.median_filter(prev_deriv, size=min(7,len(prev_deriv)), mode='nearest', axes=0) 
 
-    if coordinate_frame == get_ego_uuid(log_dir):
+    if type(coordinate_frame) == SE3:
+        pos_deriv = (coordinate_frame.transform_from(pos_deriv.T)).T
+    elif coordinate_frame == get_ego_uuid(log_dir):
         for i in range(len(pos_deriv)):
             city_to_ego = ego_poses[timestamps[i]].inverse()
             pos_deriv[i] = city_to_ego.transform_from(pos_deriv[i])
             if n != 0:
                 #Velocity/acceleration/jerk vectors only need to be rotated
                 pos_deriv[i] -= city_to_ego.translation
-    elif type(coordinate_frame) == str:
-
+    elif coordinate_frame is not None:
         cf_df = df[df['track_uuid'] == coordinate_frame]
         if cf_df.empty:
             print('Coordinate frame must be None, \'ego\', \'self\', track_uuid, or city to coordinate frame SE3 object.')
@@ -850,11 +1014,6 @@ def get_nth_pos_deriv(
             if n != 0:
                 #Velocity/acceleration/jerk vectors only need to be rotated
                 pos_deriv[i] -= city_to_self.translation
-    elif type(coordinate_frame) == SE3:
-        pos_deriv = (coordinate_frame.transform_from(pos_deriv.T)).T
-    #elif type(coordinate_frame) == list and coordinate_frame and type(coordinate_frame[0]) == SE3 and len(coordinate_frame) == len(prev_deriv):
-    elif coordinate_frame is not None:
-        print('Coordinate frame must be None, \'ego\', \'self\', track_uuid, or city to coordinate frame SE3 object.')
 
     if direction == 'left':
         rot_mat = np.array([[0,1,0],[-1,0,0],[0,0,1]])
@@ -912,7 +1071,7 @@ def get_nth_yaw_deriv(track_uuid, n, log_dir, coordinate_frame=None, in_degrees=
 
     #Very often, different cuboids are not seen by the ego vehicle at the same time.
     #Only the timestamps where both cuboids are observed are calculated.
-    if type(coordinate_frame) == str and coordinate_frame != get_ego_uuid(log_dir):
+    if type(coordinate_frame) != SE3 and coordinate_frame is not None and coordinate_frame != get_ego_uuid(log_dir):
         if coordinate_frame == 'self':
             coordinate_frame = track_uuid
 
@@ -970,7 +1129,7 @@ def get_nth_yaw_deriv(track_uuid, n, log_dir, coordinate_frame=None, in_degrees=
         for i in range(len(prev_deriv)):
             city_to_ego = ego_poses[timestamps[i]].inverse().rotation
             cf_angles[i] = Rotation.from_matrix(city_to_ego @ Rotation.from_rotvec(prev_deriv[i]).as_matrix()).as_rotvec()
-    elif n == 0 and type(coordinate_frame) == str:
+    elif n == 0 and coordinate_frame is not None and type(coordinate_frame) != SE3:
         cf_df = df[df['track_uuid'] == coordinate_frame]
         if not cf_df.empty:
             cf_list = CuboidList.from_dataframe(cf_df)
@@ -1002,7 +1161,7 @@ def get_log_split(log_dir:Union[str,Path]):
     elif log_dir.stem in TRAIN:
         split = 'train'
     else:
-        split = None
+        split = 'nuprompt_val_large'
 
     return split
 

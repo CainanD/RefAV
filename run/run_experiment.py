@@ -48,10 +48,6 @@ run_parallel_eval(exp_name, log_prompts_path, args.procs_per_task)
 experiment_dir = paths.SM_PRED_DIR / exp_name
 combined_preds = combine_pkls(experiment_dir, log_prompts_path)
 
-#if split in ['val', 'train']:
-#    combined_gt = combine_pkls(paths.SM_DATA_DIR, log_prompts_path)
-#elif split == 'test':
 combined_gt = Path(f'/home/crdavids/Trinity-Sync/av2-api/output/eval/{split}/latest/combined_gt_{split}.pkl')
-
 metrics = evaluate_pkls(combined_preds, combined_gt, experiment_dir)
 print(metrics)

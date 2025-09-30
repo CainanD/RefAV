@@ -1,0 +1,199 @@
+def at_stop_sign(track_candidates:dict, log_dir:Path, forward_thresh:float=10):
+    """
+    Identifies timestamps when a tracked object is in a lane corresponding to a stop sign. The tracked
+    object must be within 15m of the stop sign. This may highlight vehicles using street parking near a stopped sign.
+    
+    Args:
+        track_candidates: Tracks to analyze (scenario dictionary).
+        log_dir: Path to scenario logs.
+        forward_thresh: Distance in meters the vehcile is from the stop sign in the stop sign's front direction
+    
+    Returns:
+        dict: 
+            A filtered scenario dictionary where keys are track UUIDs and values are lists of timestamps when the object is at a stop sign.
+    
+    Example:
+        vehicles_at_stop_sign = at_stop_sign(vehicles, log_dir)
+    """
+
+
+def in_drivable_area(track_candidates:dict, log_dir:Path)->dict:
+    """
+    Identifies objects within track_candidates that are within a drivable area.
+    
+    Args:
+        track_candidates: Tracks to analyze (scenario dictionary).
+        log_dir: Path to scenario logs.
+    
+    Returns:
+        dict: 
+            A filtered scenario dictionary where keys are track UUIDs and values are lists of timestamps when the object is in a drivable area.
+    
+    Example:
+        buses_in_drivable_area = in_drivable_area(buses, log_dir)
+    """
+
+
+def on_road(
+    track_candidates:dict,
+    log_dir:Path)->dict:
+    """
+    Identifies objects that are on a road or bike lane. 
+    This function should be used in place of in_driveable_area() when referencing objects that are on a road. 
+    The road does not include parking lots or other driveable areas connecting the road to parking lots.
+    
+    Args:
+        track_candidates: Tracks to filter (scenario dictionary).
+        log_dir: Path to scenario logs.
+    
+    Returns:
+    The subset of the track candidates that are currently on a road.
+    
+    Example:
+        animals_on_road = on_road(animals, log_dir)   
+    """
+
+
+def in_same_lane(
+    track_candidates:dict,
+    related_candidates:dict,
+    log_dir:Path) -> dict:
+    """
+    "
+    Identifies tracks that are in the same road lane as a related candidate. 
+    
+    Args:
+        track_candidates: Tracks to filter (scenario dictionary)
+        related_candidates: Potential objects that could be in the same lane as the track (scenario dictionary)
+        log_dir: Path to scenario logs.
+    
+    Returns:
+        dict: 
+            A filtered scenario dictionary where keys are track UUIDs and values are lists of timestamps when the object is on a road lane.
+    
+    Example:
+        bicycle_in_same_lane_as_vehicle = in_same_lane(bicycle, regular_vehicle, log_dir)    
+    """
+
+
+def on_relative_side_of_road(
+    track_candidates:dict,
+    related_candidates:dict,
+    log_dir:Path,
+    side=Literal['same', 'opposite']) -> dict:
+    """
+    "
+    Identifies tracks that are in the same road lane as a related candidate. 
+    
+    Args:
+        track_candidates: Tracks to filter (scenario dictionary)
+        related_candidates: Potential objects that could be in the same lane as the track (scenario dictionary)
+        log_dir: Path to scenario logs.
+    
+    Returns:
+        dict: 
+            A filtered scenario dictionary where keys are track UUIDs and values are lists of timestamps when the object is on a road lane.
+    
+    Example:
+        bicycle_in_same_lane_as_vehicle = in_same_lane(bicycle, regular_vehicle, log_dir)    
+    """
+
+
+def on_lane_type(
+    track_uuid:dict,
+    log_dir,
+    lane_type:Literal["BUS", "VEHICLE", "BIKE"])->dict:
+    """
+    Identifies objects on a specific lane type.
+    
+    Args:
+        track_candidates: Tracks to analyze (scenario dictionary).
+        log_dir: Path to scenario logs.
+        lane_type: Type of lane to check ('BUS', 'VEHICLE', or 'BIKE').
+    
+    Returns:
+        Filtered scenario dictionary where keys are track UUIDs and values are lists of timestamps.
+    
+    Example:
+        vehicles_on_bus_lane = on_lane_type(vehicles, log_dir, lane_type="BUS")
+    """
+
+
+def near_intersection(
+    track_uuid:dict,
+    log_dir:Path,
+    threshold:float=5)->dict:
+    """
+    Identifies objects within a specified threshold of an intersection in meters.
+    
+    Args:
+        track_candidates: Tracks to analyze (scenario dictionary).
+        log_dir: Path to scenario logs.
+        threshold: Distance threshold (in meters) to define "near" an intersection.
+    
+    Returns:
+        Filtered scenario dictionary where keys are track UUIDs and values are lists of timestamps.
+    
+    Example:
+        bicycles_near_intersection = near_intersection(bicycles, log_dir, threshold=10.0)
+    """
+
+
+def on_intersection(track_candidates:dict, log_dir:Path):
+    """
+    Identifies objects located on top of an road intersection.
+    
+    Args:
+        track_candidates: Tracks to analyze (scenario dictionary).
+        log_dir: Path to scenario logs.
+    
+    Returns:
+        Filtered scenario dictionary where keys are track UUIDs and values are lists of timestamps.
+    
+    Example:
+        strollers_on_intersection = on_intersection(strollers, log_dir)
+    """
+
+def changing_lanes(
+    track_candidates:dict,
+    log_dir:Path,
+    direction:Literal["left", "right", None]=None) -> dict:
+    """
+    Identifies lane change events for tracked objects in a scenario.
+    
+    Args:
+        track_candidates: The tracks to analyze (scenario dictionary).
+        log_dir: Path to scenario logs.
+        direction: The direction of the lane change. None indicates tracking either left or right lane changes ('left', 'right', None).
+    
+    Returns:
+        dict: 
+            A filtered scenario dictionary where:
+            Keys are track UUIDs that meet the lane change criteria.
+            Values are nested dictionaries containing timestamps and related data.
+    
+    Example:
+        left_lane_changes = changing_lanes(vehicles, log_dir, direction='left')
+    """
+
+
+def at_pedestrian_crossing(
+    track_candidates:dict,
+    log_dir:Path,
+    within_distance:float=1)->dict:
+    """
+    Identifies objects that within a certain distance from a pedestrian crossing. A distance of zero indicates
+    that the object is within the boundaries of the pedestrian crossing.
+    
+    Args:
+        track_candidates: Tracks to analyze (scenario dictionary).
+        log_dir: Path to scenario logs.
+        within_distance: Distance in meters the track candidate must be from the pedestrian crossing. A distance of zero
+            means that the object must be within the boundaries of the pedestrian crossing.
+    
+    Returns:
+        Filtered scenario dictionary where keys are track UUIDs and values are lists of timestamps.
+    
+    Example:
+        vehicles_at_ped_crossing = at_pedestrian_crossing(vehicles, log_dir)
+    """

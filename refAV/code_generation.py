@@ -7,8 +7,119 @@ from typing import List, Optional, TextIO
 import json
 import time
 import refAV.paths as paths
-
+import re
 # API specific imports located within LLM-specific scenario prediction functions
+
+
+def normalize_output_scenario_calls(code_block: str) -> str:
+    """
+    Normalizes output_scenario function calls to ensure they follow the format:
+    output_scenario(<custom_variable_name>, description, log_dir, output_dir)
+    """
+    # Pattern to match output_scenario function calls
+    # This handles multi-line function calls and various parameter formats
+    pattern = r'output_scenario\s*\(\s*([^)]+)\s*\)'
+    
+    def normalize_call(match):
+        params_str = match.group(1)
+        
+        # Split parameters more carefully, handling nested parentheses and quotes
+        params = parse_function_parameters(params_str)
+        
+        if not params:
+            return match.group(0)  # Return original if parsing fails
+        
+        # Initialize variables for the normalized format
+        custom_variable = None
+        description_param = 'description'
+        log_dir_param = 'log_dir'
+        output_dir_param = 'output_dir'
+        
+        # Process parameters
+        processed_params = []
+        for i, param in enumerate(params):
+            param = param.strip()
+            
+            # Handle keyword arguments
+            if '=' in param:
+                key, value = param.split('=', 1)
+                key = key.strip()
+                value = value.strip()
+                
+                if key == 'scenario':
+                    # If scenario= is used, treat the value as the custom variable
+                    custom_variable = value
+            else:
+                # Handle positional arguments
+                if i == 0:
+                    custom_variable = param
+
+        # If no custom variable was found, use the first parameter
+        if custom_variable is None and params:
+            custom_variable = params[0].strip()
+        
+        # Construct the normalized call
+        normalized_call = f"output_scenario(\n    {custom_variable},\n    {description_param},\n    {log_dir_param},\n    {output_dir_param}\n)"
+        
+        return normalized_call
+    
+    # Apply the normalization
+    normalized_code = re.sub(pattern, normalize_call, code_block, flags=re.DOTALL)
+    
+    return normalized_code
+
+
+def parse_function_parameters(params_str: str) -> list[str]:
+    """
+    Parse function parameters, handling nested parentheses, quotes, and commas properly.
+    """
+    params = []
+    current_param = ""
+    paren_depth = 0
+    in_quotes = False
+    quote_char = None
+    
+    i = 0
+    while i < len(params_str):
+        char = params_str[i]
+        
+        # Handle escape sequences
+        if char == '\\' and i + 1 < len(params_str):
+            current_param += char + params_str[i + 1]
+            i += 2
+            continue
+        
+        # Handle quotes
+        if char in ['"', "'"]:
+            if not in_quotes:
+                in_quotes = True
+                quote_char = char
+            elif char == quote_char:
+                in_quotes = False
+                quote_char = None
+        
+        # Handle parentheses (only when not in quotes)
+        elif not in_quotes:
+            if char == '(':
+                paren_depth += 1
+            elif char == ')':
+                paren_depth -= 1
+            elif char == ',' and paren_depth == 0:
+                # This comma separates parameters
+                params.append(current_param.strip())
+                current_param = ""
+                i += 1
+                continue
+        
+        current_param += char
+        i += 1
+    
+    # Add the last parameter
+    if current_param.strip():
+        params.append(current_param.strip())
+    
+    return params
+
 
 
 def extract_and_save_code_blocks(message, description=None, output_dir:Path=Path('.'))->list[Path]:
@@ -53,6 +164,7 @@ def extract_and_save_code_blocks(message, description=None, output_dir:Path=Path
     filenames = []
     for i, code_block in enumerate(code_blocks):
         
+        cleaned_code_block = normalize_output_scenario_calls(code_block)
         # Save the code block
         if description:
             filename = output_dir / f"{description}.txt"
@@ -61,18 +173,44 @@ def extract_and_save_code_blocks(message, description=None, output_dir:Path=Path
             
         try:
             with open(filename, 'w') as f:
-                f.write(code_block)
+                f.write(cleaned_code_block)
             filenames.append(filename)
         except Exception as e:
             print(f"Error saving file {filename}: {e}")
 
     return filenames
 
+def build_context(context_path=paths.PROMPT_DIR/'default_RefAV')->str:
 
-def predict_scenario_from_description(natural_language_description, output_dir:Path, 
+    with open(context_path/'atomic_functions.txt', 'r') as f:
+        refav_context = f.read().format()
+    with open(context_path/'categories.txt', 'r') as f:
+        av2_categories = f.read().format()
+    with open(context_path/'examples.txt', 'r') as f:
+        prediction_examples = f.read().format()
+
+    context = "Please use the following functions to find instances of a referred object in an autonomous driving dataset. Be precise to the description, try to avoid returning false positives. {refav_context} \n {av2_categories}\n Define a single scenario for the description:{{natural_language_description}}\n Here is a list of examples: {prediction_examples}. Only output code and comments as part of a Python block. Do not define any additional functions, or filepaths. Do not include imports. Assume the log_dir, description, and output_dir variables are given. Use the given description variable in output_scenario. Wrap all code in one python block and do not provide alternatives. Output code even if the given functions are not expressive enough to find the scenario."
+    context = context.format(refav_context=refav_context, av2_categories=av2_categories, prediction_examples=prediction_examples)
+
+    return context
+
+
+def predict_scenario_from_description(
+        natural_language_description,
+        output_dir:Path,
+        custom_context=None, 
         model_name:str='gemini-2.0-flash',
-        local_model = None, local_tokenizer=None, destructive=False):
-        
+        local_model = None,
+        local_tokenizer=None,
+        destructive=False
+        )->Path:
+    """
+    Generates a scenario definition (a code snippet utilizing the atomic functions) from the given description.
+    
+    Args:
+        custom_prompt: A string describing how to define a scenario. It must be in the form "context {natural_language_description} context".
+            It is recommended to use build_prompt() to make this string. 
+    """    
     output_dir = output_dir / model_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -81,16 +219,12 @@ def predict_scenario_from_description(natural_language_description, output_dir:P
     if definition_filename.exists() and not destructive:
         print(f'Cached scenario for description {natural_language_description} already found.')
         return definition_filename
-    
-    with open(paths.REFAV_CONTEXT, 'r') as f:
-        refav_context = f.read().format()
-    with open(paths.AV2_CATEGORIES, 'r') as f:
-        av2_categories = f.read().format()
-    with open(paths.PREDICTION_EXAMPLES, 'r') as f:
-        prediction_examples = f.read().format()
 
-    prompt = f"Please use the following functions to find instances of a referred object in an autonomous driving dataset. Be precise to the description, try to avoid returning false positives. {refav_context} \n {av2_categories}\n Define a single scenario for the description:{natural_language_description}\n Here is a list of examples: {prediction_examples}. Only output code and comments as part of a Python block. Feel free to use a liberal amount of comments. Do not define any additional functions, or filepaths. Do not include imports. Assume the log_dir and output_dir variables are given. Wrap all code in one python block and do not provide alternatives. Output code even if the given functions are not expressive enough to find the scenario. "
-    #prompt = f"{av2_categories}\n Please select the one category that most corresponds to the object of focus in the description:{natural_language_description}\n As an example, for the description 'vehicle turning at intersection with nearby pedestrians' your output would be VEHICLE. For the description 'ego vehicle near construction barrel' your output would be EGO_VEHICLE. Your only output should be the category name, in all capital letters and including underscores if necessary. "
+
+    if not custom_context:
+        custom_context = build_context()
+
+    prompt = custom_context.format(natural_language_description=natural_language_description)
 
     if 'gemini' in model_name.lower():
         response = predict_scenario_gemini(prompt, model_name)
@@ -101,9 +235,6 @@ def predict_scenario_from_description(natural_language_description, output_dir:P
 
     try:
         definition_filename = extract_and_save_code_blocks(response, output_dir=output_dir, description=natural_language_description)[-1]
-        #output_path = output_dir / (natural_language_description + '.txt')
-        #with open(output_path, 'w') as file:
-        #    file.write(response)
         print(f'{natural_language_description} definition saved to {output_dir}')
         return definition_filename
     except Exception as e:
@@ -175,6 +306,38 @@ def predict_scenario_claude(prompt, model_name):
         text_response = str(content)
         
     return text_response
+
+def process_batch_prompts_claude(prompts, prompt_ids, model_name):
+    import anthropic
+    from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
+    from anthropic.types.messages.batch_create_params import Request
+
+    client = anthropic.Anthropic()
+
+    message_batch = client.messages.batches.create(
+        requests=[
+            Request(
+                custom_id=prompt_id,
+                params=MessageCreateParamsNonStreaming(
+                    model=model_name,
+                    max_tokens=1024,
+                    messages=[{
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            }
+                        ]
+                    }]
+                )
+            )
+            for prompt, prompt_id in zip(prompts, prompt_ids)]
+    )
+
+    print(message_batch)
+
+    pass
 
 
 def load_qwen(model_name='Qwen2.5-7B-Instruct'):
@@ -301,7 +464,7 @@ class FunctionDocstringExtractor(ast.NodeVisitor):
 
 # --- Main Parsing Function ---
 
-def parse_python_functions_with_docstrings(file_path: Path, output_path:Path) -> List[FunctionInfo]:
+def parse_python_functions_with_docstrings(file_path: Path, output_path:Path=paths.PROMPT_DIR/'default_RefAV/atomic_functions.txt') -> List[FunctionInfo]:
     """
     Parses a Python file to extract function definitions (signature) and their docstrings,
     excluding decorators.
@@ -362,41 +525,29 @@ def display_function_info(function_info_list: List[FunctionInfo], output_stream:
 
 if __name__ == '__main__':
 
-    atomic_functions_path = Path('/home/crdavids/Trinity-Sync/refbot/refAV/atomic_functions.py')
-    parse_python_functions_with_docstrings(atomic_functions_path, paths.REFAV_CONTEXT)
+    atomic_functions_path = Path('refAV/atomic_functions.py')
+    parse_python_functions_with_docstrings(atomic_functions_path)
 
     all_descriptions = set()
-    with open('av2_sm_downloads/log_prompt_pairs_val.json', 'rb') as file:
+    with open(paths.SM_DOWNLOAD_DIR/'log_prompt_pairs_nuprompt_val_large.json', 'rb') as file:
         lpp_val = json.load(file)
 
-    with open('av2_sm_downloads/log_prompt_pairs_test.json', 'rb') as file:
-        lpp_test = json.load(file)
+    #with open('av2_sm_downloads/log_prompt_pairs_test.json', 'rb') as file:
+    #    lpp_test = json.load(file)
 
     for log_id, prompts in lpp_val.items():
         all_descriptions.update(prompts)
-    for log_id, prompts in lpp_test.items():
-        all_descriptions.update(prompts)
+    #for log_id, prompts in lpp_test.items():
+    #    all_descriptions.update(prompts)
 
     print(len(all_descriptions))
 
-    output_dir = paths.LLM_PRED_DIR / 'claude-3-7-sonnet-20250219'
+    model_name = 'claude-3-7-sonnet-20250219'
+    output_dir = paths.LLM_PRED_DIR
+    nuprompt_context = build_context(paths.PROMPT_DIR/'default_NuPrompt')
+
     for description in all_descriptions:
-        #break
-        #predict_scenario_from_description(description, output_dir, model_name='claude-3-5-sonnet-20241022')
-        predict_scenario_from_description(description, output_dir, model_name='claude-3-7-sonnet-20250219')
-        #predict_scenario_from_description(description, output_dir, model_name='gemini-2.5-flash-preview-04-17')
-
-        #predict_scenario_from_description(description, output_dir, model_name='gemini-2.0-flash')
-
-
-        
-    
-    #model_name = 'Qwen2.5-7B-Instruct'
-    #model_name = 'Qwen3-32B'
-    #local_model, local_tokenizer = load_qwen(model_name)
-    #for description in all_descriptions:
-        #predict_scenario_from_description(description, output_dir, model_name=model_name, local_model=local_model, local_tokenizer=local_tokenizer)
-
+        predict_scenario_from_description(description, output_dir, model_name=model_name, custom_context=nuprompt_context)
 
 
     

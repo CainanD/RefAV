@@ -333,13 +333,14 @@ def plot_map_pv(avm:ArgoverseStaticMap, plotter:pv.Plotter) -> list[vtk.vtkActor
     return actors
 
 def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=True, description='scenario visualization',
-                        with_map=True, with_cf=False, with_lidar=True, relationship_edges=False, stride=1, av2_log_dir=None,
-                        display_progress=True, save_pdfs=False):
+                        with_map=True,  with_cf=False, with_lidar=True, relationship_edges=False, stride=1,
+                        display_progress=True, save_frames=False):
     """
-    Generate a birds-eye-view video of a series of LiDAR scans.
-    
-    :param lidar_files: List of file paths to LiDAR scan data.
-    :param output_file: Path to the output video file.
+    Generate a birds-eye-view video of the scenario.
+
+    Args:
+        scenario: A scenario dict containing track_uuid keys and timestamp values.
+        log_dir: The directory where the bounding box annotations live. This can be either predicted or ground truth tracks.
     """
 
     #Conversion to legacy code
@@ -351,23 +352,19 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     plotter = pv.Plotter(off_screen=True)
     plotter.open_movie(output_file, framerate=FPS)
 
-    if av2_log_dir is None:
-        split = get_log_split(log_dir)
-        av2_log_dir = AV2_DATA_DIR / split / log_dir.name
-
-    dataset = AV2SensorDataLoader(data_dir=av2_log_dir.parent, labels_dir=av2_log_dir.parent)
-    log_id = log_dir.name
-
     set_camera_position_pv(plotter, scenario_dict, relationship_dict, log_dir)
-    #plotter.add_legend([(description,'black'),(log_dir.name,'black')],
-    #                    bcolor='white', border=True, loc='upper left',size=(.7,.1))
+    plotter.add_legend([(description,'black'),(log_dir.name,'black')],
+                        bcolor='white', border=True, loc='upper left',size=(.7,.1))
 
     if with_map:
         avm = get_map(log_dir)
         plot_map_pv(avm, plotter)
 
     if with_lidar:
-        lidar_paths = dataset.get_ordered_log_lidar_fpaths(log_id)
+        split = get_log_split(log_dir)
+        av2_log_dir = AV2_DATA_DIR / split / log_dir.name
+        dataset = AV2SensorDataLoader(data_dir=av2_log_dir.parent, labels_dir=av2_log_dir.parent)
+        lidar_paths = dataset.get_ordered_log_lidar_fpaths(log_dir.stem)
 
     if with_intro:
         plot_visualization_intro(plotter, scenario_dict, log_dir, relationship_dict, description=description)
@@ -378,6 +375,8 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     ego_uuid = get_ego_uuid(log_dir)
     df = read_feather(log_dir / 'sm_annotations.feather')
     ego_df = df[df['track_uuid'] == ego_uuid]
+    ego_poses = get_ego_SE3(log_dir)
+
     timestamps = sorted(ego_df['timestamp_ns'])
     frequency = 1/(float(timestamps[1] - timestamps[0])/1E9)
 
@@ -386,7 +385,7 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
             print(f'{i}/{len(timestamps)}', end='\r')
 
         timestamp = timestamps[i]
-        ego_to_city = dataset.get_city_SE3_ego(log_id, timestamp)
+        ego_to_city = ego_poses[timestamp]
 
         timestamp_df = df[df['timestamp_ns'] == timestamp]
         timestamp_actors = []
@@ -460,8 +459,8 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
         for _ in range(num_frames):
             plotter.write_frame()
     
-        if save_pdfs:
-            plotter.save_graphic(output_dir / f'{description}_{timestamp}.pdf')
+        if save_frames:
+            plotter.save_graphic(output_dir / f'{description}_{timestamp}.svg')
 
         plotter.remove_actor(timestamp_actors)
 
@@ -471,6 +470,9 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
 
 
 def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_dict:dict, log_dir):
+    """
+    Sets the camera position in the pyvista plotter such that the ego_vehicle is always within view.
+    """
 
     scenario_height = -np.inf
 

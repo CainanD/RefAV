@@ -2,23 +2,28 @@ from pathlib import Path
 from av2.utils.io import read_feather
 
 from refAV.atomic_functions import *
+from refAV.visualization import visualize_scenario
 import refAV.paths as paths
 
-
-#Ground truth visualizations for paper
-dataset_dir = Path('/data3/crdavids/refAV/dataset/test')
-
 #Extracted data directory after following first steps of tutorial
-#dataset_dir = paths.SM_DATA_DIR / 'val'
+dataset_dir = Path('/home/crdavids/Trinity-Sync/refbot/output/tracker_predictions/ground_truth/test')
 output_dir = Path("output/visualization")
-log_id = 'b40c0cbf-5d35-30df-9f63-de088ada278e'
+log_id = '4fcdebe7-b52f-39e7-a5bc-c664eeba5e7b'
 log_dir = dataset_dir / log_id
 
-scenarios = [5]
+scenarios = [0]
 
+if 0 in scenarios:
+    description = 'front things'
+    log_dir = Path('/home/crdavids/Trinity-Sync/refbot/output/tracker_predictions/StreamPETR_Tracking/nuprompt_val_large/01452fbfbf4543af8acdfd3e8a1ee806')
+    cars = get_objects_of_category(log_dir, category='ANY')
+    ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
+    cars_in_front = get_objects_in_relative_direction(ego, cars, log_dir, direction='forward')
+    #red_cars = is_color(cars, log_dir, color='red')
+    #print(red_cars)
+    visualize_scenario(cars_in_front, log_dir, output_dir=output_dir, description=description, with_map=False, with_cf=False, with_lidar=False)
 
 #Secenario 1: vehicle in the wrong lane
-
 if 1 in scenarios:
     description = 'vehicles in the wrong lane type'
     vehicles = get_objects_of_category(log_dir, category="VEHICLE")

@@ -8,6 +8,7 @@
 *.pt
 *.png
 *.gz
+*.mp4
 
 !pipeline.png
 !eval_timestamps.json
@@ -20,4 +21,7 @@ refav/__pycache__/
 evaluation/
 ModelOutputs/
 run/work.py
+run/av2_to_nuscenes_tracking.py
 tracker_downloads/
+refAV/llm_prompting/NuPrompt
+scenario_mining_downloads
