@@ -8,18 +8,6 @@ A single autonomous vehicle will stream about ~4TB of data per hour with a full 
 
 RefAV serves as the baseline for the 2025 Argoverse2 Scenario Mining Challenge. It utilizes an LLM to construct composable function calls from a set of hand-crafted atomic functions such as "turning" or "has_objects_in_front". Given a prompt, the LLM outputs a composable function that narrows down a set of bounding box track predictions to the set that best corresponds to the prompt. Our paper describing the dataset and baseline in detail is available on [arXiv](https://arxiv.org/pdf/2505.20981)  
 
-:rotating_light: Top performing teams can win cash prizes! :rotating_light:
-
-:1st_place_medal: 1st Place: $5,000
-
-:2nd_place_medal: 2nd Place: $3,000
-
-:3rd_place_medal: 3rd Place: $2,000
-
-To be eligible for prizes, teams must submit a technical report, open source their code, and provide instructions on how to reproduce their results. Teams must also beat our best performing official baseline and make their submission visible by the end of the competition to be eligible for prizes.
-
-The scenario mining test split and EvalAI leaderboard will both open on May 7th, 2025. The scenario mining train and val split are available for download now. You may test your method using the available val leaderboard. The val split results are not factored into the competition. 
-
 ### Installation
 
 Using [Conda](https://anaconda.org/anaconda/conda) is recommended for environment management
