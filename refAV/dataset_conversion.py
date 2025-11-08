@@ -1,3 +1,8 @@
+"""
+Processes the scenario mining annotation files downloaded from RefAV. 
+Also processes object tracking prediction files in the format Argoverse2 submission format.
+"""
+
 from pathlib import Path
 import multiprocessing as mp
 from functools import partial

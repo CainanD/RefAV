@@ -1,3 +1,5 @@
+"""Script to run eval.py in parallel."""
+
 import subprocess
 import multiprocessing
 import math

@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import List, Optional, TextIO
 import json
 import time
-import refAV.paths as paths
 import re
+import refAV.paths as paths
 # API specific imports located within LLM-specific scenario prediction functions
 
 

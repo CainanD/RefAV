@@ -1,0 +1,1 @@
+Caption this image! Here is the motion of the visible object {object_motion}.

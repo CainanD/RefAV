@@ -2,6 +2,7 @@ from pathlib import Path
 
 # change to path where the Argoverse2 Sensor dataset is downloaded
 AV2_DATA_DIR = Path('/data3/shared/datasets/ArgoVerse2/Sensor')
+NUSCENES_DATA_DIR = Path('/data/crdavids/nuscenes/av2_format')
 TRACKER_DOWNLOAD_DIR = Path('tracker_downloads')
 SM_DOWNLOAD_DIR = Path('scenario_mining_downloads')
 

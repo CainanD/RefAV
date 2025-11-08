@@ -7,7 +7,7 @@ LLM:
 - claude-3-7-sonnet-20250219
 - claude-3-7-classes
 - all_objects
-- objects_of_assigned_description
+- prefiltered_objects # For use with filtering-based baselines
 
 context:
 - default_RefAV
@@ -166,7 +166,7 @@ exp29:
 
 exp30: 
   name: exp30
-  LLM: objects_of_assigned_description
+  LLM: prefiltered_objects
   tracker: groundingSAM
   split: test
 
@@ -184,7 +184,7 @@ exp32:
 
 exp33:
   name: exp33
-  LLM: objects_of_assigned_description
+  LLM: prefiltered_objects
   split: test
   tracker: Le3DE2D_Tracking_clip
 
@@ -238,31 +238,31 @@ exp41:
 
 exp42:
   name: exp42
-  LLM: objects_of_assigned_description
+  LLM: prefiltered_objects
   split: test
   tracker: Le3DE2D_Tracking_clip
 
 exp43:
   name: exp43
-  LLM: objects_of_assigned_description
+  LLM: prefiltered_objects
   split: test
   tracker: ReVoxelDet_Tracking_clip
 
 exp44:
   name: exp44
-  LLM: objects_of_assigned_description
+  LLM: prefiltered_objects
   split: test
   tracker: ground_truth_clip
 
 exp45:
   name: exp45
-  LLM: objects_of_assigned_description
+  LLM: prefiltered_objects
   split: test
   tracker: TransFusion_Tracking_clip
 
 exp46:
   name: exp46
-  LLM: objects_of_assigned_description
+  LLM: prefiltered_objects
   split: val
   tracker: Valeo4Cast_Tracking_clip
 
@@ -362,7 +362,6 @@ exp61:
   tracker: StreamPETR_Tracking
   context: default_NuPrompt
 
-
 exp62:
   name: exp62
   LLM: claude-3-7-sonnet-20250219
@@ -370,14 +369,12 @@ exp62:
   tracker: StreamPETR_Tracking
   context: default_NuPrompt
 
-
-
-
-
-
-
-
-
+exp64:
+  name: exp64
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val_large
+  tracker: StreamPETR_Tracking
+  context: default_NuPrompt
 
 
 

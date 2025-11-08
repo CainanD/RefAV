@@ -4,7 +4,7 @@ function headers and docstrings to give the LLM context on how to use the functi
 
 There are several things to note if you want to develop more functions yourself. 
 First, the docstrings and typing do not reflect what is actually passed into these functions.
-This is done to simplify logic for the function writer while keeping the API intuitive to use.
+This is done to simplify logic for the atomic function developer while keeping the API intuitive to use.
 
 Any function decorated with @composable takes in a track_uuid and returns a list of timestamps.
 Any function decorated with @composable_relational takes in a track_uuid and list of candidate_uuids and 
@@ -28,7 +28,7 @@ from refAV.utils import (
     unwrap_func, dilate_convex_polygon, polygons_overlap, is_point_in_polygon,
     swap_keys_and_listed_values, has_free_will, at_stop_sign_, remove_empty_branches,
     scenario_at_timestamps, reconstruct_track_dict, create_mining_pkl,
-    post_process_scenario, get_object, get_img_crops, get_best_bbox_per_timestamp)
+    post_process_scenario, get_object, get_img_crops, get_best_crop)
 
 
 @composable_relational
@@ -248,11 +248,9 @@ def is_color(
         return []
 
     #TODO: Implement CLIP based color discrimination
-    best_timestamp, best_camera, best_bbox = get_best_img_bbox(track_uuid, log_dir)
+    best_timestamp, best_camera, best_bbox = get_best_crop(track_uuid, log_dir)
     if best_camera is None:
         return []
-
-
 
 
 @composable
@@ -364,7 +362,7 @@ def turning(
         return turn_dict[direction]
     else:
         return turn_dict['left'] + turn_dict['right']  
-    
+
 
 @composable
 @cache_manager.create_cache('changing_lanes')

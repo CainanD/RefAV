@@ -10,6 +10,7 @@ from functools import wraps
 import scipy
 import json
 import pickle
+from tqdm import tqdm
 from transformers import pipeline
 from collections import OrderedDict
 from PIL import Image
@@ -137,13 +138,25 @@ cache_manager = CacheManager()
 cache_manager.load_custom_caches()
 
 class EasyDataLoader(AV2SensorDataLoader):
+    """Dataloader to load both NuScenes and AV2 data given only a log_id"""
 
-    def __init__(self, data_dir, labels_dir):
+    def __init__(self, log_dir):
+
+        dataset = get_dataset(log_dir)
+        split = get_log_split(log_dir)
+
+        if dataset == 'AV2':
+            data_dir = paths.AV2_DATA_DIR / split 
+            labels_dir = log_dir.parent
+        elif dataset == 'NUSCENES':
+            data_dir = paths.NUSCENES_DATA_DIR / split
+            labels_dir = log_dir.parent
+
         super().__init__(data_dir, labels_dir)
 
     def project_ego_to_img_motion_compensated(self, points_lidar_time, cam_name, timestamp_ns, log_id):
+        #import pdb; pdb.set_trace()
         img_path = super().get_closest_img_fpath(log_id, cam_name, timestamp_ns)
-        #print(f'{log_id}, {cam_name}, {timestamp_ns}, {img_path}')
 
         cam_timestamp_ns = int(img_path.stem)
         return super().project_ego_to_img_motion_compensated(points_lidar_time, cam_name, cam_timestamp_ns, timestamp_ns, log_id)
@@ -354,6 +367,28 @@ def get_object(track_uuid, log_dir):
         return sorted(timestamps)
 
 
+def get_eval_timestamps(log_dir:Path):
+    """
+    Return the timestamps of the driving log used for evaluation.
+    For competitions based on the AV2 sensor dataset, this is log_timesetamps[::5] (converting from from 10hz to 2hz).
+    """
+    log_timestamps = get_log_timestamps(log_dir)
+
+    try:
+        with open('run/experiment_configs/eval_timestamps.json', 'rb') as file:
+            eval_timestamps_by_log_id = json.load(file)
+        eval_timestamps = eval_timestamps_by_log_id[log_dir.stem]
+    except:
+        # This assumes that your input has predictions for all of the timestamps
+        # This is valid assumption for the RefProg code, but not for the baselines
+        MAX_NUM_EVAL_TIMESTAMPS = 50
+        if len(log_timestamps) > MAX_NUM_EVAL_TIMESTAMPS:
+            eval_timestamps = log_timestamps[::5]
+        else:
+            eval_timestamps = log_timestamps
+
+    return eval_timestamps
+
 def get_camera_names(log_dir):
 
     try:
@@ -363,16 +398,23 @@ def get_camera_names(log_dir):
         intrinsics = read_feather(paths.AV2_DATA_DIR/split/log_dir.name/'calibration/intrinsics.feather')
 
     camera_names = list(intrinsics['sensor_name'])
+    
+    # Remove stereo cameras for now
+    camera_names = [cam for cam in camera_names if 'stereo' not in cam.lower()]
+
     return camera_names
 
 
 @cache_manager.create_cache('get_img_crops')
 def get_img_crops(track_uuid, log_dir:Path)->dict[str,dict[int,tuple[int,int,int,int]|None]]:
+    """Returns all of the image bounding boxes for a given track. This is in the format
+    {camera_name:{timestamp:(x_max,y_max,x_min,y_min)}}
+    """
 
     split = get_log_split(log_dir)
     dataloader = EasyDataLoader(log_dir.parent, log_dir.parent)
     camera_names = get_camera_names(log_dir)
-    timestamps = get_timestamps(track_uuid, log_dir)
+    timestamps = (track_uuid, log_dir)
 
     img_crops = {}
     for timestamp in timestamps:
@@ -388,12 +430,10 @@ def get_img_crops(track_uuid, log_dir:Path)->dict[str,dict[int,tuple[int,int,int
             
             uv, points_cam, is_valid = dataloader.project_ego_to_img_motion_compensated(points, cam_name, timestamp, log_dir.name)
 
-            if np.sum(is_valid) >= 3:
+            if np.sum(is_valid) >= 1: # At least one vertex must be within the image
                 camera = dataloader.get_log_pinhole_camera(log_dir.name, cam_name)
                 W = camera.width_px
                 H = camera.height_px
-
-                #uv = uv[is_valid]
                 
                 #Bypasses the edge case where two points along the same x or y value are the only two valid points
                 x_min = np.min(uv[:,0])
@@ -413,48 +453,177 @@ def get_img_crops(track_uuid, log_dir:Path)->dict[str,dict[int,tuple[int,int,int
                     box = (x1, y1, x2, y2)
                     img_crops[cam_name][timestamp] = box
 
-    return img_crops    
+    return img_crops
 
 
-def get_best_bbox_per_timestamp(track_uuid, log_dir)->tuple:
-    """ Returns the timestamp, camera, and image bounding box
-    according to the maximum area of the track bounding box.
+@cache_manager.create_cache('get_all_crops')
+def get_all_crops(log_dir:Path, timestamps=None, track_uuids=None)->dict[str,dict[int,tuple[int,int,int,int]|None]]:
+    """Returns all of the image bounding boxes for a given track. This is in the format
+
+        img_crops[timestamp][cam_name][track_uuid] = {
+            'category': categories[i],
+            'percent_in_cam': percent_in_cam,
+            'crop_area': crop_area,
+            'cam_H':H,
+            'cam_W':W,
+            'bbox': (x_min, x_max, y_min, y_max),
+            'crop': (x1, y1, x2, y2),
+            'cam_z': camera_depths[i]
+        }
+        
     """
-    img_crops = get_img_crops(track_uuid, log_dir)
+    cache_path = log_dir/'cache/track_crop_information.json'
+    if cache_path.exists():
+        return json.load(open(cache_path, 'rb'))
 
-    best_cam_per_timestamp = {}
-    for cam_name, timestamped_crops in img_crops.items():
-        if cam_name in [camera.value for camera in StereoCameras]: continue
+    dataloader = EasyDataLoader(log_dir)
+    camera_names = get_camera_names(log_dir)
 
-        for timestamp, box in timestamped_crops.items():
-            if box is None: continue
+    if timestamps is None:
+        timestamps = get_log_timestamps(log_dir)
+    if track_uuids is None:
+        track_uuids = get_uuids_of_category(log_dir, 'ANY')
 
-            if timestamp not in best_cam_per_timestamp:
-                best_cam_per_timestamp[timestamp] = {
-                    "cam_name":cam_name,
-                    "bbox":box
-                }
-            else:
-                new_area = (box[3]-box[1])*(box[2]-box[0])
+    ego_uuid = get_ego_uuid(log_dir)
 
-                prev_box = best_cam_per_timestamp[timestamp]['bbox']
-                prev_area = (prev_box[2]-prev_box[0])*(prev_box[3]-prev_box[1])
-                if prev_area < new_area:
-                    best_cam_per_timestamp[timestamp] = {
-                        "cam_name":cam_name,
-                        "bbox":box
+    img_crops = {}
+    for timestamp in tqdm(timestamps, desc='Getting track crop information by timestamp.'):
+
+        for cam_name in camera_names:
+
+            camera = dataloader.get_log_pinhole_camera(log_dir.name, cam_name)
+            W = camera.width_px
+            H = camera.height_px
+            
+            if timestamp not in img_crops:
+                img_crops[timestamp] = {}
+            if cam_name not in img_crops[timestamp]:
+                img_crops[timestamp][cam_name] = {}
+
+            cuboid_vertices = []
+            cuboid_centroids = []
+            categories = []
+            valid_track_mask = np.zeros(len(track_uuids), dtype=bool)
+            for i, track_uuid in enumerate(track_uuids):
+
+                cuboid = get_cuboid_from_uuid(track_uuid, log_dir, timestamp)
+                if cuboid is not None:
+                    valid_track_mask[i] = True
+                    cuboid_vertices.append(cuboid.vertices_m)
+                    cuboid_centroids.append(cuboid.xyz_center_m[np.newaxis,:])
+                    categories.append(cuboid.category)
+                else:
+                    categories.append('filler')
+                    cuboid_vertices.append(np.zeros((8,3)))
+                    cuboid_centroids.append(np.zeros((1,3)))
+            
+            # Concatenating centroids and vertices for more efficient computation
+            points_ego = np.concat([np.concat(cuboid_centroids, axis=0), np.concat(cuboid_vertices, axis=0)])
+            uv, points_cam, is_valid = dataloader.project_ego_to_img_motion_compensated(points_ego, cam_name, timestamp, log_dir.name)
+
+            # Unstacking the centroids and vertices
+            camera_depths = points_cam[:len(track_uuids), 2]
+            uv = uv[len(track_uuids):].reshape((len(track_uuids), 8, 2))
+            is_valid = np.sum(is_valid[len(track_uuids):].reshape(len(track_uuids), 8), axis=1) > 2 # must have at least three vertices within view of the camera
+            valid_track_mask = valid_track_mask & is_valid
+
+            for i, track_uuid in enumerate(track_uuids):
+                if not valid_track_mask[i] or camera_depths[i] < 0 or track_uuid == ego_uuid:
+                    continue
+                
+                x_min = np.min(uv[i,:,0])
+                x_max = np.max(uv[i,:,0])
+                y_min = np.min(uv[i,:,1])
+                y_max = np.max(uv[i,:,1])
+                
+                x1 = max(0, int(x_min))
+                y1 = max(0, int(y_min))
+                x2 = min(W, int(x_max))
+                y2 = min(H, int(y_max))
+
+                if x2 > x1 and y2 > y1:
+                    crop_area= (x2-x1)*(y2-y1)
+                    bbox_area = ((x_max-x_min)*(y_max-y_min))
+                    percent_in_cam = crop_area / bbox_area
+
+                    img_crops[timestamp][cam_name][track_uuid] = {
+                        'category': categories[i],
+                        'percent_in_cam': percent_in_cam,
+                        'crop_area': crop_area,
+                        'cam_H':H,
+                        'cam_W':W,
+                        'bbox': (x_min, x_max, y_min, y_max),
+                        'crop': (x1, y1, x2, y2),
+                        'cam_z': camera_depths[i]
                     }
 
-    return best_cam_per_timestamp
+    cache_path.parent.mkdir(exist_ok=True, parents=True)
+    json.dump(img_crops, open(cache_path, 'w'), indent=4)
 
-@cache_manager.create_cache('get_timestamps')
-def get_img_crop(camera, timestamp, log_dir, box=None):
+    return img_crops   
 
-    #split = get_log_split(log_dir)
-    dataloader = EasyDataLoader(log_dir.parent, log_dir.parent)
 
+def get_best_crop(track_uuid, log_dir)->dict:
+    """ Returns the timestamp, camera, and image bounding box
+    according to the maximum area of the track bounding box in the format.
+    
+    {'timestamp': timestamp, 'cam': cam, 'crop': crop, 'score': score, 'category': object_crops[timestamp][cam][track_uuid]['category']}
+    """
+    object_crops = get_all_crops(log_dir)
+
+    timestamps_and_cams = []
+    for timestamp, crops_by_camera in object_crops.items():
+        for camera, crops_by_uuid in crops_by_camera.items():
+            if track_uuid in crops_by_uuid:
+                timestamps_and_cams.append((timestamp, camera))
+
+    best_score = 0
+    best_crop = None
+    for timestamp, cam in timestamps_and_cams:
+        
+        track_crop_dict = object_crops[timestamp][cam][track_uuid]
+        visibility_mask = np.zeros((track_crop_dict['cam_H'], track_crop_dict['cam_W']))
+
+        track_x1, track_y1, track_x2, track_y2 = track_crop_dict['crop']
+        visibility_mask[track_y1:track_y2, track_x1:track_x2] = True
+        percent_in_cam = track_crop_dict['percent_in_cam']
+        track_depth = track_crop_dict['cam_z']
+
+        for uuid, crop_dict in object_crops[timestamp][cam].items():
+            if uuid == track_uuid or crop_dict['cam_z'] < 0 or crop_dict['cam_z'] > track_depth:
+                continue
+            #else the object is located between the camera and the track, figure out which pixels are occluded
+
+            object_x1, object_y1, object_x2, object_y2 = object_crops[timestamp][cam][uuid]['crop']
+            visibility_mask[object_y1:object_y2, object_x1:object_x2] = False
+
+        visible_area = np.sum(visibility_mask)
+        percent_unoccluded = visible_area / track_crop_dict['crop_area']
+        score = percent_in_cam * percent_unoccluded *  visible_area / 100
+
+        #timestamped_crops[timestamp] = {'timestamp': timestamp, 'cam': cam, 'crop': track_crop_dict['crop'], 'score': score}
+        if score >= best_score:
+            best_score = score
+
+            pad_x = .1 * (track_x2 - track_x1)
+            pad_y = .1 * (track_y2 - track_y1)
+            crop = (
+                max(0, int(track_x1 - pad_x)),
+                max(0, int(track_y1 - pad_y)),
+                min(track_crop_dict['cam_W'], int(track_x2 + pad_x)),
+                min(track_crop_dict['cam_H'], int(track_y2 + pad_y))
+            )
+
+            best_crop = {'timestamp': timestamp, 'cam': cam, 'crop': crop, 'score': score, 'category': object_crops[timestamp][cam][track_uuid]['category']}
+
+    return best_crop#, best_crop
+
+
+@cache_manager.create_cache('get_img_crop')
+def get_img_crop(camera, timestamp, log_dir:Path, box=None):
+
+    dataloader = EasyDataLoader(log_dir)
     img_path = dataloader.get_closest_img_fpath(log_dir.name, camera, timestamp)
-    #print(img_path)
 
     if img_path is None:
         return None
@@ -505,6 +674,11 @@ def get_timestamps(track_uuid, log_dir):
         timestamps = track_df['timestamp_ns']
         return sorted(timestamps)
 
+
+def get_log_timestamps(log_dir):
+    df = read_feather(log_dir / 'sm_annotations.feather')
+    timestamps = df['timestamp_ns'].unique()
+    return sorted(timestamps)
 
 @cache_manager.create_cache('get_lane_segments')
 def get_lane_segments(avm: ArgoverseStaticMap, position) -> list[LaneSegment]:
@@ -1150,6 +1324,16 @@ def get_nth_yaw_deriv(track_uuid, n, log_dir, coordinate_frame=None, in_degrees=
     return cf_angles[:,2], [int(timestamp) for timestamp in timestamps]
 
 
+def get_dataset(log_dir):
+    """"""
+
+    log_dir = Path(log_dir)
+    if log_dir.stem in TRAIN+VAL+TEST:
+        return 'AV2'
+    #TODO: Add checking to make sure log_id is in NuScenes training or val split
+    else:
+        return 'NUSCENES'
+
 def get_log_split(log_dir:Union[str,Path]):
     """Returns the AV2 sensor split for the given log_id or log_dir"""
 
@@ -1160,8 +1344,9 @@ def get_log_split(log_dir:Union[str,Path]):
         split = 'test'
     elif log_dir.stem in TRAIN:
         split = 'train'
+    #TODO: Add better checking
     else:
-        split = 'nuprompt_val_large'
+        split = 'nuprompt_val'
 
     return split
 
@@ -1255,7 +1440,7 @@ def get_cuboid_from_uuid(track_uuid, log_dir, timestamp = None):
     if timestamp:
         track_df = track_df[track_df["timestamp_ns"] == timestamp]
         if track_df.empty:
-            print('Invalid timestamp does not exist for given track_uuid.')
+            #print('Invalid timestamp does not exist for given track_uuid.')
             return None
 
     track_cuboids = CuboidList.from_dataframe(track_df)
@@ -1389,7 +1574,6 @@ def post_process_scenario(scenario, log_dir) -> dict:
     if dict_empty(scenario):
         return True
 
-    #remove_empty_branches(scenario)
     #filter_by_length(scenario, min_timesteps=2)
     filter_by_relationship_distance(scenario, log_dir, max_distance=50)
     dilate_timestamps(scenario, log_dir, min_timespan_s=1.5)
@@ -1862,18 +2046,7 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
     all_uuids = list(annotations['track_uuid'].unique())
     ego_poses = get_ego_SE3(log_dir)
 
-    try:
-        with open(paths.SM_DOWNLOAD_DIR / 'eval_timestamps.json', 'rb') as file:
-            eval_timestamps_by_log_id = json.load(file)
-        eval_timestamps = eval_timestamps_by_log_id[log_id]
-    except:
-        # This assumes that your input has predictions for all of the timestamps
-        # This is valid assumption for the RefProg code, but not for the baselines
-        MAX_NUM_EVAL_TIMESTAMPS = 50
-        if len(log_timestamps) > MAX_NUM_EVAL_TIMESTAMPS:
-            eval_timestamps = log_timestamps[::5]
-        else:
-            eval_timestamps = log_timestamps
+    eval_timestamps = get_eval_timestamps(log_dir)
 
     referred_objects = swap_keys_and_listed_values(reconstruct_track_dict(scenario))
     relationships = reconstruct_relationship_dict(scenario)
