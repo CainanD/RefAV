@@ -12,7 +12,7 @@ from tqdm import tqdm
 from pathlib import Path
 import shutil
 
-from av2.evaluation.scenario_mining.eval import evaluate
+from av2.evaluation.scenario_mining.eval import evaluate, compute_temporal_metrics
 from av2.datasets.sensor.splits import TEST, TRAIN, VAL
 from refAV.utils import cache_manager, get_log_split
 from refAV.code_generation import predict_scenario_from_description, build_context

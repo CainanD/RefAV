@@ -21,7 +21,7 @@ from pathlib import Path
 from av2.utils.io import read_feather, read_city_SE3_ego
 from av2.evaluation.tracking.utils import save
 from av2.structures.cuboid import CuboidList
-from refAV.paths import *
+from refAV.paths import TRACKER_PRED_DIR, AV2_DATA_DIR, SM_DATA_DIR
 from refAV.utils import get_ego_SE3, get_log_split
 
 
@@ -49,8 +49,7 @@ def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir
     print(f"Found {len(unique_log_ids)} unique log IDs")
     
     # Columns to exclude
-    # TODO: revert back from NuPrompt experiments
-    exclude_columns = ['log_id']#, 'prompt', 'mining_category']
+    exclude_columns = ['log_id', 'prompt', 'mining_category']
     
     # Process each log_id
     for log_id in tqdm(unique_log_ids):
@@ -61,14 +60,14 @@ def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir
         # Get all entries for this log_id
         log_data = df[df['log_id'] == log_id]
         
-        #log_prompts = log_data['prompt'].unique()
-        #log_data = log_data[log_data['prompt'] == log_prompts[0]]
+        log_prompts = log_data['prompt'].unique()
+        log_data = log_data[log_data['prompt'] == log_prompts[0]]
         
         # Keep only the "others" columns
         filtered_data = log_data.drop(columns=exclude_columns)
         
         # Save to a feather file
-        output_path = log_dir / 'city_SE3_egovehicle.feather'
+        output_path = log_dir / 'sm_annotations.feather'
         filtered_data.to_feather(output_path)
         print(f"Saved {output_path}")
     
@@ -155,7 +154,10 @@ def filter_ids_by_score(track_data):
     return kept_ids
 
 def process_sequences(log_id, track_data, dataset_dir, base_output_dir, filter=True):
-    ego_poses = read_city_SE3_ego(dataset_dir / log_id)
+    """Convert tracker data in AV2 tracking challenge submission format back to AV2 annotation format."""
+
+    split = get_log_split(log_id)
+    ego_poses = read_city_SE3_ego(dataset_dir / split / log_id)
     rows = []
 
     if filter and 'score' in track_data[0]:
@@ -201,41 +203,31 @@ def process_sequences(log_id, track_data, dataset_dir, base_output_dir, filter=T
             # Convert yaw to quaternion
             qw, qx, qy, qz = euler_to_quaternion(ego_yaws[i])
 
+            #Le3DE2E tracker uses 
+            tz_adjustment = 0
+            if 'Le3DE2' in str(base_output_dir):
+                tz_adjustment = heights[i]/2
+
+            row = {
+                'timestamp_ns': timestamp,
+                'track_uuid': str(track_ids[i]),  # Convert track ID to string
+                'category': categories[i],
+                'length_m': lengths[i],
+                'width_m': widths[i],
+                'height_m': heights[i],
+                'qw': qw,
+                'qx': qx,
+                'qy': qy,
+                'qz': qz,
+                'tx_m': ego_coords[i, 0],
+                'ty_m': ego_coords[i, 1],
+                'tz_m': ego_coords[i, 2] + tz_adjustment,
+                'num_interior_pts': 1,  # Default value as this info isn't in the original data
+            }
+        
             if 'score' in frame:
-                row = {
-                    'timestamp_ns': timestamp,
-                    'track_uuid': str(track_ids[i]),  # Convert track ID to string
-                    'category': categories[i],
-                    'length_m': lengths[i],
-                    'width_m': widths[i],
-                    'height_m': heights[i],
-                    'qw': qw,
-                    'qx': qx,
-                    'qy': qy,
-                    'qz': qz,
-                    'tx_m': ego_coords[i, 0],
-                    'ty_m': ego_coords[i, 1],
-                    'tz_m': ego_coords[i, 2],
-                    'num_interior_pts': 0,  # Default value as this info isn't in the original data
-                    'score': scores[i]
-                }
-            else:
-                row = {
-                    'timestamp_ns': timestamp,
-                    'track_uuid': str(track_ids[i]),  # Convert track ID to string
-                    'category': categories[i],
-                    'length_m': lengths[i],
-                    'width_m': widths[i],
-                    'height_m': heights[i],
-                    'qw': qw,
-                    'qx': qx,
-                    'qy': qy,
-                    'qz': qz,
-                    'tx_m': ego_coords[i, 0],
-                    'ty_m': ego_coords[i, 1],
-                    'tz_m': ego_coords[i, 2],
-                    'num_interior_pts': 0  # Default value as this info isn't in the original data
-                }
+                row['score'] = scores[i]
+
             rows.append(row)
     
     if rows:
@@ -256,12 +248,12 @@ def process_sequences(log_id, track_data, dataset_dir, base_output_dir, filter=T
         log_dir = base_output_dir / str(log_id)
         log_dir.mkdir(parents=True, exist_ok=True)
         
-        output_path = log_dir / "annotations.feather"
+        output_path = log_dir / "sm_annotations.feather"
         df.to_feather(output_path)
         #print(f"Created feather file: {output_path}")
 
         add_ego_to_annotation(output_path.parent, output_path.parent)
-        output_path.unlink()
+        #output_path.unlink()
 
     #print(f'Tracking predictions processed for log-id {log_id}')
 
@@ -292,7 +284,7 @@ def pickle_to_feather(dataset_dir, input_pickle_path, base_output_dir="output"):
 def add_ego_to_annotation(log_dir:Path, output_dir:Path=Path('output')):
 
     split = get_log_split(log_dir)
-    annotations_df = read_feather(log_dir / 'annotations.feather')
+    annotations_df = read_feather(log_dir / 'sm_annotations.feather')
     ego_df = read_feather(AV2_DATA_DIR / split / log_dir.name / 'city_SE3_egovehicle.feather')
     ego_df['log_id'] = log_dir.name
     ego_df['track_uuid'] = 'ego'
@@ -486,15 +478,14 @@ def create_gt_mining_pkls_parallel(scenario_mining_annotations_path, output_dir:
     return results
 
 if __name__ == "__main__":
-    tracking_val_predictions = Path('tracker_predictions/Le3DE2E_tracking_predictions_val.pkl')
-    sm_val_feather = Path('av2_sm_downloads/scenario_mining_val_annotations.feather')
-
+    
     # TODO: revert
-    streamPETR_preds_feather = Path('/home/crdavids/Trinity-Sync/StreamPETR/ego_poses.feather')
-    streamPETR_dir = Path('/home/crdavids/Trinity-Sync/refbot/output/tracker_predictions/StreamPETR_Tracking/nuprompt_val_large')
+    #streamPETR_preds_feather = Path('/home/crdavids/Trinity-Sync/StreamPETR/ego_poses.feather')
+    #streamPETR_dir = Path('/home/crdavids/Trinity-Sync/refbot/output/tracker_predictions/StreamPETR_Tracking/nuprompt_val_large')
+    #separate_scenario_mining_annotations(streamPETR_preds_feather, streamPETR_dir)
 
-    separate_scenario_mining_annotations(streamPETR_preds_feather, streamPETR_dir)
-    #pickle_to_feather(AV2_DATA_DIR, tracking_val_predictions, SM_PRED_DIR)
+    tracking_val_predictions = Path('tracker_downloads/Le3DE2D_Tracking_test.pkl')
+    pickle_to_feather(AV2_DATA_DIR, tracking_val_predictions, TRACKER_PRED_DIR/'Le3DE2D_Tracking/test')
     #create_gt_mining_pkls_parallel(sm_val_feather, SM_DATA_DIR, num_processes=max(1, int(.5*os.cpu_count())))
 
 

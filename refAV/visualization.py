@@ -333,7 +333,7 @@ def plot_map_pv(avm:ArgoverseStaticMap, plotter:pv.Plotter) -> list[vtk.vtkActor
     return actors
 
 def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=True, description='scenario visualization',
-                        with_map=True,  with_cf=False, with_lidar=True, relationship_edges=False, stride=1,
+                        with_map=True,  with_cf=False, with_lidar=False, relationship_edges=False, stride=1,
                         display_progress=True, save_frames=False):
     """
     Generate a birds-eye-view video of the scenario.
@@ -518,7 +518,7 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
     scenario_center = np.concatenate(((tr_corner+bl_corner)/2, [scenario_height]))
     height_above_scenario = 1.1*(np.linalg.norm(tr_corner-bl_corner))/(2*np.tan(np.deg2rad(plotter.camera.view_angle)/2))
     print(scenario_height)
-    camera_height = min(max(scenario_height+height_above_scenario-20, scenario_height), scenario_height+100)
+    camera_height = min(max(scenario_height+height_above_scenario, scenario_height), scenario_height+100)
     plotter.camera_position = [tuple(scenario_center+[0,0,camera_height]), (scenario_center), (0, 1, 0)]
      
 

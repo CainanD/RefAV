@@ -1,1 +1,13 @@
-Caption this image! Here is the motion of the visible object {object_motion}.
+Caption this image taken from an autonomous vehicle (referred to as the ego-vehicle). Our detection model classifies this object as {category}.  Here are the motion parameters of the object {object_motion}. This is in the format [x, y, z, yaw, vx, vy, vz, angular_velocity, distance].
+This is in an ego-centric coordinate system where positive x is to the front of the ego vehicle, positive y is to the left of the ego-vehicle, and positive z is above the ego-vehicle. Position and velocity are measured in meters and meters per second. Yaw is measured in degrees counter-clockwise (coloquaially 'left') from the x-axis. Angular velocity is in degrees per second. Distance is distance from the ego-vehicle. Please describe the visual characteristics of the object, how they are moving, how they are located relative to the road, and how they may be interacting with the ego-vehicle and other objects around them. Please keep captions to a maximum of three sentences.
+
+Here are some example captions for a given set of motion parameters
+
+REGULAR_VEHICLE, [10, 5, 0, 45, 0, 0, 0, 30, 13]
+The car to the 13 meters to the front left is making a left turn.
+
+PEDESTRIAN, [-5, 0, 0, 0, -1, 0, 5]
+The pedesestrian behind the ego-vehicle is walking from right to left.
+
+TRUCK, [13, -5, 0, 0, 0, 0, 0, 15]
+The truck is stationary and parked to right front right of the ego-vehicle.
