@@ -260,11 +260,6 @@ def plot_lane_segments_pv(
             else:
                 mark_color = "black"
 
-            if "DASHED" in bound_type:
-                line_style = "dashed"  # PyVista doesn't support direct line styles; this is conceptual
-            else:
-                line_style = "solid"
-
             if "DOUBLE" in bound_type:
                 left, right = polyline_utils.get_double_polylines(
                     polyline=bound_city.xyz, width_scaling_factor=0.1
@@ -349,7 +344,13 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
 
     FPS = 10
     output_file = output_dir / (description + '.mp4')
-    plotter = pv.Plotter(off_screen=True)
+    plotter = pv.Plotter(
+        off_screen=True,
+        line_smoothing=True,
+        polygon_smoothing=True,
+        point_smoothing=True,
+        lighting='none'
+    )
     plotter.open_movie(output_file, framerate=FPS)
 
     set_camera_position_pv(plotter, scenario_dict, relationship_dict, log_dir)
@@ -460,7 +461,8 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
             plotter.write_frame()
     
         if save_frames:
-            plotter.save_graphic(output_dir / f'{description}_{timestamp}.svg')
+            plotter.save_graphic(output_dir / f'{description}_{timestamp}.svg', raster=False)
+            plotter.save_graphic(output_dir / f'{description}_{timestamp}.pdf', raster=False)
 
         plotter.remove_actor(timestamp_actors)
 
@@ -520,6 +522,11 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
     print(scenario_height)
     camera_height = min(max(scenario_height+height_above_scenario, scenario_height), scenario_height+100)
     plotter.camera_position = [tuple(scenario_center+[0,0,camera_height]), (scenario_center), (0, 1, 0)]
+
+    # TODO: Convert to orthographic projection
+    # Also, figure why the road lines are rendered on top of the bounding boxes
+    #plotter.parallel_projection = True
+    #plotter.camera.parallel_scale()
      
 
 def append_relationship_edges(relationship_edge_mesh:pv.PolyData, track_uuid, related_uuids, log_dir, timestamp, transform:SE3):

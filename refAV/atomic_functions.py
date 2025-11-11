@@ -1619,11 +1619,6 @@ def output_scenario(
     """
     Outputs a file containing the predictions in an evaluation-ready format. Do not provide any visualization kwargs. 
     """
-
-
-    prediction_path = output_dir / log_dir.name / f'{description}_{log_dir.name[:8]}_.pkl'
-    prediction_path.unlink(missing_ok=True)
-
     post_process_scenario(scenario, log_dir)
 
     Path(output_dir/log_dir.name).mkdir(parents=True, exist_ok=True)

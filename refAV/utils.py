@@ -474,6 +474,8 @@ def get_all_crops(log_dir:Path, timestamps=None, track_uuids=None)->dict[str,dic
     """
     cache_path = log_dir/'cache/track_crop_information.json'
     if cache_path.exists():
+        img_crops = json.load(open(cache_path, 'rb'))
+
         return json.load(open(cache_path, 'rb'))
 
     dataloader = EasyDataLoader(log_dir)
@@ -499,6 +501,18 @@ def get_all_crops(log_dir:Path, timestamps=None, track_uuids=None)->dict[str,dic
                 img_crops[timestamp] = {}
             if cam_name not in img_crops[timestamp]:
                 img_crops[timestamp][cam_name] = {}
+
+            if cam_name == 'ring_front_center':
+                img_crops[timestamp][cam_name][ego_uuid] = {
+                    'category': 'EGO_VEHICLE',
+                    'percent_in_cam': 1.00,
+                    'crop_area': W*H,
+                    'cam_H':H,
+                    'cam_W':W,
+                    'bbox': (0, 0, W, H),
+                    'crop': (0, 0, W, H),
+                    'cam_z': 0.5 # Actually will be negative, dummy value to not get filtered out in later code
+                }
 
             cuboid_vertices = []
             cuboid_centroids = []
@@ -528,7 +542,7 @@ def get_all_crops(log_dir:Path, timestamps=None, track_uuids=None)->dict[str,dic
             valid_track_mask = valid_track_mask & is_valid
 
             for i, track_uuid in enumerate(track_uuids):
-                if not valid_track_mask[i] or camera_depths[i] < 0 or track_uuid == ego_uuid:
+                if track_uuid in img_crops[timestamp][cam_name] or not valid_track_mask[i] or camera_depths[i] < 0 or track_uuid == ego_uuid:
                     continue
                 
                 x_min = np.min(uv[i,:,0])
@@ -1560,6 +1574,27 @@ def near_ego(
     return near_ego_timestamps
 
 
+def filter_by_ego_distance(scenario, log_dir, max_distance=50):
+    
+    ego_uuid = get_ego_uuid(log_dir)
+
+    for track_uuid, related_objects in list(scenario.items()):
+
+        pos, log_timestamps = get_nth_pos_deriv(track_uuid, 0, log_dir, coordinate_frame=ego_uuid)
+        within_distance = np.linalg.norm(pos, axis=1) < max_distance
+        valid_timestamps = np.array(log_timestamps)[within_distance]
+        
+        if isinstance(related_objects, dict):
+            related_objects = scenario_at_timestamps(related_objects, valid_timestamps)
+        else:
+            referred_timestamps = []
+            for timestamp in related_objects:
+                if timestamp in valid_timestamps:
+                    referred_timestamps.append(timestamp)
+
+            scenario[track_uuid] = referred_timestamps
+
+
 @cache_manager.create_cache('post_process_scenario')
 def post_process_scenario(scenario, log_dir) -> dict:
     """
@@ -1697,7 +1732,7 @@ def dict_empty(d:dict):
     if len(d) == 0:
         return True
 
-    for  value in d.values():
+    for value in d.values():
         if isinstance(value, list) and len(value) > 0:
             return False
 
@@ -2042,7 +2077,6 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
     (output_dir / log_id).mkdir(exist_ok=True)
     
     annotations = read_feather(log_dir / 'sm_annotations.feather')
-    log_timestamps = sorted(annotations['timestamp_ns'].unique())
     all_uuids = list(annotations['track_uuid'].unique())
     ego_poses = get_ego_SE3(log_dir)
 

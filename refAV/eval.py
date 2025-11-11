@@ -148,9 +148,9 @@ def evaluate_pkls(pred_pkl, gt_pkl, experiment_dir):
     return metrics_dict
 
 
-def combine_matching_pkls(gt_base_dir, pred_base_dir, output_dir, method_name='ref'):
+def combine_matching_pkls(gt_base_dir, pred_base_dir, output_dir, method_name='ref', log_ids_to_combine=None):
     # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     # Get all log_ids from both directories
     gt_log_ids = {d.name: d for d in Path(gt_base_dir).iterdir() if d.is_dir()}
@@ -165,6 +165,8 @@ def combine_matching_pkls(gt_base_dir, pred_base_dir, output_dir, method_name='r
     
     # For each matching log_id
     for log_id in tqdm(matching_log_ids):
+        if log_id not in log_ids_to_combine:
+            continue
 
         gt_log_dir = gt_log_ids[log_id]
         pred_log_dir = pred_log_ids[log_id]
@@ -172,8 +174,8 @@ def combine_matching_pkls(gt_base_dir, pred_base_dir, output_dir, method_name='r
         # Get all PKL files in these directories
         gt_files = {f.stem.replace('_ref_gt', ''): f 
                    for f in gt_log_dir.glob('*_ref_gt.pkl')}
-        pred_files = {f.stem.replace(f'_{method_name}_predictions', ''): f 
-                     for f in pred_log_dir.glob(f'*_{method_name}_predictions.pkl')}
+        pred_files = {f.stem.replace(f'_predictions', f'_{log_id[:8]}'): f 
+                     for f in pred_log_dir.glob(f'*_predictions.pkl')}
         
         # Find matching files within this log_id
         matching_keys = set(gt_files.keys()) & set(pred_files.keys())
