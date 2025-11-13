@@ -62,5 +62,5 @@ def convert_detections_to_tracker(log_prompt_pairs_path, detections_dir:Path):
 
 if __name__ == "__main__":
     print('Converting to tracker ...')
-    convert_detections_to_tracker('/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_test.json',
+    convert_detections_to_tracker('av2_sm_downloads/log_prompt_pairs_test.json',
                                 Path('baselines/groundingSAM/output'))

@@ -3,25 +3,29 @@ from av2.utils.io import read_feather
 
 from refAV.atomic_functions import *
 from refAV.visualization import visualize_scenario
+from refAV.utils import get_log_split
 import refAV.paths as paths
 
 #Extracted data directory after following first steps of tutorial
-dataset_dir = Path('/home/crdavids/Trinity-Sync/refbot/output/tracker_predictions/ground_truth/test')
+dataset_dir = Path('/data3/crdavids/refAV/dataset')
 output_dir = Path("output/visualization")
-log_id = '4fcdebe7-b52f-39e7-a5bc-c664eeba5e7b'
-log_dir = dataset_dir / log_id
+log_id = '4207ef92-0b3b-4708-8868-4ffcaef308e0'
+split = get_log_split(log_id)
+log_dir = dataset_dir / split / log_id
+print(split)
 
 scenarios = [0]
 
 if 0 in scenarios:
-    description = 'front things'
-    log_dir = Path('/home/crdavids/Trinity-Sync/refbot/output/tracker_predictions/StreamPETR_Tracking/nuprompt_val_large/01452fbfbf4543af8acdfd3e8a1ee806')
-    cars = get_objects_of_category(log_dir, category='ANY')
-    ego = get_objects_of_category(log_dir, category='EGO_VEHICLE')
-    cars_in_front = get_objects_in_relative_direction(ego, cars, log_dir, direction='forward')
-    #red_cars = is_color(cars, log_dir, color='red')
-    #print(red_cars)
-    visualize_scenario(cars_in_front, log_dir, output_dir=output_dir, description=description, with_map=False, with_cf=False, with_lidar=False)
+    description = 'car following closely behind bicylist'
+    # Scenario with relationship
+    bicyclists = get_objects_of_category(log_dir, category="BICYCLIST")
+    vehicles = get_objects_of_category(log_dir, category="REGULAR_VEHICLE")
+    vehicles_behind_bikes = get_objects_in_relative_direction(bicyclists, vehicles, log_dir, direction='backward', within_distance=10)
+    vehicles_behind_bikes = in_same_lane(vehicles_behind_bikes, bicyclists, log_dir)
+    description = 'car following closely behind bicyclist'
+
+    visualize_scenario(vehicles_behind_bikes, log_dir, output_dir=output_dir, description=description, with_map=True, with_cf=False, with_lidar=False)
 
 #Secenario 1: vehicle in the wrong lane
 if 1 in scenarios:

@@ -171,8 +171,8 @@ if __name__ == "__main__":
     split = 'val'
 
     try:
-        eval_similarity_scores(f'/home/crdavids/Trinity-Sync/refbot/baselines/clip_track/similarity_scores/{tracker}_{split}.json',
+        eval_similarity_scores(f'baselines/clip_track/similarity_scores/{tracker}_{split}.json',
                     'baselines/clip_track/similarity_scores', majority_threshold=.9)
         print('Converting to tracker ...')
-        convert_similarity_scores_to_tracker(tracker, f'/home/crdavids/Trinity-Sync/refbot/av2_sm_downloads/log_prompt_pairs_{split}.json')
+        convert_similarity_scores_to_tracker(tracker, f'av2_sm_downloads/log_prompt_pairs_{split}.json')
     except: pass

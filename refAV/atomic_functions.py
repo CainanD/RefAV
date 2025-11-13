@@ -242,10 +242,11 @@ def is_color(
     if (cache_manager.color_cache
         and log_id in cache_manager.color_cache
         and str(track_uuid) in cache_manager.color_cache[log_id]
-        and cache_manager.color_cache[log_id][str(track_uuid)] == color):
-        return timestamps
-    else:
+        and cache_manager.color_cache[log_id][str(track_uuid)] != color):
+        # My cache contains colors for NuScenes tracks, but not for AV2 tracks
         return []
+    else:
+        return timestamps
 
     #TODO: Implement CLIP based color discrimination
     best_timestamp, best_camera, best_bbox = get_best_crop(track_uuid, log_dir)
@@ -1619,7 +1620,9 @@ def output_scenario(
     """
     Outputs a file containing the predictions in an evaluation-ready format. Do not provide any visualization kwargs. 
     """
-    post_process_scenario(scenario, log_dir)
+    still_positive = post_process_scenario(scenario, log_dir)
+    if not still_positive:
+        print('Scenario identification flipped from positive to negative after filtering!')
 
     Path(output_dir/log_dir.name).mkdir(parents=True, exist_ok=True)
     create_mining_pkl(description, scenario, log_dir, output_dir)

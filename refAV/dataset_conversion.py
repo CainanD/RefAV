@@ -483,8 +483,7 @@ if __name__ == "__main__":
     #streamPETR_preds_feather = Path('/home/crdavids/Trinity-Sync/StreamPETR/ego_poses.feather')
     #streamPETR_dir = Path('/home/crdavids/Trinity-Sync/refbot/output/tracker_predictions/StreamPETR_Tracking/nuprompt_val_large')
 
-    sm_test_feather = Path('/home/crdavids/Trinity-Sync/av2-api/output/RefAV_dataset/scenario_mining_test_annotations.feather')
-
+    sm_test_feather = Path('output/RefAV_dataset/scenario_mining_test_annotations.feather')
     #tracking_val_predictions = Path('tracker_downloads/Le3DE2D_Tracking_test.pkl')
     #pickle_to_feather(AV2_DATA_DIR, tracking_val_predictions, TRACKER_PRED_DIR/'Le3DE2D_Tracking/test')
     separate_scenario_mining_annotations(sm_test_feather, SM_DATA_DIR/'test')

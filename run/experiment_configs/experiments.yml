@@ -6,12 +6,13 @@ LLM:
 - claude-3-5-sonnet-20241022
 - claude-3-7-sonnet-20250219
 - claude-3-7-classes
+- gpt-5
 - all_objects
 - prefiltered_objects # For use with filtering-based baselines
 
 context:
-- default_RefAV
-- default_NuPrompt
+- RefAV
+- NuPrompt
 
 split:
 - test
@@ -353,28 +354,42 @@ exp60:
   LLM: claude-3-7-sonnet-20250219
   split: nuprompt_val_small
   tracker: StreamPETR_Tracking
-  context: default_NuPrompt
+  context: NuPrompt
 
 exp61:
   name: exp61
   LLM: claude-3-7-sonnet-20250219
   split: nuprompt_val_large
   tracker: StreamPETR_Tracking
-  context: default_NuPrompt
+  context: NuPrompt
 
 exp62:
   name: exp62
   LLM: claude-3-7-sonnet-20250219
   split: nuprompt_val_large
   tracker: StreamPETR_Tracking
-  context: default_NuPrompt
+  context: NuPrompt
 
 exp64:
   name: exp64
   LLM: claude-3-7-sonnet-20250219
   split: nuprompt_val_large
   tracker: StreamPETR_Tracking
-  context: default_NuPrompt
+  context: NuPrompt
+
+exp65:
+  name: exp65
+  LLM: claude-sonnet-4-5-20250929
+  split: test
+  tracker: Le3DE2D_Tracking
+  context: RefAV
+
+exp66:
+  name: exp66
+  LLM: gpt-5
+  split: test
+  tracker: Le3DE2D_Tracking
+  context: RefAV
 
 
 

@@ -1610,6 +1610,7 @@ def post_process_scenario(scenario, log_dir) -> dict:
         return True
 
     #filter_by_length(scenario, min_timesteps=2)
+    #filter_by_ego_distance(scenario, log_dir, max_distance=50)
     filter_by_relationship_distance(scenario, log_dir, max_distance=50)
     dilate_timestamps(scenario, log_dir, min_timespan_s=1.5)
 
@@ -1633,6 +1634,7 @@ def filter_by_relationship_distance(scenario, log_dir, max_distance=50):
     
     for track_uuid, related_objects in list(scenario.items()):
         if isinstance(related_objects, dict):
+
             for related_uuid, related_grandchildren in list(related_objects.items()):
 
                 if isinstance(related_grandchildren, dict):
@@ -1648,6 +1650,8 @@ def filter_by_relationship_distance(scenario, log_dir, max_distance=50):
 
 
 def dilate_timestamps(scenario, log_dir, min_timespan_s:float=1.5, log_df = None):
+    """Adds additional timestamps (symetrically) to any referred tracks that are under 1.5s seconds long to match RefAV annotation procedure."""
+
 
     if log_df is None:
         log_df = read_feather(log_dir / 'sm_annotations.feather')

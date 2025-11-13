@@ -520,7 +520,9 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
     scenario_center = np.concatenate(((tr_corner+bl_corner)/2, [scenario_height]))
     height_above_scenario = 1.1*(np.linalg.norm(tr_corner-bl_corner))/(2*np.tan(np.deg2rad(plotter.camera.view_angle)/2))
     print(scenario_height)
-    camera_height = min(max(scenario_height+height_above_scenario, scenario_height), scenario_height+100)
+    camera_height = min(max(scenario_height+height_above_scenario, scenario_height), scenario_height+200)
+    print(camera_height)
+    
     plotter.camera_position = [tuple(scenario_center+[0,0,camera_height]), (scenario_center), (0, 1, 0)]
 
     # TODO: Convert to orthographic projection
@@ -633,7 +635,7 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
         for j in range(5):
             plotter.write_frame()
 
-"""
+
 def visualize_rgb(
     dataset_dir: Path,
     cuboid_csv: Path,
@@ -643,8 +645,8 @@ def visualize_rgb(
     annotation_dir = Path('/data3/crdavids/refAV/dataset/test/'),
     ) -> None:
     
-    Generates videos visualizing the 3D bounding boxes from an output feather file.
-    Only used for visualizing the ground truth
+    #Generates videos visualizing the 3D bounding boxes from an output feather file.
+    #Only used for visualizing the ground truth 
     
     print(f"Generating visualization for {log_id} - {description}...")
 
@@ -745,83 +747,6 @@ def visualize_rgb(
             continue # Try next frame
 
     print(f"Finished visualization for {log_id} - {description}. Frames saved in {output_log_dir}")
-
-    
-def plot_feather_heatmap(df):
-
-
-    # Read the Feather file
-
-    #df = pd.read_feather(df)
-    # Extract the data
-    referred_df = df[df['mining_category'].isin(['REFERRED_OBJECT'])]
-    x = referred_df['tx_m']
-    y = referred_df['ty_m']
-
-    # Create the heatmap using hist2d
-    # You can adjust 'bins' to change the resolution of your heatmap
-    plt.rcParams['font.family'] = 'serif'
-
-    hist_all, xedges, yedges = np.histogram2d(y, x, bins=50, range=[(-200, 200), (-200, 200)])
-
-    fig, ax = plt.subplots()
-    im = ax.imshow(hist_all.T , origin='lower',
-               extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
-               cmap='viridis', aspect='auto', norm='log') # Using 'coolwarm' for difference visualization
-    plt.colorbar(im, ax=ax, label='number of bounding boxes') # Updated label for normalized difference
-    plt.ylabel('x-position (meters)')
-    plt.xlabel('y-position (meters)')
-    ax.set_xlim((-200, 200))
-    ax.set_ylim((-200, 200))
-    ax.set_title('RefAV Referred Object Distribution')
-    ax.invert_xaxis()
-    plt.tight_layout()
-    plt.savefig('output/heatmap4.pdf')
-
-def plot_distribution_difference_heatmap(df):
-
-    df_referred_objects = df[df['mining_category'].isin(['REFERRED_OBJECT', 'RELATED_OBJECT'])]
-    df_all_objects = df[df['mining_category'].isin(['REFERRED_OBJECT', 'RELATED_OBJECT', 'OTHER_OBJECT'])]
-    # Extract relevant data from df_all_objects
-    x_all = df_all_objects['tx_m']
-    y_all = df_all_objects['ty_m']
-
-    # Extract relevant data from df_referred_objects
-    x_referred = df_referred_objects['tx_m'] + 1e-9
-    y_referred = df_referred_objects['ty_m'] + 1e-9
-
-    # Define common bins and ranges for consistent comparison
-    bins = 100
-    x_range = (-200, 200)
-    y_range = (-200, 200)
-
-    # Create 2D histograms for both dataframes, normalized by the number of observations
-    # Using 'density=True' to normalize the histograms such that the sum over all bins equals 1.
-    hist_all, xedges, yedges = np.histogram2d(y_all, x_all, bins=bins, range=[y_range, x_range], density=True)
-    hist_referred, _, _ = np.histogram2d(y_referred, x_referred, bins=bins, range=[y_range, x_range], density=True)
-
-    # Calculate the difference in normalized distributions
-    difference_hist = 100*hist_referred / (hist_all)
-    difference_hist = np.clip(np.nan_to_num(difference_hist), 0, 300)
-    print(difference_hist.shape)
-    norm = TwoSlopeNorm(vmin=0, vcenter=100, vmax=300)
-
-    # Plot the difference heatmap
-    plt.rcParams['font.family'] = 'serif'
-    fig, ax = plt.subplots() # Get the axes object
-
-    im = ax.imshow(difference_hist.T , origin='lower',
-               extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
-               cmap='RdYlGn', aspect='auto', norm=norm) # Using 'coolwarm' for difference visualization
-    plt.colorbar(im, ax=ax, label='Change from AV2 Sensor Distribution (%)') # Updated label for normalized difference
-    plt.ylabel('x-position (meters)')
-    plt.xlabel('y-position (meters)')
-    ax.set_xlim((-52, 52))
-    ax.set_ylim((-52, 52))
-    ax.set_title('RefAV vs AV2 Sensor Object Distribution')
-    ax.invert_xaxis()
-    plt.tight_layout()
-    plt.savefig('output/normalized_distribution_difference_heatmap.pdf')
     
 
 if __name__ == "__main__":
@@ -834,6 +759,7 @@ if __name__ == "__main__":
     log_id = 'b40c0cbf-5d35-30df-9f63-de088ada278e'
 
     visualize_rgb(dataset_dir, feather_path, output_dir, log_id, description="Vehicle making left turn through ego-vehicle's path while it is raining")
+    
+    # Figure 4 visualization
 
     pass
-"""
