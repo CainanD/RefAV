@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Processes Argoverse 2 sensor data to detect objects based on text prompts
 using GroundingDINO, segment them using SAM 2, estimate 3D bounding boxes

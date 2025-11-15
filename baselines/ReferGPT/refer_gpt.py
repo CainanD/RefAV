@@ -300,7 +300,7 @@ def get_object_captions(
     cropped_images_by_object_timestamp,
     motion_by_object_timestamp,
     log_dir,
-    llm_prompt_path="baselines/ReferGPT/caption_prompt.txt",
+    llm_prompt_path="run/llm_prompting/ReferGPT/caption_prompt.txt",
     batch_size=4,
 ):
     with open(llm_prompt_path, "r") as file:
@@ -713,7 +713,7 @@ def get_query_category(query, model=None, processor=None):
 
     with open("run/llm_prompting/RefAV/categories.txt", "r") as file:
         categories = file.read()
-    with open("baselines/ReferGPT/query_class_prompt.txt", "r") as file:
+    with open("run/llm_prompting/query_class_prompt.txt", "r") as file:
         prompt = file.read()
         prompt = prompt.format(query=query, categories=categories)
 
@@ -935,7 +935,7 @@ if __name__ == "__main__":
 
     combined_preds = combine_pkls(output_dir, Path(args.log_prompt_pairs))
     combined_gt = Path(
-        f"/home/crdavids/Trinity-Sync/RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
+        f"../RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
     )
     metrics = evaluate_pkls(combined_preds, combined_gt, output_dir)
     print(metrics)

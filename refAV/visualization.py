@@ -24,14 +24,29 @@ import cv2
 from refAV.dataset_conversion import pickle_to_feather
 from refAV.paths import AV2_DATA_DIR
 from refAV.utils import (
-    get_map, reconstruct_relationship_dict, reconstruct_track_dict,
-    swap_keys_and_listed_values, get_log_split, read_feather,
-    get_ego_uuid, get_nth_pos_deriv, dict_empty, get_ego_SE3
+    get_map,
+    reconstruct_relationship_dict,
+    reconstruct_track_dict,
+    swap_keys_and_listed_values,
+    get_log_split,
+    read_feather,
+    get_ego_uuid,
+    get_nth_pos_deriv,
+    dict_empty,
+    get_ego_SE3,
 )
 
 
-def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE3], color='red', opacity=.25, with_front = False,
-    with_cf = False, with_label=False) -> list[vtk.vtkActor]:
+def plot_cuboids(
+    cuboids: list[Cuboid],
+    plotter: pv.Plotter,
+    transforms: list[SE3],
+    color="red",
+    opacity=0.25,
+    with_front=False,
+    with_cf=False,
+    with_label=False,
+) -> list[vtk.vtkActor]:
     """
     Plot a cuboid using its vertices from the Cuboid class pattern
     
@@ -55,17 +70,17 @@ def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE
 
     if not cuboids:
         return actors
-    
+
     if isinstance(transforms, SE3):
         transforms = [transforms] * len(cuboids)
 
     for i, cuboid in enumerate(cuboids):
-        #Ego vehicle use ego coordintate frame (centered on rear axel).
-        #All other objects have a coordinate frame centered on their centroid.
+        # Ego vehicle use ego coordintate frame (centered on rear axel).
+        # All other objects have a coordinate frame centered on their centroid.
         vertices = transforms[i].transform_from(cuboid.vertices_m)
 
         if with_front:
-            front_face = [4,0, 1, 2, 3],  # front
+            front_face = ([4, 0, 1, 2, 3],)  # front
 
             if not combined_front:
                 combined_front = pv.PolyData(vertices, front_face)
@@ -75,13 +90,13 @@ def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE
 
         # Create faces using the vertex indices
         faces = [
-            [4,4, 5, 6, 7],     # back
-            [4,0, 4, 7, 3],     # right
-            [4,1, 5, 6, 2],     # left
-            [4,0, 1, 5, 4],     # top
-            [4,2, 3, 7, 6]      # bottom
+            [4, 4, 5, 6, 7],  # back
+            [4, 0, 4, 7, 3],  # right
+            [4, 1, 5, 6, 2],  # left
+            [4, 0, 1, 5, 4],  # top
+            [4, 2, 3, 7, 6],  # bottom
         ]
-        
+
         # Create a PolyData object for the cuboid
         if not combined_mesh:
             combined_mesh = pv.PolyData(vertices, faces)
@@ -96,35 +111,51 @@ def plot_cuboids(cuboids: list[Cuboid], plotter: pv.Plotter, transforms: list[SE
             point = pv.PolyData(center)
             # Add the category as a label
             labels = plotter.add_point_labels(
-                point, 
-                [str(category)], 
-                point_size=.1,  # Make the point invisible
+                point,
+                [" ".join(str(category).split(sep='_'))],
+                point_size=0.1,  # Make the point invisible
                 font_size=10,
                 show_points=False,
-                shape_opacity=0.3,     # Semi-transparent background
-                font_family='times'
+                shape_opacity=0.3,  # Semi-transparent background
+                font_family="times",
             )
             actors.append(labels)
-        
+
         if with_cf:
             combined_cfs = append_cf_mesh(combined_cfs, cuboid, transforms[i])
 
-
-    all_cuboids_actor = plotter.add_mesh(combined_mesh, color=color, opacity=opacity, pickable=False, lighting=False)
+    all_cuboids_actor = plotter.add_mesh(
+        combined_mesh, color=color, opacity=opacity, pickable=False, lighting=False
+    )
     actors.append(all_cuboids_actor)
 
     if with_cf:
-        all_cfs_actor = plotter.add_mesh(combined_cfs, color='black', line_width=3,opacity=opacity, pickable=False, lighting=False)
+        all_cfs_actor = plotter.add_mesh(
+            combined_cfs,
+            color="black",
+            line_width=3,
+            opacity=opacity,
+            pickable=False,
+            lighting=False,
+        )
         actors.append(all_cfs_actor)
 
     if with_front:
-        all_fronts_actor = plotter.add_mesh(combined_front, color='yellow', opacity=opacity, pickable=False, lighting=False)
+        all_fronts_actor = plotter.add_mesh(
+            combined_front,
+            color="yellow",
+            opacity=opacity,
+            pickable=False,
+            lighting=False,
+        )
         actors.append(all_fronts_actor)
-    
+
     return actors
 
 
-def key_by_timestamps(dict:dict[str,dict[str,list[float]]]) -> dict[float,dict[str,list[str]]]:
+def key_by_timestamps(
+    dict: dict[str, dict[str, list[float]]],
+) -> dict[float, dict[str, list[str]]]:
     if not dict:
         return {}
 
@@ -147,19 +178,19 @@ def key_by_timestamps(dict:dict[str,dict[str,list[float]]]) -> dict[float,dict[s
     return swapped_dict
 
 
-def append_cf_mesh(combined_cfs:pv.PolyData, cuboid:Cuboid, transform:SE3=None):
+def append_cf_mesh(combined_cfs: pv.PolyData, cuboid: Cuboid, transform: SE3 = None):
 
-    x_line = np.array([[0,0,0],[10,0,0]])
-    y_line = np.array([[0,0,0],[0,5,0]])
+    x_line = np.array([[0, 0, 0], [10, 0, 0]])
+    y_line = np.array([[0, 0, 0], [0, 5, 0]])
 
     x_line = transform.compose(cuboid.dst_SE3_object).transform_from(x_line)
     y_line = transform.compose(cuboid.dst_SE3_object).transform_from(y_line)
 
     pv_xline = pv.PolyData(x_line)
-    pv_xline.lines = np.array([2,0,1])
+    pv_xline.lines = np.array([2, 0, 1])
 
     pv_yline = pv.PolyData(y_line)
-    pv_yline.lines = np.array([2,0,1])
+    pv_yline.lines = np.array([2, 0, 1])
 
     if combined_cfs is None:
         combined_cfs = pv_xline
@@ -172,7 +203,9 @@ def append_cf_mesh(combined_cfs:pv.PolyData, cuboid:Cuboid, transform:SE3=None):
 
 
 def plot_lane_segments(
-    ax: matplotlib.axes.Axes, lane_segments: list[LaneSegment], lane_color: np.ndarray = np.array([.2,.2,.2])
+    ax: matplotlib.axes.Axes,
+    lane_segments: list[LaneSegment],
+    lane_color: np.ndarray = np.array([0.2, 0.2, 0.2]),
 ) -> None:
     """
     Args:
@@ -187,7 +220,8 @@ def plot_lane_segments(
         )
 
         for bound_type, bound_city in zip(
-            [ls.left_mark_type, ls.right_mark_type], [ls.left_lane_boundary, ls.right_lane_boundary]
+            [ls.left_mark_type, ls.right_mark_type],
+            [ls.left_lane_boundary, ls.right_lane_boundary],
         ):
             if "YELLOW" in bound_type:
                 mark_color = "y"
@@ -207,8 +241,22 @@ def plot_lane_segments(
                 left, right = polyline_utils.get_double_polylines(
                     polyline=bound_city.xyz[:, :2], width_scaling_factor=0.1
                 )
-                ax.plot(left[:, 0], left[:, 1], mark_color, alpha=ALPHA, linestyle=linestyle, zorder=2)
-                ax.plot(right[:, 0], right[:, 1], mark_color, alpha=ALPHA, linestyle=linestyle, zorder=2)
+                ax.plot(
+                    left[:, 0],
+                    left[:, 1],
+                    mark_color,
+                    alpha=ALPHA,
+                    linestyle=linestyle,
+                    zorder=2,
+                )
+                ax.plot(
+                    right[:, 0],
+                    right[:, 1],
+                    mark_color,
+                    alpha=ALPHA,
+                    linestyle=linestyle,
+                    zorder=2,
+                )
             else:
                 ax.plot(
                     bound_city.xyz[:, 0],
@@ -233,7 +281,9 @@ def plot_polygon_patch_pv(polygon_pts, plotter: pv.plotter, color, opacity):
 
 
 def plot_lane_segments_pv(
-    plotter: pv.Plotter, lane_segments: list[LaneSegment], lane_color:np.ndarray = np.array([.2,.2,.2])
+    plotter: pv.Plotter,
+    lane_segments: list[LaneSegment],
+    lane_color: np.ndarray = np.array([0.2, 0.2, 0.2]),
 ) -> list[vtk.vtkActor]:
     """
     Args:
@@ -248,10 +298,12 @@ def plot_lane_segments_pv(
 
         # Add polygon boundary
         plot_polygon_patch_pv(
-            polygon_pts=pts_city, plotter=plotter, color=lane_color, opacity=ALPHA)
+            polygon_pts=pts_city, plotter=plotter, color=lane_color, opacity=ALPHA
+        )
 
         for bound_type, bound_city in zip(
-            [ls.left_mark_type, ls.right_mark_type], [ls.left_lane_boundary, ls.right_lane_boundary]
+            [ls.left_mark_type, ls.right_mark_type],
+            [ls.left_lane_boundary, ls.right_lane_boundary],
         ):
             if "YELLOW" in bound_type:
                 mark_color = "yellow"
@@ -268,12 +320,13 @@ def plot_lane_segments_pv(
                 plotter.add_lines(right, color=mark_color, width=2, connected=True)
             else:
                 plotter.add_lines(
-                    bound_city.xyz, color=mark_color, width=2, connected=True)
+                    bound_city.xyz, color=mark_color, width=2, connected=True
+                )
 
     return actors
 
 
-def plot_map(log_dir:Path, save_plot: bool = False) -> None:
+def plot_map(log_dir: Path, save_plot: bool = False) -> None:
     """
     Visualize both ego-vehicle poses and the per-log local vector map.
 
@@ -307,18 +360,26 @@ def plot_map(log_dir:Path, save_plot: bool = False) -> None:
     plt.show()
 
     if save_plot:
-        plt.savefig(f'output/{log_dir.name}_map.png')
+        plt.savefig(f"output/{log_dir.name}_map.png")
 
 
-def plot_map_pv(avm:ArgoverseStaticMap, plotter:pv.Plotter) -> list[vtk.vtkActor]:
+def plot_map_pv(avm: ArgoverseStaticMap, plotter: pv.Plotter) -> list[vtk.vtkActor]:
     actors = []
 
     for pc in avm.get_scenario_ped_crossings():
         ped_crossing_mesh = pv.PolyData(pc.polygon)
-        faces = np.array([4, 0, 1, 2, 3])  # The number of vertices in the polygon followed by the indices of the points
+        faces = np.array(
+            [4, 0, 1, 2, 3]
+        )  # The number of vertices in the polygon followed by the indices of the points
         # Add faces to the PolyData
         ped_crossing_mesh.faces = faces
-        pc_actor = plotter.add_mesh(ped_crossing_mesh, color='purple', opacity=.3, lighting=False, show_vertices=False)
+        pc_actor = plotter.add_mesh(
+            ped_crossing_mesh,
+            color="purple",
+            opacity=0.3,
+            lighting=False,
+            show_vertices=False,
+        )
         actors.append(pc_actor)
 
     lane_segments = avm.get_scenario_lane_segments()
@@ -327,9 +388,21 @@ def plot_map_pv(avm:ArgoverseStaticMap, plotter:pv.Plotter) -> list[vtk.vtkActor
 
     return actors
 
-def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=True, description='scenario visualization',
-                        with_map=True,  with_cf=False, with_lidar=False, relationship_edges=False, stride=1,
-                        display_progress=True, save_frames=False):
+
+def visualize_scenario(
+    scenario: dict,
+    log_dir: Path,
+    output_dir: Path,
+    with_intro=True,
+    description="scenario visualization",
+    with_map=True,
+    with_cf=False,
+    with_lidar=False,
+    relationship_edges=False,
+    stride=1,
+    display_progress=True,
+    save_frames=False,
+):
     """
     Generate a birds-eye-view video of the scenario.
 
@@ -338,24 +411,29 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
         log_dir: The directory where the bounding box annotations live. This can be either predicted or ground truth tracks.
     """
 
-    #Conversion to legacy code
+    # Conversion to legacy code
     scenario_dict = reconstruct_track_dict(scenario)
     relationship_dict = reconstruct_relationship_dict(scenario)
 
     FPS = 10
-    output_file = output_dir / (description + '.mp4')
+    output_file = output_dir / (description + ".mp4")
     plotter = pv.Plotter(
         off_screen=True,
         line_smoothing=True,
         polygon_smoothing=True,
         point_smoothing=True,
-        lighting='none'
+        lighting="none",
     )
     plotter.open_movie(output_file, framerate=FPS)
 
     set_camera_position_pv(plotter, scenario_dict, relationship_dict, log_dir)
-    plotter.add_legend([(description,'black'),(log_dir.name,'black')],
-                        bcolor='white', border=True, loc='upper left',size=(.7,.1))
+    plotter.add_legend(
+        [(description, "black"), (log_dir.name, "black")],
+        bcolor="white",
+        border=True,
+        loc="upper left",
+        size=(0.7, 0.1),
+    )
 
     if with_map:
         avm = get_map(log_dir)
@@ -364,88 +442,137 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     if with_lidar:
         split = get_log_split(log_dir)
         av2_log_dir = AV2_DATA_DIR / split / log_dir.name
-        dataset = AV2SensorDataLoader(data_dir=av2_log_dir.parent, labels_dir=av2_log_dir.parent)
+        dataset = AV2SensorDataLoader(
+            data_dir=av2_log_dir.parent, labels_dir=av2_log_dir.parent
+        )
         lidar_paths = dataset.get_ordered_log_lidar_fpaths(log_dir.stem)
 
     if with_intro:
-        plot_visualization_intro(plotter, scenario_dict, log_dir, relationship_dict, description=description)
+        plot_visualization_intro(
+            plotter, scenario_dict, log_dir, relationship_dict, description=description
+        )
 
     scenario_objects = swap_keys_and_listed_values(scenario_dict)
     related_dict = key_by_timestamps(relationship_dict)
 
     ego_uuid = get_ego_uuid(log_dir)
-    df = read_feather(log_dir / 'sm_annotations.feather')
-    ego_df = df[df['track_uuid'] == ego_uuid]
+    df = read_feather(log_dir / "sm_annotations.feather")
+    ego_df = df[df["track_uuid"] == ego_uuid]
     ego_poses = get_ego_SE3(log_dir)
 
-    timestamps = sorted(ego_df['timestamp_ns'])
-    frequency = 1/(float(timestamps[1] - timestamps[0])/1E9)
+    timestamps = sorted(ego_df["timestamp_ns"])
+    frequency = 1 / (float(timestamps[1] - timestamps[0]) / 1e9)
 
     for i in range(0, len(timestamps), stride):
         if display_progress:
-            print(f'{i}/{len(timestamps)}', end='\r')
+            print(f"{i}/{len(timestamps)}", end="\r")
 
         timestamp = timestamps[i]
         ego_to_city = ego_poses[timestamp]
 
-        timestamp_df = df[df['timestamp_ns'] == timestamp]
+        timestamp_df = df[df["timestamp_ns"] == timestamp]
         timestamp_actors = []
 
         if scenario_objects and timestamp in scenario_objects:
-            scenario_cuboids = timestamp_df[timestamp_df['track_uuid'].isin(scenario_objects[timestamp])]
+            scenario_cuboids = timestamp_df[
+                timestamp_df["track_uuid"].isin(scenario_objects[timestamp])
+            ]
             scenario_cuboids = CuboidList.from_dataframe(scenario_cuboids)
- 
+
             related_uuids = []
-            relationship_edge_mesh = None      
+            relationship_edge_mesh = None
             if related_dict and timestamp in related_dict:
                 for track_uuid, related_uuid_list in related_dict[timestamp].items():
 
-                    new_related_uuids = set(related_uuid_list).difference(scenario_objects[timestamp])
+                    new_related_uuids = set(related_uuid_list).difference(
+                        scenario_objects[timestamp]
+                    )
                     related_uuids.extend(new_related_uuids)
 
                     if relationship_edges:
-                        relationship_edge_mesh = append_relationship_edges(relationship_edge_mesh,
-                                                track_uuid, related_uuid_list, log_dir, timestamp, ego_to_city)
+                        relationship_edge_mesh = append_relationship_edges(
+                            relationship_edge_mesh,
+                            track_uuid,
+                            related_uuid_list,
+                            log_dir,
+                            timestamp,
+                            ego_to_city,
+                        )
 
             if relationship_edges and relationship_edge_mesh:
-                edges_actor = plotter.add_mesh(relationship_edge_mesh, color='black', line_width=2)
+                edges_actor = plotter.add_mesh(
+                    relationship_edge_mesh, color="black", line_width=2
+                )
                 timestamp_actors.append(edges_actor)
 
-            related_df = timestamp_df[timestamp_df['track_uuid'].isin(related_uuids)]
+            related_df = timestamp_df[timestamp_df["track_uuid"].isin(related_uuids)]
             related_cuboids = CuboidList.from_dataframe(related_df)
 
-            all_timestamp_uuids = timestamp_df['track_uuid'].unique()
-            referred_or_related_uuids = set(scenario_objects[timestamp]).union(related_uuids)
-
+            all_timestamp_uuids = timestamp_df["track_uuid"].unique()
+            referred_or_related_uuids = set(scenario_objects[timestamp]).union(
+                related_uuids
+            )
 
             if ego_uuid not in referred_or_related_uuids:
-                ego_cuboid = CuboidList.from_dataframe(timestamp_df[timestamp_df['track_uuid'] == ego_uuid])
+                ego_cuboid = CuboidList.from_dataframe(
+                    timestamp_df[timestamp_df["track_uuid"] == ego_uuid]
+                )
                 referred_or_related_uuids.add(ego_uuid)
             else:
                 ego_cuboid = []
 
             other_uuids = set(all_timestamp_uuids).difference(referred_or_related_uuids)
-            other_cuboids = timestamp_df[timestamp_df['track_uuid'].isin(other_uuids)]
+            other_cuboids = timestamp_df[timestamp_df["track_uuid"].isin(other_uuids)]
             other_cuboids = CuboidList.from_dataframe(other_cuboids)
         else:
             scenario_cuboids = []
             related_cuboids = []
-            ego_cuboid = CuboidList.from_dataframe(timestamp_df[timestamp_df['track_uuid'] == ego_uuid])
-            other_cuboids = CuboidList.from_dataframe(timestamp_df[timestamp_df['track_uuid'] != ego_uuid])
+            ego_cuboid = CuboidList.from_dataframe(
+                timestamp_df[timestamp_df["track_uuid"] == ego_uuid]
+            )
+            other_cuboids = CuboidList.from_dataframe(
+                timestamp_df[timestamp_df["track_uuid"] != ego_uuid]
+            )
 
         # Add new point cloud
         if with_lidar:
             sweep = Sweep.from_feather(lidar_paths[i])
             scan = sweep.xyz
             scan_city = ego_to_city.transform_from(scan)
-            scan_actor = plotter.add_mesh(scan_city, color='gray', point_size=1)
+            scan_actor = plotter.add_mesh(scan_city, color="gray", point_size=1)
             timestamp_actors.append(scan_actor)
-        
+
         # Add new cuboids
-        scenario_actors = plot_cuboids(scenario_cuboids, plotter, ego_to_city, with_label=True, color='lime', opacity=1, with_cf=with_cf)
-        related_actors = plot_cuboids(related_cuboids, plotter, ego_to_city, with_label=True, color='blue', opacity=1, with_cf=with_cf)
-        other_actors = plot_cuboids(other_cuboids, plotter, ego_to_city, color='red', opacity=1,  with_cf=with_cf)
-        ego_actor = plot_cuboids(ego_cuboid, plotter, ego_to_city, color='red', with_label=True, opacity=1, with_cf=with_cf)
+        scenario_actors = plot_cuboids(
+            scenario_cuboids,
+            plotter,
+            ego_to_city,
+            with_label=True,
+            color="lime",
+            opacity=1,
+            with_cf=with_cf,
+        )
+        related_actors = plot_cuboids(
+            related_cuboids,
+            plotter,
+            ego_to_city,
+            with_label=True,
+            color="blue",
+            opacity=1,
+            with_cf=with_cf,
+        )
+        other_actors = plot_cuboids(
+            other_cuboids, plotter, ego_to_city, color="red", opacity=1, with_cf=with_cf
+        )
+        ego_actor = plot_cuboids(
+            ego_cuboid,
+            plotter,
+            ego_to_city,
+            color="red",
+            with_label=True,
+            opacity=1,
+            with_cf=with_cf,
+        )
 
         timestamp_actors.extend(scenario_actors)
         timestamp_actors.extend(related_actors)
@@ -456,13 +583,17 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
         if i == 0 and with_intro:
             animate_legend_intro(plotter)
 
-        num_frames = max(1,int(FPS//frequency))
+        num_frames = max(1, int(FPS // frequency))
         for _ in range(num_frames):
             plotter.write_frame()
-    
+
         if save_frames:
-            plotter.save_graphic(output_dir / f'{description}_{timestamp}.svg', raster=False)
-            plotter.save_graphic(output_dir / f'{description}_{timestamp}.pdf', raster=False)
+            plotter.save_graphic(
+                output_dir / f"{description}_{timestamp}.svg", raster=False
+            )
+            plotter.save_graphic(
+                output_dir / f"{description}_{timestamp}.pdf", raster=False
+            )
 
         plotter.remove_actor(timestamp_actors)
 
@@ -471,18 +602,20 @@ def visualize_scenario(scenario:dict, log_dir:Path, output_dir:Path, with_intro=
     print(f'Scenario "{description}" visualized successfully!')
 
 
-def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_dict:dict, log_dir):
+def set_camera_position_pv(
+    plotter: pv.Plotter, scenario_dict: dict, relationship_dict: dict, log_dir
+):
     """
     Sets the camera position in the pyvista plotter such that the ego_vehicle is always within view.
     """
 
     scenario_height = -np.inf
 
-    #Ego vehicle should always be in the camera's view
+    # Ego vehicle should always be in the camera's view
     ego_pos, timestamps = get_nth_pos_deriv(get_ego_uuid(log_dir), 0, log_dir)
-    bl_corner = np.array([min(ego_pos[:,0]),min(ego_pos[:,1])])
-    tr_corner = np.array([max(ego_pos[:,0]),max(ego_pos[:,1])])
-    scenario_height = max(ego_pos[:,2])
+    bl_corner = np.array([min(ego_pos[:, 0]), min(ego_pos[:, 1])])
+    tr_corner = np.array([max(ego_pos[:, 0]), max(ego_pos[:, 1])])
+    scenario_height = max(ego_pos[:, 2])
 
     for track_uuid, scenario_timestamps in scenario_dict.items():
         if len(scenario_timestamps) == 0:
@@ -492,13 +625,13 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
         scenario_pos = pos[np.isin(timestamps, scenario_timestamps)]
 
         if scenario_pos.any():
-            track_bl_corner = np.min(scenario_pos[:,:2], axis=0)
-            track_tr_corner = np.max(scenario_pos[:,:2], axis=0)
-            scenario_height = max(scenario_height, np.max(scenario_pos[:,2]))
+            track_bl_corner = np.min(scenario_pos[:, :2], axis=0)
+            track_tr_corner = np.max(scenario_pos[:, :2], axis=0)
+            scenario_height = max(scenario_height, np.max(scenario_pos[:, 2]))
 
             bl_corner = np.min(np.vstack((bl_corner, track_bl_corner)), axis=0)
             tr_corner = np.max(np.vstack((tr_corner, track_tr_corner)), axis=0)
-            scenario_height = max(scenario_height, np.max(scenario_pos[:,2]))
+            scenario_height = max(scenario_height, np.max(scenario_pos[:, 2]))
 
     if not dict_empty(relationship_dict):
         for track_uuid, related_objects in relationship_dict.items():
@@ -510,80 +643,160 @@ def set_camera_position_pv(plotter:pv.Plotter, scenario_dict:dict, relationship_
                 scenario_pos = pos[np.isin(timestamps, scenario_timestamps)]
 
                 if scenario_pos.any():
-                    track_bl_corner = np.min(scenario_pos[:,:2], axis=0)
-                    track_tr_corner = np.max(scenario_pos[:,:2], axis=0)
+                    track_bl_corner = np.min(scenario_pos[:, :2], axis=0)
+                    track_tr_corner = np.max(scenario_pos[:, :2], axis=0)
 
                     bl_corner = np.min(np.vstack((bl_corner, track_bl_corner)), axis=0)
                     tr_corner = np.max(np.vstack((tr_corner, track_tr_corner)), axis=0)
-                    scenario_height = max(scenario_height, np.max(scenario_pos[:,2]))
+                    scenario_height = max(scenario_height, np.max(scenario_pos[:, 2]))
 
-    scenario_center = np.concatenate(((tr_corner+bl_corner)/2, [scenario_height]))
-    height_above_scenario = 1.1*(np.linalg.norm(tr_corner-bl_corner))/(2*np.tan(np.deg2rad(plotter.camera.view_angle)/2))
+    scenario_center = np.concatenate(((tr_corner + bl_corner) / 2, [scenario_height]))
+    height_above_scenario = (
+        1.1
+        * (np.linalg.norm(tr_corner - bl_corner))
+        / (2 * np.tan(np.deg2rad(plotter.camera.view_angle) / 2))
+    )
     print(scenario_height)
-    camera_height = min(max(scenario_height+height_above_scenario, scenario_height), scenario_height+200)
+    camera_height = min(
+        max(scenario_height + height_above_scenario, scenario_height),
+        scenario_height + 400,
+    )
     print(camera_height)
-    
-    plotter.camera_position = [tuple(scenario_center+[0,0,camera_height]), (scenario_center), (0, 1, 0)]
+
+    plotter.camera_position = [
+        tuple(scenario_center + [0, 0, camera_height]),
+        (scenario_center),
+        (0, 1, 0),
+    ]
 
     # TODO: Convert to orthographic projection
     # Also, figure why the road lines are rendered on top of the bounding boxes
     #plotter.parallel_projection = True
-    #plotter.camera.parallel_scale()
-     
+    #plotter.camera.parallel_scale = 1
 
-def append_relationship_edges(relationship_edge_mesh:pv.PolyData, track_uuid, related_uuids, log_dir, timestamp, transform:SE3):
-    df = read_feather(log_dir / 'sm_annotations.feather')
-    track_df = df[df['track_uuid'] == track_uuid]
-    timestamped_track = track_df[track_df['timestamp_ns'] == timestamp]
-    track_pos = timestamped_track[['tx_m', 'ty_m', 'tz_m']].to_numpy()
+
+def append_relationship_edges(
+    relationship_edge_mesh: pv.PolyData,
+    track_uuid,
+    related_uuids,
+    log_dir,
+    timestamp,
+    transform: SE3,
+):
+    df = read_feather(log_dir / "sm_annotations.feather")
+    track_df = df[df["track_uuid"] == track_uuid]
+    timestamped_track = track_df[track_df["timestamp_ns"] == timestamp]
+    track_pos = timestamped_track[["tx_m", "ty_m", "tz_m"]].to_numpy()
     track_pos = transform.transform_from(track_pos)
 
     for related_uuid in related_uuids:
-        related_df = df[df['track_uuid'] == related_uuid]
-        timestamped_related = related_df[related_df['timestamp_ns'] == timestamp]
-        related_pos = timestamped_related[['tx_m', 'ty_m', 'tz_m']].to_numpy()
+        related_df = df[df["track_uuid"] == related_uuid]
+        timestamped_related = related_df[related_df["timestamp_ns"] == timestamp]
+        related_pos = timestamped_related[["tx_m", "ty_m", "tz_m"]].to_numpy()
         related_pos = transform.transform_from(related_pos)
 
         points = np.vstack((track_pos, related_pos))
-        line = np.array([2,0,1])
+        line = np.array([2, 0, 1])
         if relationship_edge_mesh == None:
             relationship_edge_mesh = pv.PolyData(points, lines=line)
         else:
-            relationship_edge_mesh = relationship_edge_mesh.append_polydata(pv.PolyData(points, lines=line))
+            relationship_edge_mesh = relationship_edge_mesh.append_polydata(
+                pv.PolyData(points, lines=line)
+            )
 
     return relationship_edge_mesh
 
 
-def animate_legend_intro(plotter:pv.plotter):
-    plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle'), ('3', 'red')],
-            bcolor='white', border=True, loc='upper left',size=(.267,.13), font_family='times')
-    
+def animate_legend_intro(plotter: pv.plotter):
+    plotter.add_legend(
+        [
+            (" referred objects", "lime", "rectangle"),
+            (" related objects", "blue", "rectangle"),
+            (" other objects", "red", "rectangle"),
+            ("3", "red"),
+        ],
+        bcolor="white",
+        border=True,
+        loc="upper left",
+        size=(0.267, 0.13),
+        font_family="times",
+    )
+
     for j in range(3):
         plotter.write_frame()
 
-    plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle'), (' 2', 'orange')],
-            bcolor='white', border=True, loc='upper left',size=(.267,.13),font_family='times')
-    
-    for j in range(3):
-        plotter.write_frame()        
+    plotter.add_legend(
+        [
+            (" referred objects", "lime", "rectangle"),
+            (" related objects", "blue", "rectangle"),
+            (" other objects", "red", "rectangle"),
+            (" 2", "orange"),
+        ],
+        bcolor="white",
+        border=True,
+        loc="upper left",
+        size=(0.267, 0.13),
+        font_family="times",
+    )
 
-    plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle'), ('  1', 'yellow')],
-            bcolor='white', border=True, loc='upper left',size=(.267,.13),font_family='times')
-    
     for j in range(3):
         plotter.write_frame()
-    plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle'), ('   GO!', 'green')],
-            bcolor='white', border=True, loc='upper left',size=(.267,.13),font_family='times')
-    
+
+    plotter.add_legend(
+        [
+            (" referred objects", "lime", "rectangle"),
+            (" related objects", "blue", "rectangle"),
+            (" other objects", "red", "rectangle"),
+            ("  1", "yellow"),
+        ],
+        bcolor="white",
+        border=True,
+        loc="upper left",
+        size=(0.267, 0.13),
+        font_family="times",
+    )
+
+    for j in range(3):
+        plotter.write_frame()
+    plotter.add_legend(
+        [
+            (" referred objects", "lime", "rectangle"),
+            (" related objects", "blue", "rectangle"),
+            (" other objects", "red", "rectangle"),
+            ("   GO!", "green"),
+        ],
+        bcolor="white",
+        border=True,
+        loc="upper left",
+        size=(0.267, 0.13),
+        font_family="times",
+    )
+
     for j in range(3):
         plotter.write_frame()
 
-    plotter.add_legend([(' referred objects','lime', 'rectangle'),(' related objects','blue', 'rectangle'), (' other objects', 'red', 'rectangle')],
-        bcolor='white', border=True, loc='upper left',size=(.2,.1),font_family='times')
+    plotter.add_legend(
+        [
+            (" referred objects", "lime", "rectangle"),
+            (" related objects", "blue", "rectangle"),
+            (" other objects", "red", "rectangle"),
+        ],
+        bcolor="white",
+        border=True,
+        loc="upper left",
+        size=(0.2, 0.1),
+        font_family="times",
+    )
 
 
-def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, related_dict:dict[str,dict]={}, description='scenario visualization'):
-    
+def plot_visualization_intro(
+    plotter: pv.Plotter,
+    scenario_dict: dict,
+    log_dir,
+    related_dict: dict[str, dict] = {},
+    description="scenario visualization",
+):
+
     track_first_appearences = {}
     for track_uuid, timestamps in scenario_dict.items():
         if timestamps:
@@ -593,9 +806,13 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
     for track_uuid, related_objects in related_dict.items():
         for related_uuid, timestamps in related_objects.items():
             if timestamps and related_uuid in related_first_appearances:
-                related_first_appearances[related_uuid] = min(min(timestamps),related_first_appearances[related_uuid])
+                related_first_appearances[related_uuid] = min(
+                    min(timestamps), related_first_appearances[related_uuid]
+                )
             elif timestamps and (
-            related_uuid not in track_first_appearences or min(timestamps) != track_first_appearences[related_uuid]):
+                related_uuid not in track_first_appearences
+                or min(timestamps) != track_first_appearences[related_uuid]
+            ):
                 related_first_appearances[related_uuid] = min(timestamps)
 
     scenario_cuboids = []
@@ -604,28 +821,42 @@ def plot_visualization_intro(plotter: pv.Plotter, scenario_dict:dict, log_dir, r
     related_transforms = []
 
     ego_poses = get_ego_SE3(log_dir)
-    df = read_feather(log_dir / 'sm_annotations.feather')
+    df = read_feather(log_dir / "sm_annotations.feather")
 
     for track_uuid, timestamp in track_first_appearences.items():
-        track_df = df[df['track_uuid'] == track_uuid]
-        cuboid_df = track_df[track_df['timestamp_ns'] == timestamp]
+        track_df = df[df["track_uuid"] == track_uuid]
+        cuboid_df = track_df[track_df["timestamp_ns"] == timestamp]
         scenario_cuboids.extend(CuboidList.from_dataframe(cuboid_df))
         scenario_transforms.append(ego_poses[timestamp])
 
     for related_uuid, timestamp in related_first_appearances.items():
-        track_df = df[df['track_uuid'] == related_uuid]
-        cuboid_df = track_df[track_df['timestamp_ns'] == timestamp]
+        track_df = df[df["track_uuid"] == related_uuid]
+        cuboid_df = track_df[track_df["timestamp_ns"] == timestamp]
         related_cuboids.extend(CuboidList.from_dataframe(cuboid_df))
         related_transforms.append(ego_poses[timestamp])
 
-    plotter.add_legend([(description,'black'),(log_dir.name,'black')],
-                        bcolor='white', border=True, loc='upper left',size=(.7,.1),font_family='times')
+    plotter.add_legend(
+        [(description, "black"), (log_dir.name, "black")],
+        bcolor="white",
+        border=True,
+        loc="upper left",
+        size=(0.7, 0.1),
+        font_family="times",
+    )
 
     for i in range(4):
         actors = []
 
-        actors.extend(plot_cuboids(scenario_cuboids, plotter, scenario_transforms, color='lime', opacity=1))
-        actors.extend(plot_cuboids(related_cuboids, plotter, related_transforms, color='blue', opacity=1))
+        actors.extend(
+            plot_cuboids(
+                scenario_cuboids, plotter, scenario_transforms, color="lime", opacity=1
+            )
+        )
+        actors.extend(
+            plot_cuboids(
+                related_cuboids, plotter, related_transforms, color="blue", opacity=1
+            )
+        )
 
         for j in range(5):
             plotter.write_frame()
@@ -642,12 +873,12 @@ def visualize_rgb(
     output_vis_dir: Path,
     log_id: str,
     description: str,
-    annotation_dir = Path('/data3/crdavids/refAV/dataset/test/'),
-    ) -> None:
-    
-    #Generates videos visualizing the 3D bounding boxes from an output feather file.
-    #Only used for visualizing the ground truth 
-    
+    annotation_dir=None,
+) -> None:
+
+    # Generates videos visualizing the 3D bounding boxes from an output feather file.
+    # Only used for visualizing the ground truth
+
     print(f"Generating visualization for {log_id} - {description}...")
 
     if not cuboid_csv.exists():
@@ -659,13 +890,13 @@ def visualize_rgb(
     valid_ring = {x.value for x in RingCameras}
     cam_names_str = tuple(x.value for x in RingCameras)
     cam_enums = [RingCameras(cam) for cam in cam_names_str if cam in valid_ring]
-    cam_names=tuple(cam_enums)
+    cam_names = tuple(cam_enums)
 
     # Load AV2 dataloader for the specific log
     try:
         dataloader = SensorDataloader(
-            dataset_dir, # Should be the root AV2 'Sensor' directory
-            with_annotations=False, # We load annotations from our CSV
+            dataset_dir,  # Should be the root AV2 'Sensor' directory
+            with_annotations=False,  # We load annotations from our CSV
         )
     except Exception as e:
         print(f"Error initializing SensorDataloader for log {log_id}: {e}")
@@ -682,16 +913,18 @@ def visualize_rgb(
         return
 
     # --- Rendering Loop ---
-    output_log_dir = output_vis_dir / f"{log_id}_{description}" # Shorten desc for filename
+    output_log_dir = (
+        output_vis_dir / f"{log_id}_{description}"
+    )  # Shorten desc for filename
     output_log_dir.mkdir(parents=True, exist_ok=True)
     rendered_count = 0
 
-    with open('baselines/groundingSAM/log_id_to_start_index.json', 'rb') as file:
+    with open("baselines/groundingSAM/log_id_to_start_index.json", "rb") as file:
         log_id_to_start_index = json.load(file)
 
     i = log_id_to_start_index[log_id]
     datum = dataloader[i]
-    annotations_path = annotation_dir / log_id / 'sm_annotations.feather'
+    annotations_path = annotation_dir / log_id / "sm_annotations.feather"
     anno_df = pd.read_feather(annotations_path)
 
     while datum.log_id == log_id:
@@ -700,18 +933,21 @@ def visualize_rgb(
             i += 2
             datum = dataloader[i]
             timestamp = datum.timestamp_ns
-            timestamp_df = df[df['timestamp_ns'] == timestamp]
-            referred_df = timestamp_df[timestamp_df['mining_category'] == 'REFERRED_OBJECT']
+            timestamp_df = df[df["timestamp_ns"] == timestamp]
+            referred_df = timestamp_df[
+                timestamp_df["mining_category"] == "REFERRED_OBJECT"
+            ]
 
-            anno_timestamp_df = anno_df[anno_df['timestamp_ns'] == timestamp]
+            anno_timestamp_df = anno_df[anno_df["timestamp_ns"] == timestamp]
             anno_cuboids = CuboidList.from_dataframe(anno_timestamp_df)
-            plotted_uuids = referred_df['track_uuid'].unique()
-        
+            plotted_uuids = referred_df["track_uuid"].unique()
 
             # Filter cuboids for the current timestamp
-            ts_cuboids = [c for c in anno_cuboids.cuboids if c.track_uuid in plotted_uuids]
+            ts_cuboids = [
+                c for c in anno_cuboids.cuboids if c.track_uuid in plotted_uuids
+            ]
             if not ts_cuboids:
-                continue # Skip frames with no detections
+                continue  # Skip frames with no detections
 
             current_cuboid_list = CuboidList(ts_cuboids)
             timestamp_city_SE3_ego_dict = datum.timestamp_city_SE3_ego_dict
@@ -721,7 +957,9 @@ def visualize_rgb(
                 cam_name_to_img = {}
                 for cam_name, cam in synchronized_imagery.items():
                     if cam.timestamp_ns in timestamp_city_SE3_ego_dict:
-                        city_SE3_ego_cam_t = timestamp_city_SE3_ego_dict[cam.timestamp_ns]
+                        city_SE3_ego_cam_t = timestamp_city_SE3_ego_dict[
+                            cam.timestamp_ns
+                        ]
                         img = cam.img.copy()
                         img = current_cuboid_list.project_to_cam(
                             img,
@@ -730,36 +968,48 @@ def visualize_rgb(
                             city_SE3_ego_cam_t,
                         )
                         cam_name_to_img[cam_name] = img
-                                        # Save the frame
+                        # Save the frame
 
-                        out_path = output_log_dir / cam_name / f"{description}_{timestamp}.png"
+                        out_path = (
+                            output_log_dir / cam_name / f"{description}_{timestamp}.png"
+                        )
                         out_path.parent.mkdir(parents=True, exist_ok=True)
                         cv2.imwrite(str(out_path), img)
-            
+
                 if len(cam_name_to_img) < len(cam_names):
                     continue
-
 
         except Exception as e:
             print(f"\nError during rendering frame {i} for log {log_id}: {e}")
             import traceback
-            traceback.print_exc()
-            continue # Try next frame
 
-    print(f"Finished visualization for {log_id} - {description}. Frames saved in {output_log_dir}")
-    
+            traceback.print_exc()
+            continue  # Try next frame
+
+    print(
+        f"Finished visualization for {log_id} - {description}. Frames saved in {output_log_dir}"
+    )
+
 
 if __name__ == "__main__":
-    
+
     import refAV.paths as paths
 
     dataset_dir = paths.AV2_DATA_DIR
-    feather_path = Path('/home/crdavids/Trinity-Sync/refbot/output/visualization/b40c0cbf-5d35-30df-9f63-de088ada278e/turning left_b40c0cbf_annotations.feather') 
-    output_dir = Path('output/visualization')
-    log_id = 'b40c0cbf-5d35-30df-9f63-de088ada278e'
+    feather_path = Path(
+        "output/visualization/b40c0cbf-5d35-30df-9f63-de088ada278e/turning left_b40c0cbf_annotations.feather"
+    )
+    output_dir = Path("output/visualization")
+    log_id = "b40c0cbf-5d35-30df-9f63-de088ada278e"
 
-    visualize_rgb(dataset_dir, feather_path, output_dir, log_id, description="Vehicle making left turn through ego-vehicle's path while it is raining")
-    
+    visualize_rgb(
+        dataset_dir,
+        feather_path,
+        output_dir,
+        log_id,
+        description="Vehicle making left turn through ego-vehicle's path while it is raining",
+    )
+
     # Figure 4 visualization
 
     pass

@@ -67,7 +67,7 @@ experiment_dir = paths.SM_PRED_DIR / exp_name
 combined_preds = combine_pkls(experiment_dir, log_prompts_path)
 
 combined_gt = Path(
-    f"/home/crdavids/Trinity-Sync/RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
+    f"../RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
 )
 metrics = evaluate_pkls(combined_preds, combined_gt, experiment_dir)
 print(metrics)

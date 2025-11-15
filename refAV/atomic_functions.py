@@ -243,7 +243,6 @@ def is_color(
         and log_id in cache_manager.color_cache
         and str(track_uuid) in cache_manager.color_cache[log_id]
         and cache_manager.color_cache[log_id][str(track_uuid)] != color):
-        # My cache contains colors for NuScenes tracks, but not for AV2 tracks
         return []
     else:
         return timestamps

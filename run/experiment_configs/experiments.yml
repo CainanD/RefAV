@@ -17,6 +17,7 @@ context:
 split:
 - test
 - val
+# Small indicates a subsample of the NuPrompt val set. Large indicates the whole validation set
 - nuprompt_val_small
 - nuprompt_val_large
 
@@ -349,27 +350,6 @@ exp59:
   split: test
   tracker: ground_truth_2hz
 
-exp60:
-  name: exp60
-  LLM: claude-3-7-sonnet-20250219
-  split: nuprompt_val_small
-  tracker: StreamPETR_Tracking
-  context: NuPrompt
-
-exp61:
-  name: exp61
-  LLM: claude-3-7-sonnet-20250219
-  split: nuprompt_val_large
-  tracker: StreamPETR_Tracking
-  context: NuPrompt
-
-exp62:
-  name: exp62
-  LLM: claude-3-7-sonnet-20250219
-  split: nuprompt_val_large
-  tracker: StreamPETR_Tracking
-  context: NuPrompt
-
 exp64:
   name: exp64
   LLM: claude-3-7-sonnet-20250219
@@ -392,6 +372,27 @@ exp66:
   context: RefAV
 
 
+# Fixing bugs in dataset conversion and NuPrompt evaluation code
+exp60:
+  name: exp60
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val_small
+  tracker: StreamPETR_Tracking
+  context: NuPrompt
+
+exp61:
+  name: exp61
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val_large
+  tracker: StreamPETR_Tracking
+  context: NuPrompt
+
+exp62:
+  name: exp62
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val_large
+  tracker: StreamPETR_Tracking
+  context: NuPrompt
 
 # bottom k filtering, ignore these results
 exp11:

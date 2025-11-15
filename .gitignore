@@ -27,3 +27,4 @@ refAV/llm_prompting/NuPrompt
 scenario_mining_downloads
 */results/
 *summary.txt
+run/nuprompt_experiments.py

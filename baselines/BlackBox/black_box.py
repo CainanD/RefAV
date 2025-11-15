@@ -1,12 +1,13 @@
 from openai import OpenAI
+import anthropic
 from pathlib import Path
 import os
 import json
 import pandas as pd
-from refAV.paths import AV2_DATA_DIR, SM_PRED_DIR
 import multiprocessing as mp
 import time
 
+from refAV.paths import AV2_DATA_DIR, SM_PRED_DIR
 from refAV.atomic_functions import output_scenario
 from refAV.eval import combine_pkls, evaluate_pkls
 from refAV.utils import get_log_split
@@ -75,7 +76,7 @@ def evaluate_generated_scenarios(
 
     combined_preds = combine_pkls(experiment_dir, log_prompts_path)
     combined_gt = Path(
-        f"/home/crdavids/Trinity-Sync/RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
+        f"../RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
     )
     metrics = evaluate_pkls(combined_preds, combined_gt, experiment_dir)
     print(metrics)
@@ -125,7 +126,7 @@ def mine_scenarios_open_ai(log_id, prompts, tracker_path):
             file=file,
         )
 
-    with open("run/llm_prompting/PureAPI/prompt.txt", "r") as file:
+    with open("run/llm_prompting/BlackBox/prompt.txt", "r") as file:
         instructions = file.read()
 
     # Now use the container with the file in your response
@@ -165,8 +166,7 @@ def mine_scenarios_open_ai(log_id, prompts, tracker_path):
 
 def mine_scenarios_anthropic(log_id, prompts, tracker_path):
 
-    import anthropic
-
+    # Currently does not work
     log_dir = tracker_path / log_id
     output_path = Path(f"output/black_box/claude-sonnet-4-5/{log_id}")
 
@@ -204,13 +204,18 @@ def mine_scenarios_anthropic(log_id, prompts, tracker_path):
             file=file,
         )
 
-    with open("run/llm_prompting/PureAPI/prompt.txt", "r") as file:
+    with open("run/llm_prompting/BlackBox/prompt.txt", "r") as file:
         instructions = file.read()
 
     # Now use the container with the file in your response
     print(f"Sending files for log {log_id} to Claude-4-5")
-    response = client.beta.messages.create(
+   # Accumulate stream events
+    content_blocks = []
+    full_text = ""
+    
+    with client.beta.messages.stream(
         model="claude-sonnet-4-5",
+        max_tokens=64000,
         betas=["code-execution-2025-08-25", "files-api-2025-04-14"],
         messages=[{
             "role": "user",
@@ -225,31 +230,60 @@ def mine_scenarios_anthropic(log_id, prompts, tracker_path):
             "type": "code_execution_20250825",
             "name": "code_execution"
         }]
-    )
-
-    # Extract file IDs from the response
-    def extract_file_ids(response):
-        file_ids = []
-        for item in response.content:
-            if item.type == 'bash_code_execution_tool_result':
-                content_item = item.content
-                if content_item.type == 'bash_code_execution_result':
-                    for file in content_item.content:
-                        if hasattr(file, 'file_id'):
-                            file_ids.append(file.file_id)
-        return file_ids
-
+    ) as stream:
+        for event in stream:
+            # Accumulate text
+            if event.type == "content_block_delta":
+                if hasattr(event.delta, 'text'):
+                    full_text += event.delta.text
+            
+            # Store content blocks
+            if event.type == "content_block_stop":
+                content_blocks.append(event.content_block)
+        
+        # Get the final message
+        final_message = stream.get_final_message()
+    
+    # Extract file IDs from the final message
+    file_ids = []
+    for block in final_message.content:
+        if block.type == 'tool_use':
+            # Check if there are output files in the tool use result
+            if hasattr(block, 'output') and block.output:
+                # For code execution results
+                if isinstance(block.output, dict):
+                    if 'files' in block.output:
+                        for file_info in block.output['files']:
+                            if 'file_id' in file_info:
+                                file_ids.append(file_info['file_id'])
+        
+        # Alternative: check content for file references
+        if hasattr(block, 'content') and isinstance(block.content, list):
+            for content_item in block.content:
+                if hasattr(content_item, 'file_id'):
+                    file_ids.append(content_item.file_id)
+    
+    # Create output directory
+    output_path.mkdir(exist_ok=True, parents=True)
+    
     # Download the created files
-    for file_id in extract_file_ids(response):
-        file_metadata = client.beta.files.retrieve_metadata(file_id)
-        file_content = client.beta.files.download(file_id)
-        file_content.write_to_file(Path(output_path)/file_metadata.filename)
-        print(f"Downloaded: {file_metadata.filename}")
-
-        with open(output_path / "response.txt", "w") as file:
-            file.write(str(response))
-
-    return response.output_text
+    print(f"Found {len(file_ids)} output files")
+    for file_id in file_ids:
+        try:
+            file_metadata = client.beta.files.retrieve_metadata(file_id)
+            file_content = client.beta.files.download(file_id)
+            
+            output_file_path = output_path / file_metadata.filename
+            file_content.write_to_file(output_file_path)
+            print(f"Downloaded: {file_metadata.filename}")
+        except Exception as e:
+            print(f"Error downloading file {file_id}: {e}")
+    
+    # Save the full text response
+    with open(output_path / "response.txt", "w") as file:
+        file.write(full_text)
+    
+    return full_text
 
 
 if __name__ == "__main__":
@@ -257,7 +291,7 @@ if __name__ == "__main__":
     split = "test"
     tracker_path = Path("output/tracker_predictions/Le3DE2D_Tracking") / split
     log_prompts_path = Path(f"scenario_mining_downloads/log_prompt_pairs_{split}.json")
-    experiment_dir = SM_PRED_DIR / "Claude-4-5"
+    experiment_dir = SM_PRED_DIR / "claude-sonnet-4-5"
 
     with open(log_prompts_path, "rb") as file:
         lpp_superset = json.load(file)
@@ -273,5 +307,5 @@ if __name__ == "__main__":
             mine_scenarios_anthropic, [(log_id, prompts, tracker_path) for log_id, prompts in lpp]
         )
 
-    output_path = Path(f"output/black_box")
+    output_path = Path(f"output/black_box/claude-sonnet-4-5")
     evaluate_generated_scenarios(log_prompts_path, output_path, tracker_path, experiment_dir)
