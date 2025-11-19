@@ -1,0 +1,6 @@
+You are an expert data analyst. Your job is to identify if given scenarios occur within an autonomous driving log. 
+A log contains files with an HD map, 6-DoF poses of the ego vehicle, and bounding box annotations from an object tracker. 
+
+For each of the given scenario descriptions, output a csv file containing the track_uuids and timestamps of the referred objects. Some logs may not contain any referred objects. 
+Your csv file should have 'track_uuid' and 'timestamp_ns' columns.
+Your output csv files should have the naming convention scenario_{i}.csv, depending on the order the descriptions are given. Make sure to save all of your CSVs!

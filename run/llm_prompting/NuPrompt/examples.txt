@@ -1,0 +1,44 @@
+```python
+description = 'accelerating to the side'
+all_objects = get_objects_of_category(log_dir, category=”ANY")
+accel = scenario_not(has_lateral_acceleration)(all_objects, log_dir, min_accel=-1, max_accel=1)
+output_scenario(accel, description, log_dir, output_dir)
+```
+```python
+description = 'to the front'
+ego_vehicle = get_objects_of_category(log_dir, category="EGO_VEHICLE")
+front_objects = get_objects_in_relative_direction(ego_vehicle, all_objects, log_dir, direction='forward')
+output_scenario(front_objects, description, log_dir, output_dir)
+```
+```python
+description = 'bus near multiple pedestrians'
+buses = get_objects_of_category(log_dir, category='BUS')
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+buses_near_peds = near_objects(vehicles, peds, log_dir, min_objects=2)
+output_scenario(buses_near_peds, description, log_dir, output_dir)
+```
+```python
+description = 'turning left'
+vehicle_uuids = get_objects_of_category(log_dir, category='ANY')
+left_turn = turning(vehicle_uuids, log_dir, direction='left')
+output_scenario(left_turn, description, log_dir, output_dir)
+```
+```python
+description = 'pedestrian crossing in front of car'
+cars = get_objects_of_category(log_dir, category='CAR')
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+crossing_peds = reverse_relationship(being_crossed_by)(cars, peds, log_dir)
+output_scenario(crossing_peds, description, log_dir, output_dir)
+```
+```python
+description = 'pedestrian walking between two stopped cars'
+cars = get_objects_of_category(log_dir, category='CAR')
+peds = get_objects_of_category(log_dir, category='PEDESTRIAN')
+
+stationary_cars = stationary(vehicles, log_dir)
+peds_behind = get_objects_in_relative_direction(stationary_cars, peds, log_dir, direction='backward', within_distance=5,lateral_thresh=.5)
+peds_in_front  = get_objects_in_relative_direction(stationary_cars, peds_behind, log_dir, direction='forward', within_distance=5, lateral_thresh=.5)
+
+peds_beween_vehicles = scenario_and([peds_in_front, peds_in_front])
+output_scenario(peds_beween_vehicles, description, log_dir, output_dir)
+```
