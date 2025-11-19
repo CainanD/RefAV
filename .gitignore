@@ -1,7 +1,6 @@
 *.pkl
 *.feather 
 *.json
-*.mp4
 *.pyc
 *.pdf
 *.log
@@ -9,7 +8,10 @@
 *.pt
 *.png
 *.gz
+*.mp4
 
+!pipeline.png
+!eval_timestamps.json
 */output/
 output/
 output/visualization
@@ -19,5 +21,10 @@ refav/__pycache__/
 evaluation/
 ModelOutputs/
 run/work.py
-tracker_downloads/
 run/av2_to_nuscenes_tracking.py
+tracker_downloads/
+refAV/llm_prompting/NuPrompt
+scenario_mining_downloads
+*/results/
+*summary.txt
+run/nuprompt_experiments.py

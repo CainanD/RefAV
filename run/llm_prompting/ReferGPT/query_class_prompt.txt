@@ -1,0 +1,30 @@
+Your job is to identify the category of the object of focus of a given query. The categories are {categories}. 
+
+Here are some example queries and the corresponding category:
+
+
+motorcyclist braking hard
+MOTORCYCLIST
+
+cop cars in front of the ego vehicle
+REGULAR_VEHICLE
+
+ego vehicle at a busy pedestrian crossing
+EGO_VEHICLE
+
+bicycle near school bus
+BICYCLE
+
+excavator
+LARGE_VEHICLE
+
+person pushing a wheelchair across the road
+PEDESTRIAN
+
+scooter lying down on the side of the road
+WHEELED_DEVICE
+
+vehicle traveling in the same direction as the ego vehicle
+VEHICLE
+
+The query is {query}. Output only the captialized category name.

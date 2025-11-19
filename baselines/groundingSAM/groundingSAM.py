@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Processes Argoverse 2 sensor data to detect objects based on text prompts
 using GroundingDINO, segment them using SAM 2, estimate 3D bounding boxes
@@ -919,7 +918,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_prompt_pairs", type=str, default="av2_sm_downloads/log_prompt_pairs_test.json", help="Path to the JSON file mapping log_ids to lists of text prompts.")
     parser.add_argument("--split", type=str, default="test", help="Scenario mining evaluation split")
     parser.add_argument("--groundingdino_config", type=str, default="../GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py", help="Path to GroundingDINO model config file.")
-    parser.add_argument("--groundingdino_weights", type=str, default="/home/crdavids/Trinity-Sync/GroundingDINO/weights/groundingdino_swint_ogc.pth", help="Path to GroundingDINO model weights file.")
+    parser.add_argument("--groundingdino_weights", type=str, default="GroundingDINO/weights/groundingdino_swint_ogc.pth", help="Path to GroundingDINO model weights file.")
     # Find available SAM types from https://github.com/facebookresearch/segment-anything-2
     parser.add_argument("--sam_model_type", type=str, default="facebook/sam2-hiera-large", help="HuggingFace model identifier for SAM 2 predictor (e.g., 'facebook/sam2-hiera-large').")
 

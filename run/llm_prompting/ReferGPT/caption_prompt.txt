@@ -1,0 +1,83 @@
+Caption this image taken from an autonomous vehicle (referred to as the ego-vehicle). Our detection model classifies this object as {category}.  Here are the coordinates of the object {object_motion}. This is in the format [x, y, yaw, x_velocity, y_velocity, angular_velocity, distance].
+This is in a coordinate system where positive x is to the front of the ego vehicle, positive y is to the left of the ego-vehicle, and positive z is above the ego-vehicle. Position and velocity are measured in meters and meters per second. Yaw is measured in degrees counter-clockwise (coloquially 'left') from the x-axis. Angular velocity is in degrees per second. Distance is distance from the ego-vehicle. 
+Please describe the appearance of the object and scene, are located relative to the road/ego-vehicle, how they are moving, and how they are interacting with any nearby objects (if any are visible). 
+Treat values of x, y, x_velocity, and y_velocity near zero as zero.
+Do not mention yaw or angular velocity. 
+Avoid using the words no and not. 
+Avoid using numbers unless it is particularly relevant. 
+Feel free to add more relevant information in the captions.
+
+Here are some example captions for a given set of coordinates:
+
+REGULAR_VEHICLE, [12.0, 13.0, 45.0, 4.4, 4.7, 10.0, 17.8]
+The car 20 meters to the front left is making a left turn.
+
+PEDESTRIAN, [-10.0, 0.3, 90.0, 0.0, -1.5, 0.0, 10.0]
+The pedesestrian behind the ego-vehicle is walking from right to left.
+
+TRUCK, [0.3, -5.0, 0.0, 0.2, -0.1, 0.1, 5.1]
+The truck is stationary and parked to the right of the ego-vehicle.
+
+Here is a list of example sentences used in previous captions.
+
+scooter lying down on the side of the road
+motorcyclist braking hard
+cop cars in front of the ego vehicle
+ego vehicle at a busy pedestrian crossing
+bicycle near school bus
+motorcycle between stopped vehicles
+person pushing a wheelchair across the road
+box truck braking in front of ego vehicle
+the active vehicle in front of the vehicle ahead
+vehicle at intersection facing another vehicle
+bicyclist on intersection
+truck swerving near construction cones
+pedestrians facing each other at close range, possibly conversing
+stop sign behind a pedestrian
+dog on roadway
+vehicle on opposite side of road turning into same lane as ego vehicle
+vehicle facing a group of three or more pedestrians at a crosswalk within 10 meters
+construction barrel with at least 2 construction cones within 3 meters
+the vehicle two cars in front of the ego vehicle
+vehicle traveling in the same direction as the ego vehicle
+pedestrian crossing at crosswalk
+ego vehicle near stroller on sidewalk
+car under a cover
+the active vehicle in front of the the vehicle ahead
+ego vehicle near articulated bus
+vehicle changing lanes through bike lane
+vehicle parallel parking
+group of pedestrians ahead of the ego vehicle
+vehicle two cars ahead is braking
+any vehicle in front of stop sign
+vehicle accelerating more than two meters per second
+wheeled rider crossing between moving vehicles
+vehicle turning at intersection with nearby pedestrians
+moving bus being crossed by a bicycle
+pedestrians, strollers, or wheeled devices at a pedestrian crossing
+ego vehicle changing lanes between truck and bicycle while approaching pedestrian crossing
+ego vehicle with parked bicycles ahead
+construction item on road
+dog near pedestrian
+ego vehicle near mobile pedestrian sign
+vehicle near message board trailer
+vehicle approaching and facing a stopped vehicle at an intersection
+pedestrian walking alongside stopped bus
+car in front of the ego vehicle during a turn
+objects getting closer to the ego vehicle
+pedestrian facing toward ego vehicle
+vehicle facing toward parked vehicles
+pedestrian to the left of a truck
+ego vehicle driving during snow
+ego vehicle driving on a clear day
+city bus
+excavator
+stop sign on a road with two lanes per direction
+motorcycle within 10 meters to the right of the ego vehicle
+vehicle with their left turn signal on
+ego vehicle near bollard
+vehicle braking near jaywalking pedestrian or stroller
+vehicle accelerating aggressively
+bicycle in same lane as a vehicle
+car on opposite side of road pulling over
+vehicle traveling over 20 meters per second

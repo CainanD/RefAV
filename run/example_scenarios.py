@@ -2,23 +2,36 @@ from pathlib import Path
 from av2.utils.io import read_feather
 
 from refAV.atomic_functions import *
-import refAV.paths as paths
-
-
-#Ground truth visualizations for paper
-dataset_dir = Path('/data3/crdavids/refAV/dataset/test')
+from refAV.visualization import visualize_scenario
+from refAV.utils import get_log_split
+from refAV.paths import SM_DATA_DIR
 
 #Extracted data directory after following first steps of tutorial
-#dataset_dir = paths.SM_DATA_DIR / 'val'
+dataset_dir = SM_DATA_DIR
 output_dir = Path("output/visualization")
-log_id = 'b40c0cbf-5d35-30df-9f63-de088ada278e'
-log_dir = dataset_dir / log_id
+log_id = 'a7c9bb12-322e-3f8e-8798-cf57a4a72f99'
+split = get_log_split(log_id)
+log_dir = dataset_dir / split / log_id
+print(split)
 
-scenarios = [5]
+scenarios = [0]
 
+if 0 in scenarios:
+    description = 'car following closely behind bicylist'
+    # Scenario with relationship
+    ego_uuid = get_ego_uuid(log_dir)
+    timestamps = get_timestamps(ego_uuid, log_dir)
+
+
+    bicyclists = get_objects_of_category(log_dir, category="BICYCLIST")
+    vehicles = get_objects_of_category(log_dir, category="REGULAR_VEHICLE")
+    vehicles_behind_bikes = get_objects_in_relative_direction(bicyclists, vehicles, log_dir, direction='backward', within_distance=20)
+    vehicles_behind_bikes = in_same_lane(vehicles_behind_bikes, bicyclists, log_dir)
+    description = 'car following closely behind bicyclist'
+
+    visualize_scenario(vehicles_behind_bikes, log_dir, output_dir=output_dir, description=description, with_map=True, with_cf=False, with_lidar=False, stride=1, save_frames=True)
 
 #Secenario 1: vehicle in the wrong lane
-
 if 1 in scenarios:
     description = 'vehicles in the wrong lane type'
     vehicles = get_objects_of_category(log_dir, category="VEHICLE")

@@ -1,3 +1,5 @@
+"""Script to run eval.py in parallel."""
+
 import subprocess
 import multiprocessing
 import math
@@ -24,9 +26,6 @@ def run_parallel_eval(exp_name: str, log_prompts_path: Path, procs_per_task: int
     with open(log_prompts_path, 'r') as file:
         lpp = json.load(file)
 
-    # Determine the split name from the file name (assuming format like 'some_name_splitname.json')
-    split_name = log_prompts_path.stem.split('_')[-1]
-
     # Build the list of (log_id, prompt) pairs that need to be completed
     lpp_to_complete = []
     print("Checking which log_id/prompt pairs need evaluation...")
@@ -34,7 +33,7 @@ def run_parallel_eval(exp_name: str, log_prompts_path: Path, procs_per_task: int
         for prompt in prompts:
             # Construct the expected prediction file path
             # Assuming SM_PRED_DIR / exp_name / split_name / log_id / prompt_predictions.pkl
-            pred_path = paths.SM_PRED_DIR / exp_name / split_name / log_id / f'{prompt}_predictions.pkl'
+            pred_path = paths.SM_PRED_DIR / exp_name / 'scenario_predictions' / log_id / f'{prompt}_predictions.pkl'
             if not pred_path.exists():
                 lpp_to_complete.append((log_id, prompt))
 

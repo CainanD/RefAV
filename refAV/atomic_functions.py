@@ -1,3 +1,16 @@
+"""
+The complete list of functions that the LLM has access to. The LLM prompt directly reads the 
+function headers and docstrings to give the LLM context on how to use the functions.
+
+There are several things to note if you want to develop more functions yourself. 
+First, the docstrings and typing do not reflect what is actually passed into these functions.
+This is done to simplify logic for the atomic function developer while keeping the API intuitive to use.
+
+Any function decorated with @composable takes in a track_uuid and returns a list of timestamps.
+Any function decorated with @composable_relational takes in a track_uuid and list of candidate_uuids and 
+returns a tuple of a list of timestamps and a dict keyed by candidate_uuids with list of timestamp values.
+"""
+
 import numpy as np
 from pathlib import Path
 from typing import Literal
@@ -5,8 +18,8 @@ from copy import deepcopy
 import inspect
 
 from refAV.utils import (
-    cache_manager, composable, composable_relational, get_cuboid_from_uuid,
-    get_ego_SE3, get_ego_uuid,
+    cache_manager, composable, composable_relational, #global cache_manager and decorators
+    get_cuboid_from_uuid, get_ego_SE3, get_ego_uuid,
     get_map, get_nth_pos_deriv, get_nth_radial_deriv,
     get_nth_yaw_deriv, get_pedestrian_crossings,
      get_pos_within_lane, get_road_side, get_scenario_lanes,
@@ -15,8 +28,7 @@ from refAV.utils import (
     unwrap_func, dilate_convex_polygon, polygons_overlap, is_point_in_polygon,
     swap_keys_and_listed_values, has_free_will, at_stop_sign_, remove_empty_branches,
     scenario_at_timestamps, reconstruct_track_dict, create_mining_pkl,
-    post_process_scenario, get_object
-)
+    post_process_scenario, get_object, get_img_crops, get_best_crop)
 
 
 @composable_relational
@@ -198,6 +210,84 @@ def is_category(track_candidates:dict, log_dir:Path, category:str):
 
 
 @composable
+@cache_manager.create_cache('is_color')
+def is_color(
+    track_candidates: dict,
+    log_dir: Path,
+    color:Literal["white", "silver", "black", "red", "yellow", "blue"],
+) -> dict:
+    """
+    Returns objects that are the given color, determined by SIGLIP2 feature similarity.
+
+    Args:
+        track_candidates: The objects you want to filter from (scenario dictionary).
+        log_dir: Path to scenario logs.
+        color: The color of the objects you want to return. Must be one of 'white', 'silver',
+               'black', 'red', 'yellow', or 'blue'. Inputting a different color defaults to returning all objects.
+
+    Returns:
+        dict: 
+            A filtered scenario dictionary where:
+            - Keys are track UUIDs that meet the turning criteria.
+            - Values are nested dictionaries containing timestamps.
+
+    Example:
+        ped_with_blue_shirt = is_color(pedestrians, log_dir, color='blue')
+        red_cars = is_color(cars, log_dir, color='red')
+    """
+    track_uuid = track_candidates
+    timestamps = get_timestamps(track_uuid, log_dir)
+    log_id = log_dir.name
+
+    if (cache_manager.color_cache
+        and log_id in cache_manager.color_cache
+        and str(track_uuid) in cache_manager.color_cache[log_id]
+        and cache_manager.color_cache[log_id][str(track_uuid)] != color):
+        return []
+    else:
+        return timestamps
+
+    #TODO: Implement CLIP based color discrimination
+    best_timestamp, best_camera, best_bbox = get_best_crop(track_uuid, log_dir)
+    if best_camera is None:
+        return []
+
+
+@composable
+@cache_manager.create_cache('within_camera_view')
+def within_camera_view(
+    track_candidates: dict,
+    log_dir: Path,
+    camera_name:str
+) -> dict:
+    """
+    Returns objects that are within view of the specified camera.
+
+    Args:
+        track_candidates: The objects you want to filter from (scenario dictionary).
+        log_dir: Path to scenario logs.
+        camera_name: The name of the camera.
+
+    Returns:
+        dict: 
+            A filtered scenario dictionary where:
+            - Keys are track UUIDs that meet the turning criteria.
+            - Values are nested dictionaries containing timestamps.
+
+    Example:
+        ped_with_blue_shirt = is_color(pedestrians, log_dir, color='blue')
+        red_cars = is_color(cars, log_dir, color='red')
+    """
+    track_uuid = track_candidates
+
+    all_views = get_img_crops(track_uuid, log_dir)
+    camera_views = all_views[camera_name]
+    within_view_timestamps = [timestamp for (timestamp, box) in camera_views.items() if box is not None]
+
+    return within_view_timestamps
+
+
+@composable
 @cache_manager.create_cache('turning')
 def turning(
     track_candidates: dict, 
@@ -250,9 +340,9 @@ def turning(
                 turn_dict['left'].extend(timestamps[start_index:end_index+1])
             elif np.sum(ang_vel[start_index:end_index+1]*s_per_timestamp) < -TURN_ANGLE_THRESH:
                 turn_dict['right'].extend(timestamps[start_index:end_index+1])
-            elif (unwrap_func(near_intersection)(track_uuid, log_dir) 
-            and (start_index == 0 and unwrap_func(near_intersection)(track_uuid, log_dir)[0] == timestamps[0]
-                or end_index == len(timestamps)-1 and unwrap_func(near_intersection)(track_uuid, log_dir)[-1] == timestamps[-1])):
+            #elif (unwrap_func(near_intersection)(track_uuid, log_dir) 
+            #and (start_index == 0 and unwrap_func(near_intersection)(track_uuid, log_dir)[0] == timestamps[0]
+            #    or end_index == len(timestamps)-1 and unwrap_func(near_intersection)(track_uuid, log_dir)[-1] == timestamps[-1])):
 
                 if (((start_index==0 and ang_vel[start_index] > ANG_VEL_THRESH) 
                     or (end_index==len(timestamps)-1 and ang_vel[end_index] > ANG_VEL_THRESH))
@@ -272,7 +362,7 @@ def turning(
         return turn_dict[direction]
     else:
         return turn_dict['left'] + turn_dict['right']  
-    
+
 
 @composable
 @cache_manager.create_cache('changing_lanes')
@@ -536,8 +626,8 @@ def heading_toward(
         if candidate_uuid == track_uuid:
             continue
 
-        related_pos, _ = get_nth_pos_deriv(candidate_uuid, 0, log_dir, coordinate_frame=track_uuid)
-        track_radial_vel, related_timestamps = get_nth_radial_deriv(
+        related_pos, related_timestamps = get_nth_pos_deriv(candidate_uuid, 0, log_dir, coordinate_frame=track_uuid)
+        track_radial_vel, _ = get_nth_radial_deriv(
             track_uuid, 1, log_dir, coordinate_frame=candidate_uuid)
         
         for i, timestamp in enumerate(related_timestamps):
@@ -628,7 +718,6 @@ def has_velocity(
     for i, vel in enumerate(vels):
         if min_velocity <= np.linalg.norm(vel) <= max_velocity: #m/s
             vel_timestamps.append(timestamps[i])
-
     if unwrap_func(stationary)(track_candidates, log_dir):
         return []
         
@@ -942,7 +1031,7 @@ def following(
     candidate_uuids:dict,
     log_dir:Path) -> dict:
     """
-    Returns timestamps when the tracked object is following a lead object
+    Returns timestamps when the tracked object is following a lead object.
     Following is defined simultaneously moving in the same direction and lane.
     """
 
@@ -1530,12 +1619,9 @@ def output_scenario(
     """
     Outputs a file containing the predictions in an evaluation-ready format. Do not provide any visualization kwargs. 
     """
-
-
-    prediction_path = output_dir / log_dir.name / f'{description}_{log_dir.name[:8]}_.pkl'
-    prediction_path.unlink(missing_ok=True)
-
-    post_process_scenario(scenario, log_dir)
+    still_positive = post_process_scenario(scenario, log_dir)
+    if not still_positive:
+        print('Scenario identification flipped from positive to negative after filtering!')
 
     Path(output_dir/log_dir.name).mkdir(parents=True, exist_ok=True)
     create_mining_pkl(description, scenario, log_dir, output_dir)

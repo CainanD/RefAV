@@ -1,0 +1,469 @@
+LLM:
+- gemini-2.0-flash
+- gemini-2.5-flash-preview-04-17
+- Qwen2.5-7B-Instruct
+- Qwen3-8B
+- claude-3-5-sonnet-20241022
+- claude-3-7-sonnet-20250219
+- claude-3-7-classes
+- gpt-5
+- all_objects
+- prefiltered_objects # For use with filtering-based baselines
+
+context:
+- RefAV
+- NuPrompt
+
+split:
+- test
+- val
+# Small indicates a subsample of the NuPrompt val set. Large indicates the whole validation set
+- nuprompt_val_small
+- nuprompt_val_large
+
+tracker:
+# RefProg RefAV
+- DGIST_Tracking
+- Le3DE2D_Tracking
+- ReVoxelDet_Tracking
+- TransFusion_Tracking
+- Valeo4Cast_Tracking
+- VoxelDet_Tracking
+- AV2_Detections
+- BEVFusion_Detections
+- Le3DE2D_Detections
+- Valeo4Cast_Detections
+- ReVoxelDet_Detections
+- LT3D_Detections
+- ground_truth
+- ground_truth_2hz
+- AV2_Detections_2hz
+- BEVFusion_Detections_2hz
+- Le3DE2D_Detections_2hz
+- Valeo4Cast_Detections_2hz
+- ReVoxelDet_Detections_2hz
+- LT3D_Detections_2hz
+# RefAV Baselines
+- Le3DE2D_Tracking_clip
+- ReVoxelDet_Tracking_clip
+- ground_truth_clip
+- TransFusion_Tracking_clip
+- Valeo4Cast_Tracking_clip
+- groundingSAM
+# RefProg NuPrompt
+- StreamPETR_Tracking
+
+#Ground truth experiments
+exp0:
+  name: exp0
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: ground_truth
+
+exp18:
+  name: exp18
+  LLM: all_objects
+  split: test
+  tracker: ground_truth
+
+exp19:
+  name: exp19
+  LLM: claude-3-7-classes
+  split: test
+  tracker: ground_truth
+
+exp25:
+  name: exp25
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: ground_truth
+
+#from here all experiments are chronological
+
+exp1:
+  name: exp1
+  LLM: gemini-2.0-flash
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp2:
+  name: exp2
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp3:
+  name: exp3
+  LLM: Qwen2.5-7B-Instruct
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp4:
+  name: exp4
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Tracking
+
+#began error tracking, was fixing bugs up to this point
+exp5:
+  name: exp5
+  LLM: gemini-2.5-flash-preview-04-17
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp6:
+  name: exp6
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: DGIST_Tracking
+
+exp7:
+  name: exp7
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: ReVoxelDet_Tracking
+
+exp8:
+  name: exp8
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: TransFusion_Tracking
+
+exp9:
+  name: exp9
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Tracking
+
+exp10:
+  name: exp10
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: ReVoxelDet_Tracking
+
+# Changed to topk filtering
+exp26:
+  name: exp26
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp27:
+  name: exp27
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: Valeo4Cast_Tracking
+
+exp28:
+  name: exp28
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections
+
+exp29:
+  name: exp29
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections
+
+exp30: 
+  name: exp30
+  LLM: prefiltered_objects
+  tracker: groundingSAM
+  split: test
+
+exp31:
+  name: exp31
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: DGIST_Tracking
+
+exp32:
+  name: exp32
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections
+
+exp33:
+  name: exp33
+  LLM: prefiltered_objects
+  split: test
+  tracker: Le3DE2D_Tracking_clip
+
+exp34:
+  name: exp34
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: DGIST_Tracking
+
+exp35:
+  name: exp35
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: TransFusion_Tracking
+
+exp36:
+  name: exp36
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: BEVFusion_Detections
+
+exp37:
+  name: exp37
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: ReVoxelDet_Detections
+
+exp38:
+  name: exp38
+  LLM: claude-3-7-classes
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp39:
+  name: exp39
+  LLM: gemini-2.0-flash
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp40:
+  name: exp40
+  LLM: Qwen2.5-7B-Instruct
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp41:
+  name: exp41
+  LLM: gemini-2.5-flash-preview-04-17
+  split: test
+  tracker: Le3DE2D_Tracking
+
+exp42:
+  name: exp42
+  LLM: prefiltered_objects
+  split: test
+  tracker: Le3DE2D_Tracking_clip
+
+exp43:
+  name: exp43
+  LLM: prefiltered_objects
+  split: test
+  tracker: ReVoxelDet_Tracking_clip
+
+exp44:
+  name: exp44
+  LLM: prefiltered_objects
+  split: test
+  tracker: ground_truth_clip
+
+exp45:
+  name: exp45
+  LLM: prefiltered_objects
+  split: test
+  tracker: TransFusion_Tracking_clip
+
+exp46:
+  name: exp46
+  LLM: prefiltered_objects
+  split: val
+  tracker: Valeo4Cast_Tracking_clip
+
+exp47:
+  name: exp47
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections_2hz
+
+exp48:
+  name: exp48
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections_2hz
+
+exp49:
+  name: exp49
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: BEVFusion_Detections_2hz
+
+exp50:
+  name: exp50
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections_2hz
+
+
+# Round 2 of 2hz vs 10hz experiments
+# Features 2hz detections, no RefProg filtering,
+# and equivalent timestamp dilation
+exp51:
+  name: exp51
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections_2hz
+
+exp52:
+  name: exp52
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections_2hz
+
+exp53:
+  name: exp53
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: BEVFusion_Detections_2hz
+
+exp54:
+  name: exp54
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections_2hz
+
+exp55:
+  name: exp55
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections
+
+exp56:
+  name: exp56
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections
+
+exp57:
+  name: exp57
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: BEVFusion_Detections
+
+exp58:
+  name: exp58
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections
+
+exp59:
+  name: exp59
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: ground_truth_2hz
+
+exp64:
+  name: exp64
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val_large
+  tracker: StreamPETR_Tracking
+  context: NuPrompt
+
+exp65:
+  name: exp65
+  LLM: claude-sonnet-4-5-20250929
+  split: test
+  tracker: Le3DE2D_Tracking
+  context: RefAV
+
+exp66:
+  name: exp66
+  LLM: gpt-5
+  split: test
+  tracker: Le3DE2D_Tracking
+  context: RefAV
+
+
+# Fixing bugs in dataset conversion and NuPrompt evaluation code
+exp60:
+  name: exp60
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val_small
+  tracker: StreamPETR_Tracking
+  context: NuPrompt
+
+exp61:
+  name: exp61
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val_large
+  tracker: StreamPETR_Tracking
+  context: NuPrompt
+
+exp62:
+  name: exp62
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val_large
+  tracker: StreamPETR_Tracking
+  context: NuPrompt
+
+# bottom k filtering, ignore these results
+exp11:
+  name: exp11
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: BEVFusion_Detections
+
+exp12:
+  name: exp12
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2D_Detections
+
+exp13:
+  name: exp13
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Valeo4Cast_Detections
+
+exp14:
+  name: exp14
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: LT3D_Detections
+
+exp15:
+  name: exp15
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: ReVoxelDet_Detections
+
+exp16:
+  name: exp16
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: DGIST_Tracking
+
+exp17:
+  name: exp17
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: Valeo4Cast_Tracking
+
+exp20:
+  name: exp20
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: DGIST_Tracking
+
+exp21:
+  name: exp21
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: ReVoxelDet_Tracking
+
+exp22:
+  name: exp22
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: TransFusion_Tracking
+
+exp23:
+  name: exp23
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: AV2_Detections
+
+exp24:
+  name: exp24
+  LLM: claude-3-5-sonnet-20241022
+  split: test
+  tracker: Le3DE2D_Tracking
+
