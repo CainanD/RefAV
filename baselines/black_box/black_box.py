@@ -126,7 +126,7 @@ def mine_scenarios_open_ai(log_id, prompts, tracker_path):
             file=file,
         )
 
-    with open("run/llm_prompting/BlackBox/prompt.txt", "r") as file:
+    with open("run/llm_prompting/black_box/prompt.txt", "r") as file:
         instructions = file.read()
 
     # Now use the container with the file in your response
@@ -204,7 +204,7 @@ def mine_scenarios_anthropic(log_id, prompts, tracker_path):
             file=file,
         )
 
-    with open("run/llm_prompting/BlackBox/prompt.txt", "r") as file:
+    with open("run/llm_prompting/black_box/prompt.txt", "r") as file:
         instructions = file.read()
 
     # Now use the container with the file in your response

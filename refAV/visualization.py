@@ -1011,5 +1011,3 @@ if __name__ == "__main__":
     )
 
     # Figure 4 visualization
-
-    pass

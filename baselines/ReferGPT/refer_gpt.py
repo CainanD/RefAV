@@ -763,7 +763,7 @@ def filter_tracks(
         #            referred_tracks[track_uuid] = []
         #        referred_tracks[track_uuid].append(timestamp)
 
-         #Majority voting
+        #Majority voting
         if np.sum(scores > threshold) > len(scores)/2:
             referred_tracks[track_uuid] = [int(timestamp) for timestamp in scores_by_timestamp.keys()]
 

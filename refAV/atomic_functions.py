@@ -232,7 +232,6 @@ def is_color(
             - Values are nested dictionaries containing timestamps.
 
     Example:
-        ped_with_blue_shirt = is_color(pedestrians, log_dir, color='blue')
         red_cars = is_color(cars, log_dir, color='red')
     """
     track_uuid = track_candidates
