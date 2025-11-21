@@ -1,229 +1,395 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RefAV: Towards Planning-Centric Scenario Mining</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
+        :root {
+            --primary-color: #363636;
+            --link-color: #0000EE;
+            --bg-color: #ffffff;
+            --text-color: #4a4a4a;
+            --light-gray: #f5f5f5;
+        }
+
         body {
-            font-family: "Times New Roman", Times, serif; /* Changed font to Times New Roman */
-            margin: 0; /* Remove default body margin */
+            /* Switched back to Times New Roman */
+            font-family: "Times New Roman", Times, serif;
+            background-color: #fdfdfd;
+            color: var(--text-color);
             line-height: 1.6;
-            background-color: #f9f9f9; /* Light background for better contrast */
-            font-size: 1.1em; /* Slightly increased base font size */
+            margin: 0;
+            padding: 0;
+            font-size: 1.1rem;
+            /* Slightly larger base size for Times */
         }
-        /* Main container to center all content and limit width */
+
+        h1,
+        h2,
+        h3 {
+            color: var(--primary-color);
+            font-weight: 800;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h3 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+        }
+
+        a {
+            color: var(--link-color);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: var(--link-color);
+        }
+
+        /* Main Container */
         .container {
-            max-width: 960px; /* Max width for readability */
-            margin: 2em auto; /* Center the container and add vertical margin */
-            padding: 1.5em;
-            background-color: #ffffff; /* White background for content */
-            border-radius: 8px; /* Slightly rounded corners for the content box */
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); /* Subtle shadow */
-            text-align: center; /* Center align all text within the container by default */
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
         }
-        h1, h2, h3 {
-            color: #333;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
+
+        /* Header Section */
+        .header-section {
+            text-align: center;
+            padding-bottom: 2rem;
         }
-        p {
-            text-align: left; /* Override for paragraphs to align left */
-            margin-bottom: 1em;
-        }
+
         .authors {
             margin-bottom: 0.5em;
+            font-size: 1.1rem;
         }
         .author {
             display: inline-block;
-            margin: 0 0.75em;
+            margin: 0 0.5em;
         }
         .author a, .section-links a {
+            font-size: 1.1rem;
             text-decoration: none;
-            color: #007bff;
+            color: var(--link-color);
             font-weight: bold;
         }
         .author a:hover, .section-links a:hover {
             text-decoration: underline;
         }
+
         .affiliation {
-            margin-bottom: 1em;
-            color: #555;
+            font-size: 1.1rem;
+            color: #555555;
+            margin-bottom: .5rem;
         }
-        .section-links {
-            margin-bottom: 2em;
+
+        /* Button Links */
+        .link-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            font-family: "Helvetica", "Arial", sans-serif;
+            /* Keep buttons sans-serif for readability */
         }
-        .section-links a {
-            margin: 0 1em;
-            padding: 0.5em 1em;
-            border: 1px solid #007bff;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
+
+        .btn {
+            background-color: #363636;
+            color: #fff !important;
+            padding: 10px 22px;
+            border-radius: 30px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.1s ease, background-color 0.2s ease;
         }
-        .section-links a:hover {
-            background-color: #e6f2ff;
+
+        .btn:hover {
+            background-color: #4a4a4a;
+            transform: translateY(-2px);
+            text-decoration: none;
         }
+
+        .btn i {
+            margin-right: 8px;
+            font-size: 1.1em;
+        }
+
+        /* Abstract & Text */
+        .abstract-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: justify;
+        }
+
+        p {
+            margin-bottom: 1.2em;
+        }
+
+        /* Figures and Videos */
         .figure-container {
-            margin: 2em auto; /* Center the figure container */
+            margin: 2rem auto;
             text-align: center;
         }
+
         .figure-container img {
-            max-width: 100%; /* Ensures responsiveness */
-            height: auto;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
         }
+
+        /* Grids */
         .grid-container {
             display: grid;
-            gap: 1em;
-            margin: 1em auto; /* Center the grid container */
-            max-width: 800px; /* Limit grid width if needed */
+            gap: 1.5rem;
+            margin: 1.5rem auto;
         }
-        /* Specific styling for the dataset grid to force 2 columns */
+
+        /* Explicitly set 3 columns for the dataset grid */
         .dataset-grid {
-            grid-template-columns: repeat(2, 1fr); /* Forces a 2-column layout for dataset videos */
+            grid-template-columns: repeat(2, 1fr);
         }
-        /* Styling for qualitative results grids */
+
         .qualitative-grid {
-            grid-template-columns: repeat(2, 1fr); /* Default 2 columns for qualitative results */
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
         }
+
         .grid-item {
-            border: 1px solid #ddd;
-            padding: 0.5em;
-            text-align: center;
-            border-radius: 5px;
-            background-color: #fefefe;
-            display: flex; /* Use flex for vertical centering of content */
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            display: flex;
             flex-direction: column;
-            justify-content: space-between; /* Pushes content and caption apart */
         }
+
         .grid-item video {
-            max-width: 100%;
-            height: auto;
-            display: block; /* Remove extra space below video */
-            margin: 0 auto;
-            border-radius: 3px; /* Slightly rounded corners for media */
-            object-fit: cover; /* Ensures video covers the area without distortion */
-            flex-grow: 1; /* Allows video to take available space */
+            width: 100%;
+            display: block;
+            background: #000;
         }
+
         .grid-item p {
-            margin-top: 0.5em;
-            margin-bottom: 0;
-            text-align: center; /* Center caption text */
-            font-size: 0.9em; /* Slightly smaller font for captions */
-            color: #666;
-        }
-        table {
-            width: 90%; /* Adjust width to make it fit better, then center */
-            border-collapse: collapse;
-            margin: 1.5em auto; /* Center the table */
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-            text-align: left; /* Align table content left by default */
-        }
-        th, td {
-            border: 1px solid #ddd;
             padding: 10px;
-            text-align: left;
-            word-wrap: break-word; /* Ensure long text wraps */
+            margin: 0;
+            font-size: 0.9rem;
+            text-align: center;
+            background-color: #f9f9f9;
+            color: #555;
+            font-weight: 500;
+            border-top: 1px solid #eee;
+            font-family: "Helvetica", "Arial", sans-serif;
+            /* Clean font for captions */
         }
-        th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-            color: #444;
+
+        /* Tables */
+        table {
+            width: 100%;
+            max-width: 900px;
+            margin: 2rem auto;
+            border-collapse: collapse;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            font-family: "Helvetica", "Arial", sans-serif;
+            /* Tables usually look better sans-serif */
         }
+
+        thead {
+            background-color: #f4f4f4;
+            border-bottom: 2px solid #ddd;
+        }
+
+        th,
         td {
-            background-color: #fff;
+            padding: 12px 15px;
+            text-align: center;
         }
-        tr:nth-child(even) td {
-            background-color: #f8f8f8; /* Stripe effect for rows */
+
+        th:first-child,
+        td:first-child {
+            text-align: left;
         }
-        pre {
-            background-color: #f0f0f0;
-            padding: 0.5em;
-            border-radius: 5px;
+
+        td:nth-child(2) {
+            text-align: left;
+        }
+
+        th {
+            font-weight: 700;
+            color: #333;
+            font-size: 0.95rem;
+        }
+
+        td {
+            font-size: 0.9rem;
+            color: #555;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background-color: #fafafa;
+        }
+
+        /* Citation Block */
+        .citation-block {
+            background-color: #f5f5f5;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
             overflow-x: auto;
-            text-align: left; /* Ensure code block text aligns left */
-            margin: 1em auto;
-            max-width: 90%; /* Adjust width for code block */
+            border: 1px solid #e0e0e0;
+            text-align: left;
         }
+
         hr {
             border: 0;
             height: 1px;
-            background: #eee;
-            margin: 2em 0;
+            background: #e0e0e0;
+            margin: 3rem 0;
+            width: 50%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Responsive Tweaks */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            /* Allow dataset grid to collapse on small mobile screens */
+            .dataset-grid {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            }
+
+            .qualitative-grid {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                display: block;
+                overflow-x: auto;
+            }
         }
     </style>
 </head>
+
 <body>
 
     <div class="container">
-        <h1>RefAV: Towards Planning-Centric Scenario Mining</h1>
 
-        <div class="authors">
-            <div class="author"><a href="https://www.ri.cmu.edu/ri-people/cainan-ryan-davidson/" target="_blank">Cainan Davidson</a></div>
-            <div class="author"><a href="https://www.cs.cmu.edu/~deva/" target="_blank">Deva Ramanan</a></div>
-            <div class="author"><a href="https://www.neeharperi.com/" target="_blank">Neehar Peri</a></div>
+        <div class="header-section">
+            <h1>RefAV: Towards Planning-Centric Scenario Mining</h1>
+
+            <div class="authors">
+                <div class="author"><a href="https://www.ri.cmu.edu/ri-people/cainan-ryan-davidson/" target="_blank">Cainan Davidson</a></div>
+                <div class="author"><a href="https://www.cs.cmu.edu/~deva/" target="_blank">Deva Ramanan</a></div>
+                <div class="author"><a href="https://www.neeharperi.com/" target="_blank">Neehar Peri</a></div>
+            </div>
+
+            <div class="affiliation">
+                Carnegie Mellon University
+            </div>
+
+            <div class="link-buttons">
+                <a href="https://arxiv.org/abs/2505.20981" target="_blank" class="btn">
+                    <i class="fas fa-file-pdf"></i> Paper
+                </a>
+                <a href="https://github.com/CainanD/RefAV" target="_blank" class="btn">
+                    <i class="fab fa-github"></i> Code
+                </a>
+                <a href="https://argoverse.github.io/user-guide/tasks/scenario_mining.html#downloading-scenario-mining-annotations"
+                    target="_blank" class="btn">
+                    <i class="fas fa-database"></i> Dataset
+                </a>
+            </div>
+
+            <div class="figure-container">
+                <img src="figures/refav_teaser.png" alt="Teaser figure displaying RefAV capabilities">
+            </div>
         </div>
 
-        <div class="affiliation">
-            Carnegie Mellon University
+        <div class="abstract-container">
+            <h2>Abstract</h2>
+            <p>
+                Autonomous Vehicles (AVs) collect and pseudo-label terabytes of multi-modal data localized to HD maps
+                during normal fleet testing. However, identifying interesting and safety-critical scenarios from
+                uncurated driving logs remains a significant challenge. Traditional scenario mining techniques are
+                error-prone and prohibitively time-consuming, often relying on hand-crafted structured queries.
+            </p>
+            <p>
+                In this work, we revisit spatio-temporal scenario mining through the lens of recent vision-language
+                models (VLMs) to detect whether a described scenario occurs in a driving log and, if so, precisely
+                localize it in both time and space. To address this problem, we introduce <strong>RefAV</strong>, a
+                large-scale dataset of 10,000 diverse natural language queries that describe complex multi-agent
+                interactions relevant to motion planning derived from 1000 driving logs in the Argoverse 2 Sensor
+                dataset. We evaluate several referential multi-object trackers and present an empirical analysis of our
+                baselines. Notably, we find that naively repurposing off-the-shelf VLMs yields poor performance,
+                suggesting that scenario mining presents unique challenges.
+            </p>
         </div>
-
-        <div class="section-links">
-            <a href="https://github.com/CainanD/RefAV" target="_blank">Code</a>
-            <a href="https://argoverse.github.io/user-guide/tasks/scenario_mining.html#downloading-scenario-mining-annotations" target="_blank">Dataset</a>
-            <a href="https://arxiv.org/abs/2505.20981" target="_blank">arXiv</a>
-        </div>
-
-        <div class="figure-container">
-            <img src="figures/teaser.jpg" alt="Teaser figure">
-        </div>
-
-        <hr>
-
-        <h2>Abstract</h2>
-        <p>
-            Autonomous Vehicles (AVs) collect and pseudo-label terabytes of multi-modal data localized to HD maps during normal fleet testing. However, identifying interesting and safety-critical scenarios from uncurated driving logs remains a significant challenge. Traditional scenario mining techniques are error-prone and prohibitively time-consuming, often relying on hand-crafted structured queries. In this work, we revisit spatio-temporal scenario mining through the lens of recent vision-language models (VLMs) to detect whether a described scenario occurs in a driving log and, if so, precisely localize it in both time and space. To address this problem, we introduce RefAV, a large-scale dataset of 10,000 diverse natural language queries that describe complex multi-agent interactions relevant to motion planning derived from 1000 driving logs in the Argoverse 2 Sensor dataset. We evaluate several referential multi-object trackers and present an empirical analysis of our baselines. Notably, we find that naively repurposing off-the-shelf VLMs yields poor performance, suggesting that scenario mining presents unique challenges.
-        </p>
 
         <hr>
 
         <h2>The RefAV Dataset</h2>
         <div class="grid-container dataset-grid">
             <div class="grid-item">
-                <video src="figures/pedestrian with multiple dogs_n1.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/pedestrian with multiple dogs_n1.mp4" controls loop muted autoplay
+                    playsinline></video>
                 <p>Pedestrian with multiple dogs</p>
             </div>
             <div class="grid-item">
-                <video src="figures/ego vehicle merging between two regular vehicles_n1.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/ego vehicle merging between two regular vehicles_n1.mp4" controls loop muted
+                    autoplay playsinline></video>
                 <p>Ego vehicle merging between two regular vehicles</p>
             </div>
             <div class="grid-item">
-                <video src="figures/bicycle passing between bus and construction barrier_n2.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/bicycle passing between bus and construction barrier_n2.mp4" controls loop muted
+                    autoplay playsinline></video>
                 <p>Bicycle passing between bus and construction barrier</p>
             </div>
             <div class="grid-item">
-                <video src="figures/passenger vehicle near stroller in road_n9.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/passenger vehicle near stroller in road_n9.mp4" controls loop muted autoplay
+                    playsinline></video>
                 <p>Passenger vehicle near stroller in road</p>
             </div>
             <div class="grid-item">
-                <video src="figures/ego vehicle approaching construction zone with traffic controller.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/ego vehicle approaching construction zone with traffic controller.mp4" controls loop
+                    muted autoplay playsinline></video>
                 <p>Ego vehicle approaching construction zone with traffic controller</p>
             </div>
             <div class="grid-item">
-                <video src="figures/Pedestrians walking between two stopped vehicles_0ab21841.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/Pedestrians walking between two stopped vehicles_0ab21841.mp4" controls loop muted
+                    autoplay playsinline></video>
                 <p>Pedestrians walking between two stopped vehicles</p>
             </div>
         </div>
@@ -232,11 +398,18 @@
 
         <h2>RefProg: Referential Program Synthesis</h2>
         <div class="figure-container">
-            <img src="./figures/pipeline.png" alt="Refprog Figure">
+            <img src="./figures/pipeline.png" alt="RefProg Pipeline Diagram">
         </div>
-        <p>
-            RefProg is a dual-path method that independently generates 3D perception outputs and Python-based programs for referential grounding. Given raw LiDAR and RGB inputs, RefProg runs a offline 3D perception model to generate high quality 3D tracks. In parallel, it prompts an LLM to generate code to identify the referred track. Finally, the generated code is executed to filter the output of the offline 3D perception model to produce a final set of <em>referred objects</em> (shown in green), <em>related objects</em> (shown in blue), and <em>other objects</em> (shown in red).
-        </p>
+        <div class="abstract-container">
+            <p>
+                RefProg is a dual-path method that independently generates 3D perception outputs and Python-based
+                programs for referential grounding. Given raw LiDAR and RGB inputs, RefProg runs an offline 3D
+                perception model to generate high-quality 3D tracks. In parallel, it prompts an LLM to generate code to
+                identify the referred track. Finally, the generated code is executed to filter the output of the offline
+                3D perception model to produce a final set of <em>referred objects</em> (shown in green), <em>related
+                    objects</em> (shown in blue), and <em>other objects</em> (shown in red).
+            </p>
+        </div>
 
         <hr>
 
@@ -245,15 +418,13 @@
         <h3>Strengths</h3>
         <div class="grid-container qualitative-grid">
             <div class="grid-item">
-                <video src="figures/group of at least 3 moving bicyclists within 5 meters of each other_n3.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/group of at least 3 moving bicyclists within 5 meters of each other_n3.mp4" controls
+                    loop muted autoplay playsinline></video>
                 <p>Unambiguous Scenario</p>
             </div>
             <div class="grid-item">
-                <video src="figures/ego vehicle approaching construction zone with traffic controller.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/ego vehicle approaching construction zone with traffic controller.mp4" controls loop
+                    muted autoplay playsinline></video>
                 <p>Nested Relationships</p>
             </div>
         </div>
@@ -261,15 +432,13 @@
         <h3>Weaknesses</h3>
         <div class="grid-container qualitative-grid">
             <div class="grid-item">
-                <video src="figures/car following closely behind bicyclist_n2.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/car following closely behind bicyclist_n2.mp4" controls loop muted autoplay
+                    playsinline></video>
                 <p>Semantics</p>
             </div>
             <div class="grid-item">
-                <video src="figures/pulling out of parallel parking onto road_n0.mp4" controls loop muted autoplay playsinline>
-                    Your browser does not support the video tag.
-                </video>
+                <video src="figures/pulling out of parallel parking onto road_n0.mp4" controls loop muted autoplay
+                    playsinline></video>
                 <p>Expressivity</p>
             </div>
         </div>
@@ -277,9 +446,13 @@
         <hr>
 
         <h2>Argoverse 2 Scenario Mining Competition 2025</h2>
-        <p>
-            Eight teams submitted to our benchmark as part of a CVPR 2025 Workshop on Autonomous Driving (WAD) competition. Thank you to all of those who participated!
-        </p>
+        <div class="abstract-container">
+            <p style="text-align: center;">
+                Eight teams submitted to our benchmark as part of a CVPR 2025 Workshop on Autonomous Driving (WAD)
+                competition. Thank you to all of those who participated!
+            </p>
+        </div>
+
         <table>
             <thead>
                 <tr>
@@ -337,17 +510,18 @@
 
         <hr>
 
-<h2>Citation</h2>
-<p>If you find our paper and code repository useful, please cite us:</p>
-<pre><code>@article{davidson2025refav,
+        <h2>Citation</h2>
+        <p>If you find our paper and code repository useful, please cite us:</p>
+        <div class="citation-block">
+            <pre><code>@article{davidson2025refav,
   title={RefAV: Towards Planning-Centric Scenario Mining},
   author={Davidson, Cainan and Ramanan, Deva and Peri, Neehar},
   journal={arXiv preprint arXiv:2505.20981},
   year={2025}
-}
-</code></pre>
+}</code></pre>
+        </div>
 
-    </div> <!-- End of container -->
-
+    </div>
 </body>
+
 </html>
