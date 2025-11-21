@@ -10,6 +10,7 @@
 *.gz
 
 !pipeline.png
+!refav_teaser.png
 !eval_timestamps.json
 */output/
 output/
