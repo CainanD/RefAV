@@ -9,11 +9,48 @@ from copy import deepcopy
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
 
-nuscenes_path = Path('../StreamPETR/data/nuscenes/v1.0-trainval')
+from refAV.paths import NUSCENES_DIR, NUSCENES_AV2_DATA_DIR
 
-#tracker_pred_path = Path('output/tracker_predictions/StreamPETR_Tracking/val')
+NUSCENES_VAL_LOG_IDS = \
+    ['scene-0003', 'scene-0012', 'scene-0013', 'scene-0014', 'scene-0015', 'scene-0016', 'scene-0017', 'scene-0018',
+     'scene-0035', 'scene-0036', 'scene-0038', 'scene-0039', 'scene-0092', 'scene-0093', 'scene-0094', 'scene-0095',
+     'scene-0096', 'scene-0097', 'scene-0098', 'scene-0099', 'scene-0100', 'scene-0101', 'scene-0102', 'scene-0103',
+     'scene-0104', 'scene-0105', 'scene-0106', 'scene-0107', 'scene-0108', 'scene-0109', 'scene-0110', 'scene-0221',
+     'scene-0268', 'scene-0269', 'scene-0270', 'scene-0271', 'scene-0272', 'scene-0273', 'scene-0274', 'scene-0275',
+     'scene-0276', 'scene-0277', 'scene-0278', 'scene-0329', 'scene-0330', 'scene-0331', 'scene-0332', 'scene-0344',
+     'scene-0345', 'scene-0346', 'scene-0519', 'scene-0520', 'scene-0521', 'scene-0522', 'scene-0523', 'scene-0524',
+     'scene-0552', 'scene-0553', 'scene-0554', 'scene-0555', 'scene-0556', 'scene-0557', 'scene-0558', 'scene-0559',
+     'scene-0560', 'scene-0561', 'scene-0562', 'scene-0563', 'scene-0564', 'scene-0565', 'scene-0625', 'scene-0626',
+     'scene-0627', 'scene-0629', 'scene-0630', 'scene-0632', 'scene-0633', 'scene-0634', 'scene-0635', 'scene-0636',
+     'scene-0637', 'scene-0638', 'scene-0770', 'scene-0771', 'scene-0775', 'scene-0777', 'scene-0778', 'scene-0780',
+     'scene-0781', 'scene-0782', 'scene-0783', 'scene-0784', 'scene-0794', 'scene-0795', 'scene-0796', 'scene-0797',
+     'scene-0798', 'scene-0799', 'scene-0800', 'scene-0802', 'scene-0904', 'scene-0905', 'scene-0906', 'scene-0907',
+     'scene-0908', 'scene-0909', 'scene-0910', 'scene-0911', 'scene-0912', 'scene-0913', 'scene-0914', 'scene-0915',
+     'scene-0916', 'scene-0917', 'scene-0919', 'scene-0920', 'scene-0921', 'scene-0922', 'scene-0923', 'scene-0924',
+     'scene-0925', 'scene-0926', 'scene-0927', 'scene-0928', 'scene-0929', 'scene-0930', 'scene-0931', 'scene-0962',
+     'scene-0963', 'scene-0966', 'scene-0967', 'scene-0968', 'scene-0969', 'scene-0971', 'scene-0972', 'scene-1059',
+     'scene-1060', 'scene-1061', 'scene-1062', 'scene-1063', 'scene-1064', 'scene-1065', 'scene-1066', 'scene-1067',
+     'scene-1068', 'scene-1069', 'scene-1070', 'scene-1071', 'scene-1072', 'scene-1073']
+
+NUSC_CATEGORY_TO_AV2_CATEGORY = {
+    "vehicle.motorcycle": "MOTORCYCLE",
+    "vehicle.bicycle": "BICYCLE",
+    "vehicle.bus.bendy": "BUS",
+    "vehicle.trailer": "TRAILER",
+    "vehicle.car": "CAR",
+    "human.pedestrian.adult": "PEDESTRIAN",
+    "human.pedestrian.child": "PEDESTRIAN",
+    "human.pedestrian.wheelchair": "PEDESTRIAN",
+    "human.pedestrian.stroller": "PEDESTRIAN",
+    "human.pedestrian.personal_mobility": "PEDESTRIAN",
+    "human.pedestrian.police_officer": "PEDESTRIAN",
+    "human.pedestrian.construction_worker": "PEDESTRIAN",
+    "vehicle.truck": "TRUCK",
+    }
+
+
 # Only used for visualization
-tracker_pred_path = Path('output/tracker_predictions/nuscenes_ground_truth/val')
+#output_path = Path('output/tracker_predictions/nuscenes_ground_truth/val')
 
 def separate_scenario_mining_annotations(input_df, base_annotation_dir, filename):
     """
@@ -30,7 +67,7 @@ def separate_scenario_mining_annotations(input_df, base_annotation_dir, filename
     base_dir = Path(base_annotation_dir)
     base_dir.mkdir(exist_ok=True, parents=True)
     
-    df = pd.read_csv(input_df)
+    df = input_df#pd.read_csv(input_df)
 
     # Get unique log_ids
     unique_log_ids = df['log_id'].unique()
@@ -47,13 +84,14 @@ def separate_scenario_mining_annotations(input_df, base_annotation_dir, filename
         # Get all entries for this log_id
         log_data = df[df['log_id'] == log_id]
     
-        
         filtered_data:pd.DataFrame = log_data.drop(columns=exclude_columns).reset_index(drop=True)
         
         # Save to a feather file
         output_file_dir = log_dir 
         output_file_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_file_dir/filename
+        if 'track_uuid' in filtered_data.columns:
+            filtered_data['track_uuid'] = filtered_data['track_uuid'].astype(str)
         filtered_data.to_feather(output_file)
         print(f"Saved {output_file}")
     
@@ -69,58 +107,10 @@ def token(obj):
         # Check if it's a list of dicts with 'token' keys
         return (obj['token'], obj)
     return obj
-
-with open(nuscenes_path/'sample.json', 'rb') as file:
-    data_list = json.load(file, object_hook=token)
-    sample_local = {key: value for (key, value) in data_list}
-with open(nuscenes_path/'calibrated_sensor.json', 'rb') as file:
-    data_list = json.load(file, object_hook=token)
-    calibrated_sensor_local = {key: value for (key, value) in data_list}
-with open(nuscenes_path/'sensor.json', 'rb') as file:
-    data_list = json.load(file, object_hook=token)
-    sensor_local = {key: value for (key, value) in data_list}
-with open(nuscenes_path/'scene.json', 'rb') as file:
-    data_list = json.load(file, object_hook=token)
-    scene_local = {key: value for (key, value) in data_list}
-with open(nuscenes_path/'ego_pose.json', 'rb') as file:
-    data_list = json.load(file, object_hook=token)
-    ego_pose_local = {key: value for (key, value) in data_list}
-with open(nuscenes_path/'sample_data.json', 'rb') as file:
-    data_list = json.load(file)
-    sample_data_local = {}
-    for data in tqdm(data_list):
-        sample_token = data['sample_token']
-        if sample_token not in sample_data_local:
-            sample_data_local[sample_token] = []
-        sample_data_local[sample_token].append(data)
-with open(nuscenes_path/'instance.json', 'rb') as file:
-    data_list = json.load(file, object_hook=token)
-    instance_local = {key: value for (key, value) in data_list}
-with open(nuscenes_path/'category.json', 'rb') as file:
-    data_list = json.load(file, object_hook=token)
-    category_local = {key: value for (key, value) in data_list}
-with open(nuscenes_path/'sample_annotation.json', 'rb') as file:
-    data_list = json.load(file, object_hook=token)
-    sample_annotation_local = {key: value for (key, value) in data_list}
-
-
-nusc_data = {
-    "sample":sample_local,
-    "calibrated_sensor":calibrated_sensor_local,
-    "sensor":sensor_local,
-    "scene":scene_local,
-    "ego_pose":ego_pose_local,
-    "sample_data":sample_data_local,
-    "sample_annotation":sample_annotation_local,
-    "instance":instance_local,
-    "category":category_local
-}
-
-with open('tracking_results.json', 'rb') as file:
-    tracking_results = json.load(file)['results']    
+ 
 
 def process_tracking_predictions(batch_args):
-    batch_data, global_data = batch_args
+    batch_data, global_data, output_path = batch_args
 
     sample = global_data['sample']
     sample_data = global_data['sample_data']
@@ -161,7 +151,7 @@ def process_tracking_predictions(batch_args):
             sensor_name = sensor[sensor_calibration['sensor_token']]['channel']
             if 'CAM' in sensor_name:
                 filename = sample_dict['filename']
-                output_dir = tracker_pred_path/scene_token/'sensors'/'cameras'/sensor_name
+                output_dir = output_path/scene_token/'sensors'/'cameras'/sensor_name
                 output_dir.mkdir(exist_ok=True, parents=True)
                 output_filename:Path = output_dir/f'{timestamp}.jpg'
 
@@ -270,7 +260,7 @@ def process_nuscenes_logs(batch_args):
         Dict of dataframes in the AV2 format
     """
 
-    annotation_tokens, nuscenes_data, val, nusc_category_to_tracking_category_map = batch_args
+    annotation_tokens, nuscenes_data, val, nusc_category_to_tracking_category_map, output_path = batch_args
 
     sample = nuscenes_data['sample']
     sample_data = nuscenes_data['sample_data']
@@ -324,7 +314,7 @@ def process_nuscenes_logs(batch_args):
                 sensor_name = sensor[sensor_calibration['sensor_token']]['channel']
                 if 'CAM' in sensor_name:
                     filename = sample_dict['filename']
-                    output_dir = tracker_pred_path/scene_token/'sensors'/'cameras'/sensor_name
+                    output_dir = output_path/scene_token/'sensors'/'cameras'/sensor_name
                     output_dir.mkdir(exist_ok=True, parents=True)
                     output_filename:Path = output_dir/f'{timestamp}.jpg'
 
@@ -424,124 +414,194 @@ def process_nuscenes_logs(batch_args):
         'calibration_df': local_calibration_df,
     }
 
+def nuscenes_to_av2():
 
-val = \
-    ['scene-0003', 'scene-0012', 'scene-0013', 'scene-0014', 'scene-0015', 'scene-0016', 'scene-0017', 'scene-0018',
-     'scene-0035', 'scene-0036', 'scene-0038', 'scene-0039', 'scene-0092', 'scene-0093', 'scene-0094', 'scene-0095',
-     'scene-0096', 'scene-0097', 'scene-0098', 'scene-0099', 'scene-0100', 'scene-0101', 'scene-0102', 'scene-0103',
-     'scene-0104', 'scene-0105', 'scene-0106', 'scene-0107', 'scene-0108', 'scene-0109', 'scene-0110', 'scene-0221',
-     'scene-0268', 'scene-0269', 'scene-0270', 'scene-0271', 'scene-0272', 'scene-0273', 'scene-0274', 'scene-0275',
-     'scene-0276', 'scene-0277', 'scene-0278', 'scene-0329', 'scene-0330', 'scene-0331', 'scene-0332', 'scene-0344',
-     'scene-0345', 'scene-0346', 'scene-0519', 'scene-0520', 'scene-0521', 'scene-0522', 'scene-0523', 'scene-0524',
-     'scene-0552', 'scene-0553', 'scene-0554', 'scene-0555', 'scene-0556', 'scene-0557', 'scene-0558', 'scene-0559',
-     'scene-0560', 'scene-0561', 'scene-0562', 'scene-0563', 'scene-0564', 'scene-0565', 'scene-0625', 'scene-0626',
-     'scene-0627', 'scene-0629', 'scene-0630', 'scene-0632', 'scene-0633', 'scene-0634', 'scene-0635', 'scene-0636',
-     'scene-0637', 'scene-0638', 'scene-0770', 'scene-0771', 'scene-0775', 'scene-0777', 'scene-0778', 'scene-0780',
-     'scene-0781', 'scene-0782', 'scene-0783', 'scene-0784', 'scene-0794', 'scene-0795', 'scene-0796', 'scene-0797',
-     'scene-0798', 'scene-0799', 'scene-0800', 'scene-0802', 'scene-0904', 'scene-0905', 'scene-0906', 'scene-0907',
-     'scene-0908', 'scene-0909', 'scene-0910', 'scene-0911', 'scene-0912', 'scene-0913', 'scene-0914', 'scene-0915',
-     'scene-0916', 'scene-0917', 'scene-0919', 'scene-0920', 'scene-0921', 'scene-0922', 'scene-0923', 'scene-0924',
-     'scene-0925', 'scene-0926', 'scene-0927', 'scene-0928', 'scene-0929', 'scene-0930', 'scene-0931', 'scene-0962',
-     'scene-0963', 'scene-0966', 'scene-0967', 'scene-0968', 'scene-0969', 'scene-0971', 'scene-0972', 'scene-1059',
-     'scene-1060', 'scene-1061', 'scene-1062', 'scene-1063', 'scene-1064', 'scene-1065', 'scene-1066', 'scene-1067',
-     'scene-1068', 'scene-1069', 'scene-1070', 'scene-1071', 'scene-1072', 'scene-1073']
+    num_processes = min(cpu_count()-1, 64)  # Limit to avoid memory issues
+    annotation_tokens = list(sample_annotation_local.keys())
 
-nusc_category_to_tracking_category_map = {
-    "vehicle.motorcycle": "MOTORCYCLE",
-    "vehicle.bicycle": "BICYCLE",
-    "vehicle.bus.bendy": "BUS",
-    "vehicle.trailer": "TRAILER",
-    "vehicle.car": "CAR",
-    "human.pedestrian.adult": "PEDESTRIAN",
-    "human.pedestrian.child": "PEDESTRIAN",
-    "human.pedestrian.wheelchair": "PEDESTRIAN",
-    "human.pedestrian.stroller": "PEDESTRIAN",
-    "human.pedestrian.personal_mobility": "PEDESTRIAN",
-    "human.pedestrian.police_officer": "PEDESTRIAN",
-    "human.pedestrian.construction_worker": "PEDESTRIAN",
-    "vehicle.truck": "TRUCK",
-    }
+    batch_args = []
+
+    batched_tokens = []
+    for annotation_token in annotation_tokens:
+        sample_token = sample_annotation_local[annotation_token]['sample_token']
+        scene_token = sample_local[sample_token]['scene_token']
+
+        scene_name = scene_local[scene_token]['name']
+        if scene_name not in val:
+            continue
+
+        if len(batched_tokens) <= len(annotation_tokens)/num_processes:
+            batched_tokens.append(annotation_token)
+        else:
+            batch_args.append((deepcopy(batched_tokens), nusc_data, val, nusc_category_to_tracking_category_map))
+            batched_tokens = []
+
+    print(f"Processing {len(annotation_tokens)} samples in {len(batch_args)} batches using {num_processes} processes...")
+
+    all_results = []
+    with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        batch_futures = [executor.submit(process_nuscenes_logs, args) for args in batch_args]
+        
+        for future in tqdm(as_completed(batch_futures), total=len(batch_futures), desc="Processing batches"):
+            result = future.result()
+            all_results.append(result)
 
 
-num_processes = min(cpu_count()-1, 64)  # Limit to avoid memory issues
-annotation_tokens = list(sample_annotation_local.keys())
+    # Combine all results
+    print("Combining results...")
+    all_df = []
+    all_pose_df = []
+    all_intrinsics_df = []
+    all_calibration_df = []
 
-batch_args = []
+    for result in all_results:
+        all_df.extend(result['df'])
+        all_pose_df.extend(result['pose_df'])
+        all_intrinsics_df.extend(result['intrinsics_df'])
+        all_calibration_df.extend(result['calibration_df'])
 
-batched_tokens = []
-for annotation_token in annotation_tokens:
-    sample_token = sample_annotation_local[annotation_token]['sample_token']
-    scene_token = sample_local[sample_token]['scene_token']
+    # Convert to DataFrames
+    df = pd.DataFrame(all_df)
+    pose_df = pd.DataFrame(all_pose_df)
+    intrinsics_df = pd.DataFrame(all_intrinsics_df)
+    calibration_df = pd.DataFrame(all_calibration_df)
 
-    scene_name = scene_local[scene_token]['name']
-    if scene_name not in val:
-        continue
+    # Remove duplicates from intrinsics and calibration (based on log_id and sensor_name)
+    intrinsics_df = intrinsics_df.drop_duplicates(subset=['log_id', 'sensor_name'])
+    calibration_df = calibration_df.drop_duplicates(subset=['log_id', 'sensor_name'])
 
-    if len(batched_tokens) <= len(annotation_tokens)/num_processes:
-        batched_tokens.append(annotation_token)
+
+    df.to_csv('nuscenes_gt.csv')
+    pose_df.to_csv('ego_poses.csv', index=False)
+    calibration_df.to_csv('ego_SE3_sensor.csv')
+    intrinsics_df.to_csv('intrinsics.csv')
+
+    separate_scenario_mining_annotations(df, output_path, 'sm_annotations.feather')
+    separate_scenario_mining_annotations(pose_df, output_path, 'city_SE3_egovehicle.feather')
+    separate_scenario_mining_annotations(calibration_df, output_path, 'egovehicle_SE3_sensor.feather')
+    separate_scenario_mining_annotations(intrinsics_df, output_path, 'intrinsics.feather')
+
+
+def nuscenes_tracking_to_av2_tracking(tracking_results_path:Path, output_path:Path):
+
+    with open(tracking_results_path, 'rb') as file:
+        tracking_results = json.load(file)['results']   
+
+    sm_annotations_path = output_path / 'nuscenes_tracking.csv' 
+    intrinsics_path = output_path / 'intrinsics.csv'
+    pose_path = output_path / 'ego_SE3_sensor.csv'
+    calibration_path = output_path / 'ego_poses.csv'
+
+    if sm_annotations_path.exists() and intrinsics_path.exists() and pose_path.exists() and calibration_path.exists():
+        df = pd.read_csv(sm_annotations_path)
+        pose_df = pd.read_csv(pose_path)
+        intrinsics_df = pd.read_csv(intrinsics_path)
+        calibration_df = pd.read_csv(calibration_path)
     else:
-        batch_args.append((deepcopy(batched_tokens), nusc_data, val, nusc_category_to_tracking_category_map))
-        batched_tokens = []
 
-print(f"Processing {len(annotation_tokens)} samples in {len(batch_args)} batches using {num_processes} processes...")
+        tracking_items = list(tracking_results.items())
+        num_processes = min(cpu_count(), 32)  # Limit to avoid memory issues
+        batch_size = max(1, len(tracking_items) // num_processes)
+        batches = [tracking_items[i:i + batch_size] for i in range(0, len(tracking_items), batch_size)]
+        print(f"Processing {len(tracking_items)} samples in {len(batches)} batches using {num_processes} processes...")
 
-all_results = []
-with ProcessPoolExecutor(max_workers=num_processes) as executor:
-    batch_futures = [executor.submit(process_nuscenes_logs, args) for args in batch_args]
-    
-    for future in tqdm(as_completed(batch_futures), total=len(batch_futures), desc="Processing batches"):
-        result = future.result()
-        all_results.append(result)
+        batch_args = [(batch, nusc_data, output_path) for batch in batches]
 
-tracking_items = list(tracking_results.items())
-num_processes = min(cpu_count(), 64)  # Limit to avoid memory issues
-batch_size = max(1, len(tracking_items) // num_processes)
-batches = [tracking_items[i:i + batch_size] for i in range(0, len(tracking_items), batch_size)]
-print(f"Processing {len(tracking_items)} samples in {len(batches)} batches using {num_processes} processes...")
+        all_results = []
+        with ProcessPoolExecutor(max_workers=num_processes+1) as executor:
+            batch_futures = [executor.submit(process_tracking_predictions, args) for args in batch_args]
+            
+            for future in tqdm(as_completed(batch_futures), total=len(batch_futures), desc="Processing batches"):
+                result = future.result()
+                all_results.append(result)
 
-batch_args = [(batch, nusc_data) for batch in batches]
+        # Combine all results
+        print("Combining results...")
+        all_df = []
+        all_pose_df = []
+        all_intrinsics_df = []
+        all_calibration_df = []
 
-all_results = []
-with ProcessPoolExecutor(max_workers=num_processes+1) as executor:
-    batch_futures = [executor.submit(process_tracking_predictions, args) for args in batch_args]
-    
-    for future in tqdm(as_completed(batch_futures), total=len(batch_futures), desc="Processing batches"):
-        result = future.result()
-        all_results.append(result)
+        for result in all_results:
+            all_df.extend(result['df'])
+            all_pose_df.extend(result['pose_df'])
+            all_intrinsics_df.extend(result['intrinsics_df'])
+            all_calibration_df.extend(result['calibration_df'])
 
+        # Convert to DataFrames
+        df = pd.DataFrame(all_df)
+        pose_df = pd.DataFrame(all_pose_df)
+        intrinsics_df = pd.DataFrame(all_intrinsics_df)
+        calibration_df = pd.DataFrame(all_calibration_df)
 
-# Combine all results
-print("Combining results...")
-all_df = []
-all_pose_df = []
-all_intrinsics_df = []
-all_calibration_df = []
+        # Remove duplicates from intrinsics and calibration (based on log_id and sensor_name)
+        intrinsics_df = intrinsics_df.drop_duplicates(subset=['log_id', 'sensor_name'])
+        calibration_df = calibration_df.drop_duplicates(subset=['log_id', 'sensor_name'])
 
-for result in all_results:
-    all_df.extend(result['df'])
-    all_pose_df.extend(result['pose_df'])
-    all_intrinsics_df.extend(result['intrinsics_df'])
-    all_calibration_df.extend(result['calibration_df'])
+        df.to_csv(output_path/'nuscenes_tracking.csv')
+        pose_df.to_csv(output_path/'ego_poses.csv', index=False)
+        calibration_df.to_csv(output_path/'ego_SE3_sensor.csv')
+        intrinsics_df.to_csv(output_path/'intrinsics.csv')
 
-# Convert to DataFrames
-df = pd.DataFrame(all_df)
-pose_df = pd.DataFrame(all_pose_df)
-intrinsics_df = pd.DataFrame(all_intrinsics_df)
-calibration_df = pd.DataFrame(all_calibration_df)
+    separate_scenario_mining_annotations(df, output_path, 'sm_annotations.feather')
+    separate_scenario_mining_annotations(pose_df, output_path, 'city_SE3_egovehicle.feather')
+    separate_scenario_mining_annotations(calibration_df, output_path, 'egovehicle_SE3_sensor.feather')
+    separate_scenario_mining_annotations(intrinsics_df, output_path, 'intrinsics.feather')
 
-# Remove duplicates from intrinsics and calibration (based on log_id and sensor_name)
-intrinsics_df = intrinsics_df.drop_duplicates(subset=['log_id', 'sensor_name'])
-calibration_df = calibration_df.drop_duplicates(subset=['log_id', 'sensor_name'])
-
-
-df.to_csv('nuscenes_gt.csv')
-pose_df.to_csv('ego_poses.csv', index=False)
-calibration_df.to_csv('ego_SE3_sensor.csv')
-intrinsics_df.to_csv('intrinsics.csv')
-
-separate_scenario_mining_annotations(df, tracker_pred_path, 'sm_annotations.feather')
-separate_scenario_mining_annotations(pose_df, tracker_pred_path, 'city_SE3_egovehicle.feather')
-separate_scenario_mining_annotations(calibration_df, tracker_pred_path, 'egovehicle_SE3_sensor.feather')
-separate_scenario_mining_annotations(intrinsics_df, tracker_pred_path, 'intrinsics.feather')
 
 # TODO: Put NuPrompt data in RefAV visualizer
+
+if __name__ == "__main__":
+
+    with open(nuscenes_path/'sample.json', 'rb') as file:
+        data_list = json.load(file, object_hook=token)
+        sample_local = {key: value for (key, value) in data_list}
+    with open(nuscenes_path/'calibrated_sensor.json', 'rb') as file:
+        data_list = json.load(file, object_hook=token)
+        calibrated_sensor_local = {key: value for (key, value) in data_list}
+    with open(nuscenes_path/'sensor.json', 'rb') as file:
+        data_list = json.load(file, object_hook=token)
+        sensor_local = {key: value for (key, value) in data_list}
+    with open(nuscenes_path/'scene.json', 'rb') as file:
+        data_list = json.load(file, object_hook=token)
+        scene_local = {key: value for (key, value) in data_list}
+    with open(nuscenes_path/'ego_pose.json', 'rb') as file:
+        data_list = json.load(file, object_hook=token)
+        ego_pose_local = {key: value for (key, value) in data_list}
+    with open(nuscenes_path/'sample_data.json', 'rb') as file:
+        data_list = json.load(file)
+        sample_data_local = {}
+        for data in tqdm(data_list):
+            sample_token = data['sample_token']
+            if sample_token not in sample_data_local:
+                sample_data_local[sample_token] = []
+            sample_data_local[sample_token].append(data)
+    with open(nuscenes_path/'instance.json', 'rb') as file:
+        data_list = json.load(file, object_hook=token)
+        instance_local = {key: value for (key, value) in data_list}
+    with open(nuscenes_path/'category.json', 'rb') as file:
+        data_list = json.load(file, object_hook=token)
+        category_local = {key: value for (key, value) in data_list}
+    with open(nuscenes_path/'sample_annotation.json', 'rb') as file:
+        data_list = json.load(file, object_hook=token)
+        sample_annotation_local = {key: value for (key, value) in data_list}
+
+    nusc_data = {
+        "sample":sample_local,
+        "calibrated_sensor":calibrated_sensor_local,
+        "sensor":sensor_local,
+        "scene":scene_local,
+        "ego_pose":ego_pose_local,
+        "sample_data":sample_data_local,
+        "sample_annotation":sample_annotation_local,
+        "instance":instance_local,
+        "category":category_local
+    }
+    
+    nuscenes_tracking_to_av2_tracking(
+        tracking_results_path=Path('/home/crdavids/Trinity-Sync/PF-Track/ckpts/PF-Track-Models/f3_fullres_all/results/results_nusc_tracking.json'), 
+        output_path=Path('output/tracker_predictions/PFTrack_Tracking/nuprompt_val')
+    )
+
+    # Only used for ground truth visualization
+    #nuscenes_to_av2(Path('output/tracker_predictions/nuscenes_ground_truth/nuprompt_val'))

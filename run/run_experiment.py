@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import os
 import yaml
+
 import refAV.paths as paths
 from refAV.dataset_conversion import (
     separate_scenario_mining_annotations,
@@ -50,7 +51,7 @@ if split in ["val", "train"]:
         create_gt_mining_pkls_parallel(
             sm_feather,
             sm_data_split_path,
-            num_processes=max(1, int(0.9 * os.cpu_count())),
+            num_processes=max(1, int(0.5 * os.cpu_count())),
         )
 
 tracker_predictions_pkl = Path(f"tracker_downloads/{tracker}_{split}.pkl")

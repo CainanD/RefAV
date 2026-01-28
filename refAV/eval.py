@@ -69,19 +69,19 @@ def create_baseline_prediction(
         print(f"Cached scenario prediction exists.")
         return pred_path
 
-    try:
-        scenario_filename = paths.LLM_PRED_DIR / llm_name / f"{description}.txt"
-        if scenario_filename.exists() and not destructive:
-            print(f"Cached scenario definition for {description} found")
-        else:
-            scenario_filename = predict_scenario_from_description(
-                description,
-                output_dir=paths.LLM_PRED_DIR,
-                model_name=llm_name,
-                custom_context=custom_context,
-                destructive=destructive,
-            )
+    scenario_filename = paths.LLM_PRED_DIR / llm_name / f"{description}.txt"
+    if scenario_filename.exists() and not destructive:
+        print(f"Cached scenario definition for {description} found")
+    else:
+        scenario_filename = predict_scenario_from_description(
+            description,
+            output_dir=paths.LLM_PRED_DIR,
+            model_name=llm_name,
+            custom_context=custom_context,
+            destructive=destructive
+        )
 
+    try:
         with open(scenario_filename, "r") as f:
             scenario = f.read()
             execute_scenario(scenario, description, log_dir, output_dir)
@@ -98,13 +98,13 @@ def create_baseline_prediction(
 
         # We give the LLM one chance to correct its mistake
         if exception_iter < 1:
-            custom_context = (
-                custom_context
-                + "Fix the following code for '{natural_language_description}' given the bug:\n"
-                + scenario
-                + "\n\n"
-                + traceback.format_exc()
-            )
+
+            if custom_context is None:
+                custom_context = ""
+            escaped_scenario = scenario.replace("{", "{{").replace("}", "}}")
+            escaped_traceback = traceback.format_exc().replace("{", "{{").replace("}", "}}")
+            custom_context = custom_context + "Fix the following code for '{natural_language_description}' given the bug:\n" + escaped_scenario + "\n\n" + escaped_traceback
+
             return create_baseline_prediction(
                 description,
                 log_id,

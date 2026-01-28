@@ -561,7 +561,7 @@ if __name__ == "__main__":
 
     all_descriptions = set()
     with open(
-        paths.SM_DOWNLOAD_DIR / "log_prompt_pairs_nuprompt_val_large.json", "rb"
+        paths.SM_DOWNLOAD_DIR / "log_prompt_pairs_nuprompt_val.json", "rb"
     ) as file:
         lpp_val = json.load(file)
 

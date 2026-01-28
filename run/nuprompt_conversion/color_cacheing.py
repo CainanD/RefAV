@@ -14,7 +14,7 @@ import traceback
 from transformers import pipeline
 
 stream_petr_path = Path(
-    "output/tracker_predictions/StreamPETR_Tracking/nuprompt_val_large"
+    "output/tracker_predictions/StreamPETR_Tracking/nuprompt_val"
 )
 crop_dir = Path("output/visualization/nuprompt_score_crops")
 

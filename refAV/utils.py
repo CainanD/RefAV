@@ -149,7 +149,7 @@ class EasyDataLoader(AV2SensorDataLoader):
             data_dir = paths.AV2_DATA_DIR / split 
             labels_dir = log_dir.parent
         elif dataset == 'NUSCENES':
-            data_dir = paths.NUSCENES_DATA_DIR / split
+            data_dir = paths.NUSCENES_AV2_DATA_DIR / split
             labels_dir = log_dir.parent
 
         super().__init__(data_dir, labels_dir)
