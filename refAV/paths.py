@@ -6,9 +6,9 @@ TRACKER_DOWNLOAD_DIR = Path('tracker_downloads')
 SM_DOWNLOAD_DIR = Path('scenario_mining_downloads')
 
 # Required to run evaluation on nuPrompt/nuScenes dataset, ignore otherwise
-NUPROMPT_DATA_DIR = Path('/data/crdavids/nuscenes/nuscenes/nuprompt_v1.0')
-NUSCENES_DIR = Path('/ssd0/nperi/nuScenes/v1.0-trainval')
-NUSCENES_AV2_DATA_DIR = Path('/home/crdavids/Trinity-Sync/RefAV/output/tracker_predictions/PFTrack_Tracking')
+NUPROMPT_DATA_DIR = Path('/data/nuscenes/nuprompt_v1.0')
+NUSCENES_DIR = Path('/data/nuscenes/v1.0-trainval')
+NUSCENES_AV2_DATA_DIR = Path('/data/nuscenes/av2_format')
 
 # input directories, do not change
 EXPERIMENTS = Path('run/experiment_configs/experiments.yml')

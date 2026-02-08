@@ -245,6 +245,46 @@ def is_color(
     else:
         return timestamps
 
+    #TODO: Implement SIGLIP2 based color discrimination without pre-computed values
+    best_timestamp, best_camera, best_bbox = get_best_crop(track_uuid, log_dir)
+    if best_camera is None:
+        return []
+
+
+@composable
+@cache_manager.create_cache('within_camera_view')
+def within_camera_view(
+    track_candidates: dict,
+    log_dir: Path,
+    camera_name:str
+) -> dict:
+    """
+    Returns objects that are within view of the specified camera.
+
+    Args:
+        track_candidates: The objects you want to filter from (scenario dictionary).
+        log_dir: Path to scenario logs.
+        camera_name: The name of the camera.
+
+    Returns:
+        dict: 
+            A filtered scenario dictionary where:
+            - Keys are track UUIDs that meet the turning criteria.
+            - Values are nested dictionaries containing timestamps.
+
+    Example:
+        ped_with_blue_shirt = is_color(pedestrians, log_dir, color='blue')
+        red_cars = is_color(cars, log_dir, color='red')
+    """
+    track_uuid = track_candidates
+
+    all_views = get_img_crops(track_uuid, log_dir)
+    camera_views = all_views[camera_name]
+    within_view_timestamps = [timestamp for (timestamp, box) in camera_views.items() if box is not None]
+
+    return within_view_timestamps
+
+
 @composable
 @cache_manager.create_cache('turning')
 def turning(
