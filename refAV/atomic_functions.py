@@ -246,7 +246,7 @@ def is_color(
     else:
         return timestamps
 
-    #TODO: Implement CLIP based color discrimination
+    #TODO: Implement SIGLIP2 based color discrimination without pre-computed values
     best_timestamp, best_camera, best_bbox = get_best_crop(track_uuid, log_dir)
     if best_camera is None:
         return []

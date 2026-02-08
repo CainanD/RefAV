@@ -1,4 +1,4 @@
-av2
+git+https://github.com/CainanD/av2-api.git
 anthropic
 transformers
 google-genai

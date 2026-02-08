@@ -33,9 +33,17 @@ export TARGET_DIR="$HOME/data/datasets"  # Target directory on your machine.
 
 s5cmd --no-sign-request cp "s3://argoverse/datasets/av2/$DATASET_NAME/*" $TARGET_DIR
 ```
-It also requies downloading the scenario-mining add on. 
+It also requies downloading the scenario-mining add on. This can be downloaded from Huggingface using:
 ```
-export TARGET_DIR="$(pwd)/av2_sm_downloads"
+pip install huggingface_hub
+hf auth login
+
+export TARGET_DIR="$(pwd)/scenario_mining_downloads"
+hf download CainanD/RefAV --repo-type dataset --local-dir=$TARGET_DIR
+```
+Alternatively, you may download the scenario-mining add on from Argoverse without having to sign-in to Huggingface with:
+```
+export TARGET_DIR="$(pwd)/scenario_mining_downloads"
 s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
 ```
 
