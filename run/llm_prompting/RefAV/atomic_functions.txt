@@ -108,8 +108,7 @@ def is_color(
     color:Literal["white", "silver", "black", "red", "yellow", "blue"],
 ) -> dict:
     """
-    Returns objects that are the given color, determined by CLIP. Can also be used
-    if the
+    Returns objects that are the given color, determined by SIGLIP. 
     
     Args:
         track_candidates: The objects you want to filter from (scenario dictionary).
@@ -447,7 +446,7 @@ def following(
     candidate_uuids:dict,
     log_dir:Path) -> dict:
     """
-    Returns timestamps when the tracked object is following a lead object
+    Returns timestamps when the tracked object is following a lead object.
     Following is defined simultaneously moving in the same direction and lane.
     """
 

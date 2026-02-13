@@ -402,6 +402,13 @@ exp70:
   tracker: PFTrack_FullRes_Tracking
   context: NuPrompt
 
+exp71: 
+  name: exp71
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: VoxelDet_Tracking
+  context: RefAV
+
 # Fixing bugs in dataset conversion and NuPrompt evaluation code
 exp60:
   name: exp60

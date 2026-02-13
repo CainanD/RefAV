@@ -1,4 +1,5 @@
 import argparse
+import json
 from pathlib import Path
 import os
 import yaml
@@ -11,6 +12,7 @@ from refAV.dataset_conversion import (
 )
 from refAV.parallel_scenario_prediction import run_parallel_eval
 from refAV.eval import evaluate_pkls, combine_pkls
+from refAV.utils import construct_caches
 
 parser = argparse.ArgumentParser(description="Example script with arguments")
 parser.add_argument(
@@ -62,13 +64,20 @@ if not tracker_predictions_dest.exists():
     pickle_to_feather(av2_data_split, tracker_predictions_pkl, tracker_predictions_dest)
 
 log_prompts_path = paths.SM_DOWNLOAD_DIR / f"log_prompt_pairs_{split}.json"
+
+# Build caches before parallel eval so subprocesses just load from disk
+with open(log_prompts_path, 'rb') as f:
+    log_prompts = json.load(f)
+all_log_dirs = [paths.TRACKER_PRED_DIR / tracker / split / log_id for log_id in log_prompts.keys()]
+construct_caches(all_log_dirs)
+
 run_parallel_eval(exp_name, log_prompts_path, args.procs_per_task)
 
 experiment_dir = paths.SM_PRED_DIR / exp_name
 combined_preds = combine_pkls(experiment_dir, log_prompts_path)
 
 combined_gt = Path(
-    f"../RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
+    f"/home/crdavids/Trinity-Sync/RefAV/scenario_mining_downloads/combined_gt_{split}.pkl"
 )
 metrics = evaluate_pkls(combined_preds, combined_gt, experiment_dir)
 print(metrics)

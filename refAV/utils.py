@@ -37,6 +37,10 @@ class CacheManager:
         self.road_side_cache = None
         self.color_cache = None
 
+        # Global caches (tracker-independent, persist across log switches)
+        self._global_semantic_lane_caches = {}  # log_id -> data
+        self._global_road_side_caches = {}      # log_id -> data
+
     def set_num_processes(self, num):
         self.num_processes = max(min(os.cpu_count() - 1, num), 1)
 
@@ -121,29 +125,41 @@ class CacheManager:
         }
 
     def load_custom_caches(self, log_dir: Path):
-        """Load per-log caches from {log_dir}/cache/."""
+        """Load per-log caches.
+
+        Semantic_lane_cache and road_side_cache are tracker-independent, loaded
+        from GLOBAL_CACHE_PATH/{log_id}/ and kept in memory across log switches.
+        Color_cache is tracker-dependent, loaded from {log_dir}/cache/.
+        """
         cache_dir = log_dir / 'cache'
+        log_id = log_dir.name
+        global_cache_dir = paths.GLOBAL_CACHE_PATH / log_id
         self.current_log_dir = log_dir
 
-        self.color_cache = None
-        self.semantic_lane_cache = None
-        self.road_side_cache = None
+        # Tracker-independent: reuse in-memory copy if already loaded
+        self.semantic_lane_cache = self._global_semantic_lane_caches.get(log_id)
+        self.road_side_cache = self._global_road_side_caches.get(log_id)
 
+        if self.semantic_lane_cache is None:
+            try:
+                with open(global_cache_dir / 'semantic_lane_cache.json', 'r') as file:
+                    self.semantic_lane_cache = json.load(file)
+                    self._global_semantic_lane_caches[log_id] = self.semantic_lane_cache
+            except:
+                pass
+
+        if self.road_side_cache is None:
+            try:
+                with open(global_cache_dir / 'road_side_cache.json', 'r') as file:
+                    self.road_side_cache = json.load(file)
+                    self._global_road_side_caches[log_id] = self.road_side_cache
+            except:
+                pass
+
+        self.color_cache = None
         try:
             with open(cache_dir / 'color_cache.json', 'r') as file:
                 self.color_cache = json.load(file)
-        except:
-            pass
-
-        try:
-            with open(cache_dir / 'semantic_lane_cache.json', 'r') as file:
-                self.semantic_lane_cache = json.load(file)
-        except:
-            pass
-
-        try:
-            with open(cache_dir / 'road_side_cache.json', 'r') as file:
-                self.road_side_cache = json.load(file)
         except:
             pass
         
@@ -691,7 +707,186 @@ def get_clip_colors(images:list, possible_colors:list[str], pipe=None):
     return best_labels
 
 
-@cache_manager.create_cache('get_timestamps')   
+def _build_map_caches_for_log(log_dir):
+    """Build semantic_lane_cache and road_side_cache for a single log and save to disk.
+
+    Saves to paths.GLOBAL_CACHE_PATH/{log_id}/ since these are tracker-independent.
+    """
+    log_dir = Path(log_dir)
+    log_id = log_dir.name
+    global_cache_dir = paths.GLOBAL_CACHE_PATH / log_id
+    global_cache_dir.mkdir(parents=True, exist_ok=True)
+    avm = None
+
+    # --- Semantic lane cache ---
+    semantic_path = global_cache_dir / 'semantic_lane_cache.json'
+    if not semantic_path.exists():
+        avm = get_map(log_dir)
+        semantic_cache = {}
+        for ls_id, ls in avm.vector_lane_segments.items():
+            lanes = get_semantic_lane(ls, log_dir, avm=avm)
+            semantic_cache[str(ls_id)] = [l.id for l in lanes]
+        with open(semantic_path, 'w') as f:
+            json.dump(semantic_cache, f)
+    else:
+        with open(semantic_path, 'r') as f:
+            semantic_cache = json.load(f)
+
+    # Set so get_road_side -> get_semantic_lane can use it within this process
+    cache_manager.semantic_lane_cache = semantic_cache
+
+    # --- Road side cache ---
+    road_side_path = global_cache_dir / 'road_side_cache.json'
+    if not road_side_path.exists():
+        if avm is None:
+            avm = get_map(log_dir)
+        rs_cache = {}
+        for ls_id, ls in avm.vector_lane_segments.items():
+            same = get_road_side(ls, log_dir, 'same', avm=avm)
+            opp = get_road_side(ls, log_dir, 'opposite', avm=avm)
+            rs_cache[str(ls_id)] = {
+                'same': [s.id for s in same],
+                'opposite': [o.id for o in opp]
+            }
+        with open(road_side_path, 'w') as f:
+            json.dump(rs_cache, f)
+
+
+def _collect_crops_for_log(log_dir):
+    """Collect best crop images for all tracks in a log, saving to disk.
+
+    Computes get_all_crops (expensive), then for each track finds the best crop
+    and saves the cropped image to log_dir/cache/crops/{uuid}.png.
+    Returns (log_dir_str, [(uuid, crop_path_or_None), ...]).
+    """
+    log_dir = Path(log_dir)
+    crop_save_dir = log_dir / 'cache' / 'crops'
+    results = []
+    try:
+        uuids = get_uuids_of_category(log_dir, 'ANY')
+    except Exception:
+        return str(log_dir), results
+
+    for uuid in uuids:
+        uuid_str = str(uuid)
+        crop_path = crop_save_dir / f'{uuid_str}.png'
+
+        if crop_path.exists():
+            results.append((uuid_str, str(crop_path)))
+            continue
+
+        try:
+            best = get_best_crop(uuid_str, log_dir)
+            if best is not None:
+                img = get_img_crop(
+                    best['cam'], int(best['timestamp']),
+                    log_dir, box=best['crop']
+                )
+                if img is not None:
+                    crop_save_dir.mkdir(parents=True, exist_ok=True)
+                    img.save(crop_path)
+                    results.append((uuid_str, str(crop_path)))
+                    continue
+        except Exception:
+            pass
+        results.append((uuid_str, None))
+
+    return str(log_dir), results
+
+
+def construct_caches(log_dirs: list[Path], num_processes: int = None):
+    """Construct semantic_lane_cache, road_side_cache, and color_cache for all log_dirs.
+
+    Builds map-based caches (semantic_lane, road_side) in parallel across logs.
+    Builds color_cache by collecting crops in parallel, then running a single
+    SigLIP pipeline on batched images.
+    Skips any cache that already exists on disk.
+
+    Call this before launching parallel eval processes.
+    """
+    if num_processes is None:
+        num_processes = max(10, 1)
+
+    # --- Phase 1: Map caches in parallel (saved to GLOBAL_CACHE_PATH) ---
+    logs_needing_map = [
+        ld for ld in log_dirs
+        if not (paths.GLOBAL_CACHE_PATH / Path(ld).name / 'semantic_lane_cache.json').exists()
+        or not (paths.GLOBAL_CACHE_PATH / Path(ld).name / 'road_side_cache.json').exists()
+    ]
+    if logs_needing_map:
+        print(f"Building map caches for {len(logs_needing_map)} logs using {num_processes} processes...")
+        pool = Pool(num_processes)
+        pool.map(_build_map_caches_for_log, logs_needing_map)
+        print("Map cache construction complete.")
+
+    # --- Phase 2: Color caches ---
+    logs_needing_color = [
+        ld for ld in log_dirs
+        if not (Path(ld) / 'cache' / 'color_cache.json').exists()
+    ]
+    if logs_needing_color:
+        print(f"Building color caches for {len(logs_needing_color)} logs...")
+
+        # Phase 2a: Collect and save crop images in parallel across logs (non-GPU)
+        print(f"Collecting track crops in parallel using {num_processes} processes...")
+        pool = Pool(num_processes)
+        crop_results = pool.map(_collect_crops_for_log, logs_needing_color)
+
+        # Phase 2b: Organize saved crop paths into batches for SigLIP
+        possible_colors = ["white", "silver", "black", "red", "yellow", "blue"]
+        batch_size = 256
+        image_batches = []
+        info_batches = []
+        current_batch = []
+        current_infos = []
+        color_caches = {}
+
+        for log_dir_str, track_results in crop_results:
+            color_caches[log_dir_str] = {}
+            for uuid, crop_path in track_results:
+                if crop_path is not None:
+                    current_infos.append((log_dir_str, uuid))
+                    current_batch.append(crop_path)
+                    if len(current_batch) >= batch_size:
+                        image_batches.append(current_batch)
+                        info_batches.append(current_infos)
+                        current_batch = []
+                        current_infos = []
+                else:
+                    color_caches[log_dir_str][uuid] = None
+
+        if current_batch:
+            image_batches.append(current_batch)
+            info_batches.append(current_infos)
+
+        # Phase 2c: Single SigLIP pipeline on batched crop file paths
+        if image_batches:
+            pipe = pipeline(
+                model="google/siglip2-so400m-patch16-naflex",
+                task="zero-shot-image-classification",
+                device_map="auto",
+                torch_dtype="auto",
+                batch_size=16
+            )
+            for image_batch, batch_info in tqdm(
+                zip(image_batches, info_batches),
+                total=len(image_batches),
+                desc="Running color classification"
+            ):
+                colors = get_clip_colors(image_batch, possible_colors, pipe=pipe)
+                for color, (log_dir_str, track_uuid) in zip(colors, batch_info):
+                    color_caches[log_dir_str][track_uuid] = color
+
+        for log_dir_str, color_cache in color_caches.items():
+            cache_dir = Path(log_dir_str) / 'cache'
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            with open(cache_dir / 'color_cache.json', 'w') as f:
+                json.dump(color_cache, f)
+
+        print("Color cache construction complete.")
+
+
+@cache_manager.create_cache('get_timestamps')
 def get_timestamps(track_uuid, log_dir):
 
     df = read_feather(log_dir / 'sm_annotations.feather')

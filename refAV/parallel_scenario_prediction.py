@@ -23,7 +23,7 @@ def run_parallel_eval(exp_name: str, log_prompts_path: Path, procs_per_task: int
     print(f"Reading log prompts from: {log_prompts_path}")
 
     # Read the full log_prompts mapping
-    with open(log_prompts_path, 'r') as file:
+    with open(log_prompts_path, 'rb') as file:
         lpp = json.load(file)
 
     # Build the list of (log_id, prompt) pairs that need to be completed
