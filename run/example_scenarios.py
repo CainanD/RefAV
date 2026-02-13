@@ -12,24 +12,44 @@ output_dir = Path("output/visualization")
 log_id = 'a7c9bb12-322e-3f8e-8798-cf57a4a72f99'
 split = get_log_split(log_id)
 log_dir = dataset_dir / split / log_id
-print(split)
+log_dir = Path('/home/crdavids/Trinity-Sync/RefAV/output/tracker_predictions/StreamPETR_Tracking/nuprompt_val/2ca15f59d656489a8b1a0be4d9bead4e')
 
 scenarios = [0]
 
 if 0 in scenarios:
-    description = 'car following closely behind bicylist'
-    # Scenario with relationship
-    ego_uuid = get_ego_uuid(log_dir)
-    timestamps = get_timestamps(ego_uuid, log_dir)
+    # First, get all vehicles in the scene
+    vehicles = get_objects_of_category(log_dir, category="VEHICLE")
 
+    # Get the ego vehicle
+    ego_vehicle = get_objects_of_category(log_dir, category="EGO_VEHICLE")
 
-    bicyclists = get_objects_of_category(log_dir, category="BICYCLIST")
-    vehicles = get_objects_of_category(log_dir, category="REGULAR_VEHICLE")
-    vehicles_behind_bikes = get_objects_in_relative_direction(bicyclists, vehicles, log_dir, direction='backward', within_distance=20)
-    vehicles_behind_bikes = in_same_lane(vehicles_behind_bikes, bicyclists, log_dir)
-    description = 'car following closely behind bicyclist'
+    # Find objects that are in the back-left direction of the ego vehicle
+    # This will identify objects positioned diagonally behind the ego vehicle on the left side
+    objects_back_left = get_objects_in_relative_direction(
+        ego_vehicle,
+        vehicles,
+        log_dir,
+        direction="left",  # Looking to the left side
+        within_distance=50,  # Within a reasonable distance
+        lateral_thresh=10  # Allow some lateral variation
+    )
 
-    visualize_scenario(vehicles_behind_bikes, log_dir, output_dir=output_dir, description=description, with_map=True, with_cf=False, with_lidar=False, stride=1, save_frames=True)
+    # Filter to ensure these objects are also somewhat behind the ego
+    # We use the backward direction to find objects behind
+    objects_behind = get_objects_in_relative_direction(
+        ego_vehicle,
+        vehicles,
+        log_dir,
+        direction="backward",
+        within_distance=50
+    )
+
+    # Combine the results to find objects that are both to the left and behind
+    # This effectively gives us objects in the back-left position
+    back_left_objects = scenario_and([objects_back_left, objects_behind])
+    description = 'back_left'
+
+    visualize_scenario(back_left_objects, log_dir, output_dir=output_dir, description=description, with_map=False, with_cf=False, with_lidar=False, stride=1, save_frames=False)
 
 #Secenario 1: vehicle in the wrong lane
 if 1 in scenarios:

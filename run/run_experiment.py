@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description="Example script with arguments")
 parser.add_argument(
     "--exp_name",
     type=str,
-    default="exp53",
+    default="exp4",
     help="Enter the name of the experiment from experiments.yml you would like to run.",
 )
 parser.add_argument(
@@ -51,7 +51,7 @@ if split in ["val", "train"]:
         create_gt_mining_pkls_parallel(
             sm_feather,
             sm_data_split_path,
-            num_processes=max(1, int(0.5 * os.cpu_count())),
+            num_processes=max(1, int(0.9 * os.cpu_count())),
         )
 
 tracker_predictions_pkl = Path(f"tracker_downloads/{tracker}_{split}.pkl")
