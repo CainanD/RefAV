@@ -5,7 +5,7 @@ There are 7 categories of objects defined as follows, appearing in order of freq
 "MOTORCYCLE": Gasoline or electric powered 2-wheeled vehicle designed to move rapidly (at the speed of standard cars) on the road surface. This category includes all motorcycles, vespas and scooters. It also includes light 3-wheel vehicles, often with a light plastic roof and open on the sides, that tend to be common in Asia.
 “TRAILER”: Any vehicle trailer, both for trucks, cars and motorcycles (regardless of whether currently being towed or not). For semi-trailers (containers) label the truck itself as "Truck"
 “BUS”: Buses and shuttles designed to carry more than 10 people.
-"TRUCK": Vehicles primarily designed to haul cargo including pick-ups, lorrys, trucks and semi-tractors. Trailers hauled after a semi-tractor should be labeled as "Trailer". octagonal traffic sign displaying the word STOP used to notify drivers that they must come to a complete stop and make sure no other road users are coming before proceeding.
+"TRUCK": Vehicles primarily designed to haul cargo including pick-ups, lorrys, trucks and semi-tractors. Trailers hauled after a semi-tractor should be labeled as "Trailer". 
 “BICYCLE”: Non-motorized vehicle that typically has two wheels and is propelled by human power pushing pedals in a circular motion.
 
 You may also use categories:

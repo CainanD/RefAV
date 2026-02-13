@@ -150,13 +150,13 @@ def process_tracking_predictions(batch_args):
             
             sensor_name = sensor[sensor_calibration['sensor_token']]['channel']
             if 'CAM' in sensor_name:
-                filename = sample_dict['filename']
-                output_dir = output_path/scene_token/'sensors'/'cameras'/sensor_name
-                output_dir.mkdir(exist_ok=True, parents=True)
-                output_filename:Path = output_dir/f'{timestamp}.jpg'
+                #filename = sample_dict['filename']
+                #output_dir = output_path/scene_token/'sensors'/'cameras'/sensor_name
+                #output_dir.mkdir(exist_ok=True, parents=True)
+                #output_filename:Path = output_dir/f'{timestamp}.jpg'
 
-                if not output_filename.exists():
-                    shutil.copy2(nuscenes_path.parent/filename, output_dir/f'{timestamp}.jpg')
+                #if not output_filename.exists():
+                #    shutil.copy2(NUSCENES_DIR.parent/filename, output_dir/f'{timestamp}.jpg')
 
                 intrinsics = sensor_calibration['camera_intrinsic']
 
@@ -260,7 +260,7 @@ def process_nuscenes_logs(batch_args):
         Dict of dataframes in the AV2 format
     """
 
-    annotation_tokens, nuscenes_data, val, nusc_category_to_tracking_category_map, output_path = batch_args
+    annotation_tokens, nuscenes_data, NUSCENES_VAL_LOG_IDS, nusc_category_to_tracking_category_map, output_path = batch_args
 
     sample = nuscenes_data['sample']
     sample_data = nuscenes_data['sample_data']
@@ -313,13 +313,13 @@ def process_nuscenes_logs(batch_args):
                 
                 sensor_name = sensor[sensor_calibration['sensor_token']]['channel']
                 if 'CAM' in sensor_name:
-                    filename = sample_dict['filename']
-                    output_dir = output_path/scene_token/'sensors'/'cameras'/sensor_name
-                    output_dir.mkdir(exist_ok=True, parents=True)
-                    output_filename:Path = output_dir/f'{timestamp}.jpg'
+                    #filename = sample_dict['filename']
+                    #output_dir = output_path/scene_token/'sensors'/'cameras'/sensor_name
+                    #output_dir.mkdir(exist_ok=True, parents=True)
+                    #output_filename:Path = output_dir/f'{timestamp}.jpg'
 
-                    if not output_filename.exists():
-                        shutil.copy2(nuscenes_path.parent/filename, output_dir/f'{timestamp}.jpg')
+                    #if not output_filename.exists():
+                    #    shutil.copy2(NUSCENES_DIR.parent/filename, output_dir/f'{timestamp}.jpg')
 
                     intrinsics = sensor_calibration['camera_intrinsic']
 
@@ -366,7 +366,8 @@ def process_nuscenes_logs(batch_args):
             'score':1.0}
             local_df.append(entry)
 
-        pose = ego_pose[sample_data[sample_token]['ego_pose_token']]
+        key_frame = next(sd for sd in sample_data[sample_token] if sd['is_key_frame'])
+        pose = ego_pose[key_frame['ego_pose_token']]
         q_wxyz = track['rotation']
         q_xyzw = [q_wxyz[1],q_wxyz[2],q_wxyz[3],q_wxyz[0]]
         object_to_world_r = Rotation.from_quat(q_xyzw)
@@ -414,9 +415,9 @@ def process_nuscenes_logs(batch_args):
         'calibration_df': local_calibration_df,
     }
 
-def nuscenes_to_av2():
+def nuscenes_to_av2(output_path:Path):
 
-    num_processes = min(cpu_count()-1, 64)  # Limit to avoid memory issues
+    num_processes = min(cpu_count()-1, 32)  # Limit to avoid memory issues
     annotation_tokens = list(sample_annotation_local.keys())
 
     batch_args = []
@@ -427,13 +428,13 @@ def nuscenes_to_av2():
         scene_token = sample_local[sample_token]['scene_token']
 
         scene_name = scene_local[scene_token]['name']
-        if scene_name not in val:
+        if scene_name not in NUSCENES_VAL_LOG_IDS:
             continue
 
         if len(batched_tokens) <= len(annotation_tokens)/num_processes:
             batched_tokens.append(annotation_token)
         else:
-            batch_args.append((deepcopy(batched_tokens), nusc_data, val, nusc_category_to_tracking_category_map))
+            batch_args.append((deepcopy(batched_tokens), nusc_data, NUSCENES_VAL_LOG_IDS, NUSC_CATEGORY_TO_AV2_CATEGORY, output_path))
             batched_tokens = []
 
     print(f"Processing {len(annotation_tokens)} samples in {len(batch_args)} batches using {num_processes} processes...")
@@ -470,16 +471,15 @@ def nuscenes_to_av2():
     intrinsics_df = intrinsics_df.drop_duplicates(subset=['log_id', 'sensor_name'])
     calibration_df = calibration_df.drop_duplicates(subset=['log_id', 'sensor_name'])
 
-
-    df.to_csv('nuscenes_gt.csv')
-    pose_df.to_csv('ego_poses.csv', index=False)
-    calibration_df.to_csv('ego_SE3_sensor.csv')
-    intrinsics_df.to_csv('intrinsics.csv')
+    df.to_csv(output_path/'nuscenes_gt.csv')
+    pose_df.to_csv(output_path/'ego_poses.csv', index=False)
+    calibration_df.to_csv(output_path/'ego_SE3_sensor.csv')
+    intrinsics_df.to_csv(output_path/'intrinsics.csv')
 
     separate_scenario_mining_annotations(df, output_path, 'sm_annotations.feather')
     separate_scenario_mining_annotations(pose_df, output_path, 'city_SE3_egovehicle.feather')
-    separate_scenario_mining_annotations(calibration_df, output_path, 'egovehicle_SE3_sensor.feather')
-    separate_scenario_mining_annotations(intrinsics_df, output_path, 'intrinsics.feather')
+    separate_scenario_mining_annotations(calibration_df, output_path, 'calibration/egovehicle_SE3_sensor.feather')
+    separate_scenario_mining_annotations(intrinsics_df, output_path, 'calibration/intrinsics.feather')
 
 
 def nuscenes_tracking_to_av2_tracking(tracking_results_path:Path, output_path:Path):
@@ -491,6 +491,7 @@ def nuscenes_tracking_to_av2_tracking(tracking_results_path:Path, output_path:Pa
     intrinsics_path = output_path / 'intrinsics.csv'
     pose_path = output_path / 'ego_SE3_sensor.csv'
     calibration_path = output_path / 'ego_poses.csv'
+    output_path.mkdir(parents=True, exist_ok=True)
 
     if sm_annotations_path.exists() and intrinsics_path.exists() and pose_path.exists() and calibration_path.exists():
         df = pd.read_csv(sm_annotations_path)
@@ -553,22 +554,22 @@ def nuscenes_tracking_to_av2_tracking(tracking_results_path:Path, output_path:Pa
 
 if __name__ == "__main__":
 
-    with open(nuscenes_path/'sample.json', 'rb') as file:
+    with open(NUSCENES_DIR/'sample.json', 'rb') as file:
         data_list = json.load(file, object_hook=token)
         sample_local = {key: value for (key, value) in data_list}
-    with open(nuscenes_path/'calibrated_sensor.json', 'rb') as file:
+    with open(NUSCENES_DIR/'calibrated_sensor.json', 'rb') as file:
         data_list = json.load(file, object_hook=token)
         calibrated_sensor_local = {key: value for (key, value) in data_list}
-    with open(nuscenes_path/'sensor.json', 'rb') as file:
+    with open(NUSCENES_DIR/'sensor.json', 'rb') as file:
         data_list = json.load(file, object_hook=token)
         sensor_local = {key: value for (key, value) in data_list}
-    with open(nuscenes_path/'scene.json', 'rb') as file:
+    with open(NUSCENES_DIR/'scene.json', 'rb') as file:
         data_list = json.load(file, object_hook=token)
         scene_local = {key: value for (key, value) in data_list}
-    with open(nuscenes_path/'ego_pose.json', 'rb') as file:
+    with open(NUSCENES_DIR/'ego_pose.json', 'rb') as file:
         data_list = json.load(file, object_hook=token)
         ego_pose_local = {key: value for (key, value) in data_list}
-    with open(nuscenes_path/'sample_data.json', 'rb') as file:
+    with open(NUSCENES_DIR/'sample_data.json', 'rb') as file:
         data_list = json.load(file)
         sample_data_local = {}
         for data in tqdm(data_list):
@@ -576,13 +577,13 @@ if __name__ == "__main__":
             if sample_token not in sample_data_local:
                 sample_data_local[sample_token] = []
             sample_data_local[sample_token].append(data)
-    with open(nuscenes_path/'instance.json', 'rb') as file:
+    with open(NUSCENES_DIR/'instance.json', 'rb') as file:
         data_list = json.load(file, object_hook=token)
         instance_local = {key: value for (key, value) in data_list}
-    with open(nuscenes_path/'category.json', 'rb') as file:
+    with open(NUSCENES_DIR/'category.json', 'rb') as file:
         data_list = json.load(file, object_hook=token)
         category_local = {key: value for (key, value) in data_list}
-    with open(nuscenes_path/'sample_annotation.json', 'rb') as file:
+    with open(NUSCENES_DIR/'sample_annotation.json', 'rb') as file:
         data_list = json.load(file, object_hook=token)
         sample_annotation_local = {key: value for (key, value) in data_list}
 
@@ -599,8 +600,8 @@ if __name__ == "__main__":
     }
     
     nuscenes_tracking_to_av2_tracking(
-        tracking_results_path=Path('/home/crdavids/Trinity-Sync/PF-Track/ckpts/PF-Track-Models/f3_fullres_all/results/results_nusc_tracking.json'), 
-        output_path=Path('output/tracker_predictions/PFTrack_Tracking/nuprompt_val')
+        tracking_results_path=Path('/home/crdavids/Trinity-Sync/PF-Track/ckpts/PF-Track-Models/f3_fullres_all/track_ext_5/results_nusc_tracking.json'), 
+        output_path=Path('output/tracker_predictions/PFTrack_FullRes_Tracking/nuprompt_val')
     )
 
     # Only used for ground truth visualization

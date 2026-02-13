@@ -120,22 +120,34 @@ class CacheManager:
             name: self.get_stats(name) for name in self.stats
         }
 
-    def load_custom_caches(self):
+    def load_custom_caches(self, log_dir: Path):
+        """Load per-log caches from {log_dir}/cache/."""
+        cache_dir = log_dir / 'cache'
+        self.current_log_dir = log_dir
+
+        self.color_cache = None
+        self.semantic_lane_cache = None
+        self.road_side_cache = None
 
         try:
-            #with open(paths.CACHE_PATH /'semantic_lane_cache.json', 'rb') as file:
-            #    self.semantic_lane_cache = json.load(file)
-
-            #with open(paths.CACHE_PATH / 'road_side_cache.json', 'rb') as file:
-            #    self.road_side_cache = json.load(file)
-
-            with open(paths.CACHE_PATH / 'color_cache.json', 'rb') as file:
+            with open(cache_dir / 'color_cache.json', 'r') as file:
                 self.color_cache = json.load(file)
         except:
-            print('Cache load failed. Continuing...')
+            pass
+
+        try:
+            with open(cache_dir / 'semantic_lane_cache.json', 'r') as file:
+                self.semantic_lane_cache = json.load(file)
+        except:
+            pass
+
+        try:
+            with open(cache_dir / 'road_side_cache.json', 'r') as file:
+                self.road_side_cache = json.load(file)
+        except:
+            pass
         
 cache_manager = CacheManager()
-cache_manager.load_custom_caches()
 
 class EasyDataLoader(AV2SensorDataLoader):
     """Dataloader to load both NuScenes and AV2 data given only a log_id"""
@@ -155,7 +167,6 @@ class EasyDataLoader(AV2SensorDataLoader):
         super().__init__(data_dir, labels_dir)
 
     def project_ego_to_img_motion_compensated(self, points_lidar_time, cam_name, timestamp_ns, log_id):
-        #import pdb; pdb.set_trace()
         img_path = super().get_closest_img_fpath(log_id, cam_name, timestamp_ns)
 
         cam_timestamp_ns = int(img_path.stem)
@@ -412,7 +423,7 @@ def get_img_crops(track_uuid, log_dir:Path)->dict[str,dict[int,tuple[int,int,int
     """
 
     split = get_log_split(log_dir)
-    dataloader = EasyDataLoader(log_dir.parent, log_dir.parent)
+    dataloader = EasyDataLoader(log_dir.parent)
     camera_names = get_camera_names(log_dir)
     timestamps = (track_uuid, log_dir)
 
@@ -473,10 +484,11 @@ def get_all_crops(log_dir:Path, timestamps=None, track_uuids=None)->dict[str,dic
         
     """
     cache_path = log_dir/'cache/track_crop_information.json'
-    if cache_path.exists():
-        img_crops = json.load(open(cache_path, 'rb'))
 
-        return json.load(open(cache_path, 'rb'))
+    if cache_path.exists():
+        with open(cache_path, 'rb') as file:
+            img_crops = json.load(file)
+        return img_crops
 
     dataloader = EasyDataLoader(log_dir)
     camera_names = get_camera_names(log_dir)
@@ -490,9 +502,11 @@ def get_all_crops(log_dir:Path, timestamps=None, track_uuids=None)->dict[str,dic
 
     img_crops = {}
     for timestamp in tqdm(timestamps, desc='Getting track crop information by timestamp.'):
+        
+        timestamp = int(timestamp)
 
         for cam_name in camera_names:
-
+            
             camera = dataloader.get_log_pinhole_camera(log_dir.name, cam_name)
             W = camera.width_px
             H = camera.height_px
@@ -502,8 +516,8 @@ def get_all_crops(log_dir:Path, timestamps=None, track_uuids=None)->dict[str,dic
             if cam_name not in img_crops[timestamp]:
                 img_crops[timestamp][cam_name] = {}
 
-            if cam_name == 'ring_front_center':
-                img_crops[timestamp][cam_name][ego_uuid] = {
+            if cam_name == 'ring_front_center' or cam_name == 'CAM_FRONT':
+                img_crops[timestamp][cam_name][str(ego_uuid)] = {
                     'category': 'EGO_VEHICLE',
                     'percent_in_cam': 1.00,
                     'crop_area': W*H,
@@ -542,7 +556,8 @@ def get_all_crops(log_dir:Path, timestamps=None, track_uuids=None)->dict[str,dic
             valid_track_mask = valid_track_mask & is_valid
 
             for i, track_uuid in enumerate(track_uuids):
-                if track_uuid in img_crops[timestamp][cam_name] or not valid_track_mask[i] or camera_depths[i] < 0 or track_uuid == ego_uuid:
+                track_uuid = str(track_uuid)
+                if track_uuid in img_crops[timestamp][cam_name] or not valid_track_mask[i] or camera_depths[i] < 0:
                     continue
                 
                 x_min = np.min(uv[i,:,0])
@@ -572,7 +587,9 @@ def get_all_crops(log_dir:Path, timestamps=None, track_uuids=None)->dict[str,dic
                     }
 
     cache_path.parent.mkdir(exist_ok=True, parents=True)
-    json.dump(img_crops, open(cache_path, 'w'), indent=4)
+    with open(cache_path, 'w') as file:
+        json.dump(img_crops, file, indent=4)
+    print(f'Log id crop information stored in {cache_path}')
 
     return img_crops   
 
@@ -615,7 +632,6 @@ def get_best_crop(track_uuid, log_dir)->dict:
         percent_unoccluded = visible_area / track_crop_dict['crop_area']
         score = percent_in_cam * percent_unoccluded *  visible_area / 100
 
-        #timestamped_crops[timestamp] = {'timestamp': timestamp, 'cam': cam, 'crop': track_crop_dict['crop'], 'score': score}
         if score >= best_score:
             best_score = score
 
@@ -630,7 +646,7 @@ def get_best_crop(track_uuid, log_dir)->dict:
 
             best_crop = {'timestamp': timestamp, 'cam': cam, 'crop': crop, 'score': score, 'category': object_crops[timestamp][cam][track_uuid]['category']}
 
-    return best_crop#, best_crop
+    return best_crop
 
 
 @cache_manager.create_cache('get_img_crop')
@@ -807,7 +823,7 @@ def get_road_side(ls:LaneSegment, log_dir, side:Literal['same','opposite'], avm=
 
     try:
         road_side_cache = cache_manager.road_side_cache
-        road_side_ids = road_side_cache[log_dir.name][ls.id][side]
+        road_side_ids = road_side_cache[str(ls.id)][side]
         return [lane_dict[id] for id in road_side_ids]
     except: pass
 
@@ -867,7 +883,7 @@ def get_semantic_lane(ls: LaneSegment, log_dir, avm=None) -> list[LaneSegment]:
     lane_segments = avm.vector_lane_segments
 
     try:
-        semantic_lanes = cache_manager.semantic_lane_cache[log_dir.name][ls.id]
+        semantic_lanes = cache_manager.semantic_lane_cache[str(ls.id)]
         all_lanes = avm.vector_lane_segments
         return [all_lanes[ls_id] for ls_id in semantic_lanes]
     except:
@@ -1454,7 +1470,6 @@ def get_cuboid_from_uuid(track_uuid, log_dir, timestamp = None):
     if timestamp:
         track_df = track_df[track_df["timestamp_ns"] == timestamp]
         if track_df.empty:
-            #print('Invalid timestamp does not exist for given track_uuid.')
             return None
 
     track_cuboids = CuboidList.from_dataframe(track_df)
@@ -1609,10 +1624,8 @@ def post_process_scenario(scenario, log_dir) -> dict:
     if dict_empty(scenario):
         return True
 
-    #filter_by_length(scenario, min_timesteps=2)
-    #filter_by_ego_distance(scenario, log_dir, max_distance=50)
-    filter_by_relationship_distance(scenario, log_dir, max_distance=50)
-    dilate_timestamps(scenario, log_dir, min_timespan_s=1.5)
+    #filter_by_relationship_distance(scenario, log_dir, max_distance=50)
+    #dilate_timestamps(scenario, log_dir, min_timespan_s=1.5)
 
     if dict_empty(scenario):
         return False

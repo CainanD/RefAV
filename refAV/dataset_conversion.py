@@ -3,26 +3,29 @@ Processes the scenario mining annotation files downloaded from RefAV.
 Also processes object tracking prediction files in the format Argoverse2 submission format.
 """
 
-from pathlib import Path
+import json
+import os
+import pickle
+import threading
 import multiprocessing as mp
 from functools import partial
-from tqdm import tqdm
-import pyarrow.feather as feather
-import pandas as pd
-import pickle
+from pathlib import Path
+import traceback
+
 import numpy as np
-from pathlib import Path
-from scipy.spatial.transform import Rotation
-import os
-import os
 import pandas as pd
-from pathlib import Path
+import pyarrow.feather as feather
+from scipy.spatial.transform import Rotation
+from tqdm import tqdm
 
 from av2.utils.io import read_feather, read_city_SE3_ego
 from av2.evaluation.tracking.utils import save
 from av2.structures.cuboid import CuboidList
 from refAV.paths import TRACKER_PRED_DIR, AV2_DATA_DIR, SM_DATA_DIR
-from refAV.utils import get_ego_SE3, get_log_split
+from refAV.utils import (
+    get_ego_SE3, get_log_split, get_best_crop, get_img_crop,
+    get_clip_colors, get_map, get_semantic_lane, get_road_side, cache_manager
+)
 
 
 def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir):
@@ -534,18 +537,6 @@ def create_gt_mining_pkls_parallel(
     print(f"Completed processing {len(results)} log-prompt combinations")
     return results
 
-
 if __name__ == "__main__":
 
-
-    sm_test_feather = Path(
-        "output/RefAV_dataset/scenario_mining_test_annotations.feather"
-    )
-    # tracking_val_predictions = Path('tracker_downloads/Le3DE2D_Tracking_test.pkl')
-    # pickle_to_feather(AV2_DATA_DIR, tracking_val_predictions, TRACKER_PRED_DIR/'Le3DE2D_Tracking/test')
-    separate_scenario_mining_annotations(sm_test_feather, SM_DATA_DIR / "test")
-    create_gt_mining_pkls_parallel(
-        sm_test_feather,
-        SM_DATA_DIR / "test",
-        num_processes=max(1, int(0.5 * os.cpu_count())),
-    )
+    tracker_dir = Path('output/tracker_predictions/PFTrack_Tracking/nuprompt_val')

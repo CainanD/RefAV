@@ -53,6 +53,8 @@ tracker:
 # RefProg NuPrompt
 - StreamPETR_Tracking
 - PFTrack_Tracking
+- PFTrack2_Tracking
+- PFTrack_FullRes_Tracking
 
 #Ground truth experiments
 exp0:
@@ -379,6 +381,26 @@ exp67:
   tracker: PFTrack_Tracking
   context: NuPrompt
 
+exp68: #With color discrimiination
+  name: exp68
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val
+  tracker: PFTrack_Tracking
+  context: NuPrompt
+
+exp69: 
+  name: exp69
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val
+  tracker: PFTrack2_Tracking
+  context: NuPrompt
+
+exp70: 
+  name: exp70
+  LLM: claude-3-7-sonnet-20250219
+  split: nuprompt_val
+  tracker: PFTrack_FullRes_Tracking
+  context: NuPrompt
 
 # Fixing bugs in dataset conversion and NuPrompt evaluation code
 exp60:

@@ -656,12 +656,10 @@ def set_camera_position_pv(
         * (np.linalg.norm(tr_corner - bl_corner))
         / (2 * np.tan(np.deg2rad(plotter.camera.view_angle) / 2))
     )
-    print(scenario_height)
     camera_height = min(
         max(scenario_height + height_above_scenario, scenario_height),
         scenario_height + 400,
     )
-    print(camera_height)
 
     plotter.camera_position = [
         tuple(scenario_center + [0, 0, camera_height]),
@@ -990,7 +988,6 @@ def visualize_rgb(
         f"Finished visualization for {log_id} - {description}. Frames saved in {output_log_dir}"
     )
 
-
 if __name__ == "__main__":
 
     import refAV.paths as paths
@@ -1009,5 +1006,3 @@ if __name__ == "__main__":
         log_id,
         description="Vehicle making left turn through ego-vehicle's path while it is raining",
     )
-
-    # Figure 4 visualization

@@ -42,6 +42,7 @@ def find_nuprompt_path(scene_token, combined_prompt):
         if num_matching > most_matching:
             best_first_prompt = gt_prompts[0]
             best_path = info_dict['relative_path']
+            most_matching = num_matching
 
     assert best_path is not None
     return best_path, best_first_prompt
@@ -58,14 +59,15 @@ def token(obj):
 
 if __name__ == "__main__":
 
-    exp_name ='exp67'
+    exp_name ='exp70'
     with open(EXPERIMENTS, "rb") as file:
         exp_config = yaml.safe_load(file)
     tracker = exp_config[exp_name]["tracker"]
     split = exp_config[exp_name]["split"]
 
-    nuscenes_tracker_path = Path('/home/crdavids/Trinity-Sync/PF-Track/ckpts/PF-Track-Models/f3_fullres_all/results/results_nusc_tracking.json')
-    prompt_track_path = Path(f'/home/crdavids/Trinity-Sync/Prompt4Driving/work_dirs/f3_prompttrack_nuprompt/results_prompt_tracking.json')
+    nuscenes_tracker_path = Path('/home/crdavids/Trinity-Sync/PF-Track/ckpts/PF-Track-Models/f3_fullres_all/track_ext_5/results_nusc_tracking.json')
+    #nuscenes_tracker_path = Path('/home/crdavids/Trinity-Sync/StreamPETR/tracking_results.json')
+
     pkl_path = Path(f'/home/crdavids/Trinity-Sync/RefAV/output/sm_predictions/{exp_name}/results/combined_predictions_{split}.pkl')
     tracking_predictions_dir = Path(f'/home/crdavids/Trinity-Sync/RefAV/output/tracker_predictions/{tracker}/{split}')
 
@@ -73,8 +75,17 @@ if __name__ == "__main__":
         sp_results = json.load(file)['results']
     with open(pkl_path, 'rb') as file:
         refav_results = pickle.load(file)
-    with open(prompt_track_path, 'rb') as file:
-        pt_results = json.load(file)['results']
+    nuprompt_infos_val_path = Path('/home/crdavids/Trinity-Sync/PF-Track/nuprompt_infos_val.json')
+    with open(nuprompt_infos_val_path, 'rb') as file:
+        nuprompt_infos_val = json.load(file)['infos']
+        # Extract unique prompt_filenames and normalize to match relative_nuprompt_path format
+        nuprompt_val_paths = set()
+        for info in nuprompt_infos_val:
+            if 'prompt_filename' in info:
+                # Convert ../data/nuscenes/... to ./data/nuscenes/...
+                normalized_path = info['prompt_filename'].replace('../data/nuscenes/', './data/nuscenes/')
+                nuprompt_val_paths.add(normalized_path)
+        print(f'Loaded {len(nuprompt_val_paths)} unique prompt paths from nuprompt_infos_val.json')
 
     with open(NUSCENES_DIR/'sample.json', 'rb') as file:
         data_list = json.load(file, object_hook=token)
@@ -140,7 +151,7 @@ if __name__ == "__main__":
             nuscenes_sample_token = sample_token_lookup[(log_id, timestamp_us)]
             nuprompt_sample_token = f'{nuscenes_sample_token}*{relative_nuprompt_path}'
             
-            if nuscenes_sample_token not in nuprompt_results:
+            if nuprompt_sample_token not in nuprompt_results:
                 nuprompt_results[nuprompt_sample_token] = []
 
             referred_box_uuids = []
@@ -148,19 +159,16 @@ if __name__ == "__main__":
                 track_uuid = all_track_uuids[uuid_index]
                 refav_category = frame['name'][i]
                 if refav_category == 'REFERRED_OBJECT':
-                    try:
-                        mask = (df['timestamp_ns'] == frame['timestamp_ns']) & (df['track_uuid'] == track_uuid)
-                        distance = np.linalg.norm(df.loc[mask, ['tx_m', 'ty_m']].to_numpy())
-                        category = df.loc[mask, 'category'].iloc[0]
-                        if category.lower() == 'ego_vehicle':
-                            print('Filtered ego vehicle')
-                            continue
-                        if distance > NUSCENES_TRACKING_CLASS_RANGES[category.lower()]:
-                            print(f'Filtered distance: {distance}')
-                            continue
-                    except: pass#traceback.print_exc()
+                    #try:
+                    #    mask = (df['timestamp_ns'] == frame['timestamp_ns']) & (df['track_uuid'] == track_uuid)
+                    #    distance = np.linalg.norm(df.loc[mask, ['tx_m', 'ty_m']].to_numpy())
+                    #    category = df.loc[mask, 'category'].iloc[0]
+                        #if distance > NUSCENES_TRACKING_CLASS_RANGES[category.lower()]:
+                        #    print(f'Filtered distance: {distance}')
+                        #    continue
+                    #except: pass#traceback.print_exc()
 
-                    referred_box_uuids.append(track_uuid)
+                    referred_box_uuids.append(str(track_uuid))
 
             referred_boxes = []
             for sample_box in sp_results[nuscenes_sample_token]:
@@ -181,11 +189,13 @@ if __name__ == "__main__":
                     nuprompt_results[nuprompt_sample_token].append(referred_box)
 
     nuprompt_results_small = {}
-    for nuprompt_sample_token in pt_results.keys():
-        if nuprompt_sample_token not in nuprompt_results:
-            print(f'Missing {nuprompt_sample_token} in new tracking results.')
-        else:
-            nuprompt_results_small[nuprompt_sample_token] = nuprompt_results[nuprompt_sample_token]
+    for nuprompt_sample_token, results in nuprompt_results.items():
+        # Extract relative_nuprompt_path from the sample token (format: {sample_token}*{relative_path})
+        relative_path = nuprompt_sample_token.split('*', 1)[1]
+        if relative_path in nuprompt_val_paths:
+            nuprompt_results_small[nuprompt_sample_token] = results
+    
+    print(f'NuPrompt results of length {len(nuprompt_results_small)}/300')
 
     nuprompt_format = {
         "meta":{
@@ -209,8 +219,8 @@ if __name__ == "__main__":
     }
 
     # For use in the NuPrompt codebase evaluation script.
-    with open(f'output/sm_predictions/{exp_name}/{tracker}_NuPrompt_results_{exp_name}_small.json', 'w') as file:
+    with open(f'output/sm_predictions/{exp_name}/NuPrompt_results_{exp_name}_small.json', 'w') as file:
         json.dump(nuprompt_format_small, file, indent=4)
 
-    with open(f'output/sm_predictions/{exp_name}/{tracker}_NuPrompt_results_{exp_name}.json', 'w') as file:
+    with open(f'output/sm_predictions/{exp_name}/NuPrompt_results_{exp_name}.json', 'w') as file:
         json.dump(nuprompt_format, file, indent=4)

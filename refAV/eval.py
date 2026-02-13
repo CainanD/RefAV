@@ -20,40 +20,19 @@ from refAV.atomic_functions import *
 import refAV.paths as paths
 
 
-def evaluate_baseline(
-    description, log_id, baseline_pred_dir: Path, gt_pkl_dir, scenario_pred_dir
-):
-
-    gt_pkl = gt_pkl_dir / log_id / f"{description}_{log_id[:8]}_ref_gt.pkl"
-    pred_pkl = baseline_pred_dir / log_id / f"{description}_predictions.pkl"
-
-    if not pred_pkl.exists():
-        pred_pkl = create_baseline_prediction(
-            description, log_id, baseline_pred_dir, scenario_pred_dir
-        )
-
-    evaluate(
-        pred_pkl,
-        gt_pkl,
-        objective_metric="HOTA",
-        max_range_m=50,
-        dataset_dir=paths.AV2_DATA_DIR,
-        out=str("eval"),
-    )
-
-
 def execute_scenario(scenario, description, log_dir, output_dir: Path, is_gt=False):
     """Executes string as a python script in a local namespace."""
     exec(scenario)
 
 
-def create_baseline_prediction(
+def create_refprog_prediction(
     description: str,
     log_id: str,
     llm_name: str,
     tracker_name: str,
     experiment_name: str,
     custom_context: str = None,
+    scenario_def_output_dir:Path = paths.LLM_PRED_DIR,
     exception_iter: int = 0,
 ):
 
@@ -69,13 +48,13 @@ def create_baseline_prediction(
         print(f"Cached scenario prediction exists.")
         return pred_path
 
-    scenario_filename = paths.LLM_PRED_DIR / llm_name / f"{description}.txt"
+    scenario_filename = scenario_def_output_dir / llm_name / f"{description}.txt"
     if scenario_filename.exists() and not destructive:
         print(f"Cached scenario definition for {description} found")
     else:
         scenario_filename = predict_scenario_from_description(
             description,
-            output_dir=paths.LLM_PRED_DIR,
+            output_dir=scenario_def_output_dir,
             model_name=llm_name,
             custom_context=custom_context,
             destructive=destructive
@@ -105,13 +84,14 @@ def create_baseline_prediction(
             escaped_traceback = traceback.format_exc().replace("{", "{{").replace("}", "}}")
             custom_context = custom_context + "Fix the following code for '{natural_language_description}' given the bug:\n" + escaped_scenario + "\n\n" + escaped_traceback
 
-            return create_baseline_prediction(
+            return create_refprog_prediction(
                 description,
                 log_id,
                 llm_name,
                 tracker_name,
                 experiment_name=experiment_name,
                 custom_context=custom_context,
+                scenario_def_output_dir=scenario_def_output_dir,
                 exception_iter=exception_iter + 1,
             )
 
@@ -346,8 +326,12 @@ if __name__ == "__main__":
 
     if "context" in exp_config[args.exp_name]:
         context_config = exp_config[args.exp_name]["context"]
+        scenario_def_output_dir = paths.LLM_PRED_DIR / exp_config[args.exp_name]["context"]
     else:
         context_config = "RefAV"
+        scenario_def_output_dir = paths.LLM_PRED_DIR / context_config
+
+
     context = build_context(context_path=paths.PROMPT_DIR / context_config)
 
     faulthandler.enable()
@@ -358,7 +342,6 @@ if __name__ == "__main__":
     )
 
     cache_manager.num_processes = args.num_processes
-    cache_manager.load_custom_caches()
 
     log_prompt_input_path = Path(args.log_prompt_pairs)
     eval_output_dir = Path(f"output/evaluation/{exp_name}/{split}")
@@ -374,10 +357,20 @@ if __name__ == "__main__":
     log_prompt_pairs = list(log_prompts.items())
     np.random.shuffle(log_prompt_pairs)
     for log_id, prompts in log_prompt_pairs:
+
         cache_manager.clear_all()
+        log_dir = paths.TRACKER_PRED_DIR / tracker_name / split / log_id
+        cache_manager.load_custom_caches(log_dir)
         np.random.shuffle(prompts)
+
         for prompt in tqdm(prompts, desc=f"{i}/{total_lpp}"):
-            create_baseline_prediction(
-                prompt, log_id, llm_name, tracker_name, exp_name, custom_context=context
+            create_refprog_prediction(
+                prompt, 
+                log_id, 
+                llm_name, 
+                tracker_name, 
+                exp_name, 
+                custom_context=context, 
+                scenario_def_output_dir=scenario_def_output_dir
             )
             i += 1
