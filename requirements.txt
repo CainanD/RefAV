@@ -1,6 +1,8 @@
 git+https://github.com/CainanD/av2-api.git
+git+https://github.com/JonathonLuiten/TrackEval.git
 anthropic
 transformers
+accelerate
 google-genai
 pathos
 ipykernel
@@ -9,8 +11,8 @@ pycocotools
 tabulate
 
 #Needed for visualizations
-pyvista
-vtk
-imageio
-imageio-ffmpeg
---extra-index-url https://wheels.vtk.org vtk-egl
+#pyvista
+#vtk
+#imageio
+#imageio-ffmpeg
+#--extra-index-url https://wheels.vtk.org vtk-egl

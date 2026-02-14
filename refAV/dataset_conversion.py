@@ -21,11 +21,8 @@ from tqdm import tqdm
 from av2.utils.io import read_feather, read_city_SE3_ego
 from av2.evaluation.tracking.utils import save
 from av2.structures.cuboid import CuboidList
-from refAV.paths import TRACKER_PRED_DIR, AV2_DATA_DIR, SM_DATA_DIR
-from refAV.utils import (
-    get_ego_SE3, get_log_split, get_best_crop, get_img_crop,
-    get_clip_colors, get_map, get_semantic_lane, get_road_side, cache_manager
-)
+from refAV.paths import AV2_DATA_DIR, SM_DATA_DIR
+from refAV.utils import get_ego_SE3, get_log_split
 
 
 def separate_scenario_mining_annotations(input_feather_path, base_annotation_dir):
@@ -367,22 +364,21 @@ def mining_category_from_df(df: pd.DataFrame, mining_category: str):
     return category_objects
 
 
-def process_log_prompt(
+def _convert_log_prompt_df_star(args):
+    return convert_log_prompt_df(*args)
+
+
+def convert_log_prompt_df(
     log_id,
     prompt,
-    sm_annotations,
+    lpp_df,
     output_dir,
-    SM_DATA_DIR,
-    read_feather,
-    mining_category_from_df,
-    get_ego_SE3,
-    CuboidList,
-    Rotation,
-    save,
 ):
     """Process a single log_id and prompt combination."""
-    log_df = sm_annotations[sm_annotations["log_id"] == log_id]
-    lpp_df = log_df[log_df["prompt"] == prompt]
+    output_path = output_dir / log_id / f"{prompt}.pkl"
+    if output_path.exists():
+        print(f"Scenario pkl file for {prompt}_{log_id[:8]} already exists.")
+        return
 
     frames = []
 
@@ -418,6 +414,7 @@ def process_log_prompt(
         frame["label"] = np.zeros(n, dtype=np.int32)
         frame["name"] = np.zeros(n, dtype="<U31")
         frame["track_id"] = np.zeros(n, dtype=np.int32)
+        frame["score"] = np.ones(n, dtype=np.float32)
 
         for i, track_uuid in enumerate(timestamp_uuids):
             track_df = timestamp_annotations[
@@ -466,9 +463,8 @@ def process_log_prompt(
 
     sequences = {(log_id, prompt): frames}
 
-    output_path = output_dir / log_id / f"{prompt}_{log_id[:8]}_ref_gt.pkl"
     save(sequences, output_path)
-    return f"Scenario pkl file for {prompt}_{log_id[:8]} saved successfully."
+    print(f"Scenario pkl file for {prompt}_{log_id[:8]} saved successfully.")
 
 
 def create_gt_mining_pkls_parallel(
@@ -486,13 +482,15 @@ def create_gt_mining_pkls_parallel(
     sm_annotations = read_feather(scenario_mining_annotations_path)
     log_ids = sm_annotations["log_id"].unique()
 
-    # Create a list of (log_id, prompt) tuples to process
+    # Create a list of (log_id, prompt, filtered_df) tuples to process
     tasks = []
-    for log_id in log_ids:
+    for log_id in tqdm(log_ids, desc="Separating annotation file"):
         log_df = sm_annotations[sm_annotations["log_id"] == log_id]
+        (output_dir / log_id).mkdir(exist_ok=True)
         prompts = log_df["prompt"].unique()
         for prompt in prompts:
-            tasks.append((log_id, prompt))
+            lpp_df = log_df[log_df["prompt"] == prompt]
+            tasks.append((log_id, prompt, lpp_df, output_dir))
 
     # If num_processes is not specified, use all available cores
     if num_processes is None:
@@ -501,33 +499,11 @@ def create_gt_mining_pkls_parallel(
     # The number of processes shouldn't exceed the number of tasks
     num_processes = min(num_processes, len(tasks))
 
-    # Create output directories first to avoid race conditions
-    for log_id in log_ids:
-        (output_dir / log_id).mkdir(exist_ok=True)
-
-    # Define the worker function with partial to fix most parameters
-    worker_func = partial(
-        process_log_prompt,
-        sm_annotations=sm_annotations,
-        output_dir=output_dir,
-        SM_DATA_DIR=SM_DATA_DIR,  # Make sure this is defined in the global scope
-        read_feather=read_feather,
-        mining_category_from_df=mining_category_from_df,
-        get_ego_SE3=get_ego_SE3,
-        CuboidList=CuboidList,
-        Rotation=Rotation,
-        save=save,
-    )
-
-    # Display a progress bar for the overall process
-    # print(f"Processing {len(tasks)} log-prompt combinations using {num_processes} processes")
-
     # Use a Pool of workers to process in parallel
     with mp.Pool(processes=num_processes) as pool:
-        # Use imap to get results as they complete and to allow for a progress bar
         results = list(
             tqdm(
-                pool.starmap(worker_func, tasks),
+                pool.imap_unordered(_convert_log_prompt_df_star, tasks),
                 total=len(tasks),
                 desc="Processing log-prompt pairs",
             )
@@ -539,4 +515,4 @@ def create_gt_mining_pkls_parallel(
 
 if __name__ == "__main__":
 
-    tracker_dir = Path('output/tracker_predictions/PFTrack_Tracking/nuprompt_val')
+    pass

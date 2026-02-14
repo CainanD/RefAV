@@ -289,7 +289,7 @@ def mine_scenarios_anthropic(log_id, prompts, tracker_path):
 if __name__ == "__main__":
 
     split = "test"
-    tracker_path = Path("output/tracker_predictions/Le3DE2D_Tracking") / split
+    tracker_path = Path("output/tracker_predictions/Le3DE2E_Tracking") / split
     log_prompts_path = Path(f"scenario_mining_downloads/log_prompt_pairs_{split}.json")
     experiment_dir = SM_PRED_DIR / "claude-sonnet-4-5"
 

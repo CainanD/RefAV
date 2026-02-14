@@ -66,7 +66,7 @@ def get_track_features(log_dir, data_loader:AV2SensorDataLoader, clip_model, pre
 
     track_uuids = sorted(df['track_uuid'].unique())
 
-    track_features_path = Path(f'baselines/clip_track/track_features/{tracker}/{split}/{log_id}/track_features_dict.pt')
+    track_features_path = Path(f'baselines/image_embedding/track_features/{tracker}/{split}/{log_id}/track_features_dict.pt')
     if track_features_path.exists():
         track_features = torch.load(track_features_path, map_location=device, weights_only=False)
         return track_features
@@ -121,7 +121,7 @@ def get_track_features(log_dir, data_loader:AV2SensorDataLoader, clip_model, pre
 
 def get_description_features(description, clip_model, device) -> torch.tensor:
 
-    description_features_path = Path(f'baselines/clip_track/description_features/{description}.pt')
+    description_features_path = Path(f'baselines/image_embedding/description_features/{description}.pt')
     if description_features_path.exists():
             return torch.load(description_features_path, map_location=device, weights_only=False)
     else:
@@ -258,9 +258,9 @@ if __name__ == '__main__':
 
     # Ensure you are writing to the file, not opening with 'rb'
     if args.bow:
-        output_path = Path(f'baselines/clip_track/similarity_scores/bow/{args.tracker}_{args.split}_{args.start_index}_{args.end_index}.json')
+        output_path = Path(f'baselines/image_embedding/similarity_scores/bow/{args.tracker}_{args.split}_{args.start_index}_{args.end_index}.json')
     else:
-        output_path = Path(f'baselines/clip_track/similarity_scores/{args.tracker}_{args.split}_{args.start_index}_{args.end_index}.json')
+        output_path = Path(f'baselines/image_embedding/similarity_scores/{args.tracker}_{args.split}_{args.start_index}_{args.end_index}.json')
 
     output_path.mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w') as file:

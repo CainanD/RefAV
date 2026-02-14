@@ -117,15 +117,18 @@ def create_default_prediction(description: str, log_dir: Path, output_dir: Path)
 
 
 def evaluate_pkls(pred_pkl, gt_pkl, experiment_dir):
+
     with open(pred_pkl, "rb") as f:
-        predictions = pickle.load(f)
+        predictions:dict = pickle.load(f)
 
     with open(gt_pkl, "rb") as f:
-        labels = pickle.load(f)
+        labels:dict = pickle.load(f)
 
     for log_id, prompt in labels.keys():
         split = get_log_split(Path(log_id))
         break
+
+    print(f'Starting evaluation of {split} split with {len(labels.keys())} scenarios.')
 
     output_dir = str(experiment_dir / "results")
     metrics = evaluate(
@@ -152,101 +155,7 @@ def evaluate_pkls(pred_pkl, gt_pkl, experiment_dir):
     return metrics_dict
 
 
-def combine_matching_pkls(
-    gt_base_dir, pred_base_dir, output_dir, method_name="ref", log_ids_to_combine=None
-):
-    # Create output directory if it doesn't exist
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Get all log_ids from both directories
-    gt_log_ids = {d.name: d for d in Path(gt_base_dir).iterdir() if d.is_dir()}
-    pred_log_ids = {d.name: d for d in Path(pred_base_dir).iterdir() if d.is_dir()}
-
-    # Find matching log_ids
-    matching_log_ids = set(gt_log_ids.keys()) & set(pred_log_ids.keys())
-
-    # Initialize combined dictionaries
-    combined_gt = {}
-    combined_pred = {}
-
-    # For each matching log_id
-    for log_id in tqdm(matching_log_ids):
-        if log_id not in log_ids_to_combine:
-            continue
-
-        gt_log_dir = gt_log_ids[log_id]
-        pred_log_dir = pred_log_ids[log_id]
-
-        # Get all PKL files in these directories
-        gt_files = {
-            f.stem.replace("_ref_gt", ""): f for f in gt_log_dir.glob("*_ref_gt.pkl")
-        }
-        pred_files = {
-            f.stem.replace(f"_predictions", f"_{log_id[:8]}"): f
-            for f in pred_log_dir.glob(f"*_predictions.pkl")
-        }
-
-        # Find matching files within this log_id
-        matching_keys = set(gt_files.keys()) & set(pred_files.keys())
-        # Combine matching files
-        for key in matching_keys:
-
-            # Load GT file
-            with open(gt_files[key], "rb") as f:
-                gt_data = pickle.load(f)
-                combined_gt.update(copy.deepcopy(gt_data))
-
-            # Load prediction file
-            with open(pred_files[key], "rb") as f:
-                pred_data = pickle.load(f)
-                combined_pred.update(copy.deepcopy(pred_data))
-
-        # Report unmatched files for this log_id
-        unmatched_gt = set(gt_files.keys()) - matching_keys
-        unmatched_pred = set(pred_files.keys()) - matching_keys
-
-        if unmatched_gt:
-            print(f"\nUnmatched GT files in log_id {log_id}:")
-            for name in unmatched_gt:
-                print(f"- {name}")
-
-        if unmatched_pred:
-            print(f"\nUnmatched prediction files in log_id {log_id}:")
-            for name in unmatched_pred:
-                print(f"- {name}")
-
-    # Save combined files
-    if combined_gt:
-        with open(os.path.join(output_dir, "combined_gt.pkl"), "wb") as f:
-            pickle.dump(combined_gt, f)
-
-    if combined_pred:
-        with open(
-            os.path.join(output_dir, f"{method_name}_predictions.pkl"), "wb"
-        ) as f:
-            pickle.dump(combined_pred, f)
-
-    # Print statistics
-    print(f"\nFound {len(matching_log_ids)} matching log_ids")
-    print(f"Combined GT file contains {len(combined_gt)} entries")
-    print(f"Combined predictions file contains {len(combined_pred)} entries")
-
-    # Report unmatched log_ids
-    unmatched_gt_logs = set(gt_log_ids.keys()) - matching_log_ids
-    unmatched_pred_logs = set(pred_log_ids.keys()) - matching_log_ids
-
-    if unmatched_gt_logs:
-        print("\nLog IDs in GT without matching predictions directory:")
-        for log_id in unmatched_gt_logs:
-            print(f"- {log_id}")
-
-    if unmatched_pred_logs:
-        print("\nLog IDs in predictions without matching GT directory:")
-        for log_id in unmatched_pred_logs:
-            print(f"- {log_id}")
-
-
-def combine_pkls(experiment_dir: Path, lpp_path: Path):
+def combine_pkls(experiment_dir: Path, lpp_path: Path, suffix=""):
     """
     Combines all generated pkl files in a directory with structure
     experiment_dir/scenario_predictions/<log>/<prompt>_predictions.pkl
@@ -263,25 +172,31 @@ def combine_pkls(experiment_dir: Path, lpp_path: Path):
     combined_predictions = {}
     for log_id, prompts in tqdm(list(log_prompt_pairs.items())):
         for prompt in prompts:
+            
+            filename = prompt + suffix + ".pkl"
+
             target_pkl = (
                 experiment_dir
-                / "scenario_predictions"
                 / log_id
-                / f"{prompt}_predictions.pkl"
+                / filename
             )
 
             with open(target_pkl, "rb") as file:
                 track_predictions = pickle.load(file)
+                for seq_id, frames in track_predictions.items():
+                    for frame in frames:
+                        frame['score'] = np.ones(len(frame['label']), dtype=np.float32)
+
             combined_predictions.update(track_predictions)
 
-    print(f"Combined predictions for {len(combined_predictions)} log-prompt pairs.")
+    print(f"Combined pickles files for {len(combined_predictions)} log-prompt pairs.")
 
     split = "_".join(lpp_path.stem.split("_")[3:])
-    output_pkl = experiment_dir / "results" / f"combined_predictions_{split}.pkl"
-    with open(output_pkl, "wb") as file:
+    output_path = experiment_dir / "results" / f"combined_predictions_{split}.pkl"
+    with open(output_path, "wb") as file:
         pickle.dump(combined_predictions, file)
 
-    return output_pkl
+    return output_path
 
 
 def compile_results(experiment_dir: Path):

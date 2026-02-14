@@ -140,7 +140,7 @@ def convert_similarity_scores_to_tracker(tracker, log_prompt_pairs_path):
     log_id_to_tracker_feather = {}
     log_id_to_clip_feather = {}
     for prompt, log_ids in tqdm(list(plp.items())):
-        with open(f'baselines/clip_track/similarity_scores/{tracker}_{split}/{prompt}.json', 'rb') as file:
+        with open(f'baselines/image_embedding/similarity_scores/{tracker}_{split}/{prompt}.json', 'rb') as file:
             track_ids = json.load(file)
 
         for log_id in log_ids:
@@ -171,8 +171,8 @@ if __name__ == "__main__":
     split = 'val'
 
     try:
-        eval_similarity_scores(f'baselines/clip_track/similarity_scores/{tracker}_{split}.json',
-                    'baselines/clip_track/similarity_scores', majority_threshold=.9)
+        eval_similarity_scores(f'baselines/image_embedding/similarity_scores/{tracker}_{split}.json',
+                    'baselines/image_embedding/similarity_scores', majority_threshold=.9)
         print('Converting to tracker ...')
         convert_similarity_scores_to_tracker(tracker, f'av2_sm_downloads/log_prompt_pairs_{split}.json')
     except: pass

@@ -1575,7 +1575,7 @@ def scenario_not(func):
         if 'log_dir' in params:
             log_dir_index = params.index('log_dir') - 1
         else:
-            raise ValueError("The function does not have 'log_dir' as a parameter.")
+            raise ValueError("The function scenario_not wraps does not have 'log_dir' as a parameter.")
 
         log_dir = args[log_dir_index]
 

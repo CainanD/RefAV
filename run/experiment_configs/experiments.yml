@@ -24,14 +24,14 @@ split:
 tracker:
 # RefProg RefAV
 - DGIST_Tracking
-- Le3DE2D_Tracking
+- Le3DE2E_Tracking
 - ReVoxelDet_Tracking
 - TransFusion_Tracking
 - Valeo4Cast_Tracking
 - VoxelDet_Tracking
 - AV2_Detections
 - BEVFusion_Detections
-- Le3DE2D_Detections
+- Le3DE2E_Detections
 - Valeo4Cast_Detections
 - ReVoxelDet_Detections
 - LT3D_Detections
@@ -39,12 +39,12 @@ tracker:
 - ground_truth_2hz
 - AV2_Detections_2hz
 - BEVFusion_Detections_2hz
-- Le3DE2D_Detections_2hz
+- Le3DE2E_Detections_2hz
 - Valeo4Cast_Detections_2hz
 - ReVoxelDet_Detections_2hz
 - LT3D_Detections_2hz
 # RefAV Baselines
-- Le3DE2D_Tracking_clip
+- Le3DE2E_Tracking_clip
 - ReVoxelDet_Tracking_clip
 - ground_truth_clip
 - TransFusion_Tracking_clip
@@ -87,32 +87,32 @@ exp1:
   name: exp1
   LLM: gemini-2.0-flash
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 exp2:
   name: exp2
   LLM: claude-3-5-sonnet-20241022
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 exp3:
   name: exp3
   LLM: Qwen2.5-7B-Instruct
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 exp4:
   name: exp4
   LLM: claude-3-7-sonnet-20250219
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 #began error tracking, was fixing bugs up to this point
 exp5:
   name: exp5
   LLM: gemini-2.5-flash-preview-04-17
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 exp6:
   name: exp6
@@ -149,7 +149,7 @@ exp26:
   name: exp26
   LLM: claude-3-5-sonnet-20241022
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 exp27:
   name: exp27
@@ -185,13 +185,13 @@ exp32:
   name: exp32
   LLM: claude-3-7-sonnet-20250219
   split: test
-  tracker: Le3DE2D_Detections
+  tracker: Le3DE2E_Detections
 
 exp33:
   name: exp33
   LLM: prefiltered_objects
   split: test
-  tracker: Le3DE2D_Tracking_clip
+  tracker: Le3DE2E_Tracking_clip
 
 exp34:
   name: exp34
@@ -221,31 +221,31 @@ exp38:
   name: exp38
   LLM: claude-3-7-classes
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 exp39:
   name: exp39
   LLM: gemini-2.0-flash
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 exp40:
   name: exp40
   LLM: Qwen2.5-7B-Instruct
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 exp41:
   name: exp41
   LLM: gemini-2.5-flash-preview-04-17
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 
 exp42:
   name: exp42
   LLM: prefiltered_objects
   split: test
-  tracker: Le3DE2D_Tracking_clip
+  tracker: Le3DE2E_Tracking_clip
 
 exp43:
   name: exp43
@@ -281,7 +281,7 @@ exp48:
   name: exp48
   LLM: claude-3-7-sonnet-20250219
   split: test
-  tracker: Le3DE2D_Detections_2hz
+  tracker: Le3DE2E_Detections_2hz
 
 exp49:
   name: exp49
@@ -309,7 +309,7 @@ exp52:
   name: exp52
   LLM: claude-3-7-sonnet-20250219
   split: test
-  tracker: Le3DE2D_Detections_2hz
+  tracker: Le3DE2E_Detections_2hz
 
 exp53:
   name: exp53
@@ -327,7 +327,7 @@ exp55:
   name: exp55
   LLM: claude-3-7-sonnet-20250219
   split: test
-  tracker: Le3DE2D_Detections
+  tracker: Le3DE2E_Detections
 
 exp56:
   name: exp56
@@ -364,14 +364,14 @@ exp65:
   name: exp65
   LLM: claude-sonnet-4-5-20250929
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
   context: RefAV
 
 exp66:
   name: exp66
   LLM: gpt-5
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
   context: RefAV
 
 exp67:
@@ -402,11 +402,19 @@ exp70:
   tracker: PFTrack_FullRes_Tracking
   context: NuPrompt
 
+# v2.0 of RefAV
 exp71: 
   name: exp71
   LLM: claude-3-7-sonnet-20250219
   split: val
   tracker: VoxelDet_Tracking
+  context: RefAV
+
+exp72: 
+  name: exp72
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2E_Tracking
   context: RefAV
 
 # Fixing bugs in dataset conversion and NuPrompt evaluation code
@@ -442,7 +450,7 @@ exp12:
   name: exp12
   LLM: claude-3-7-sonnet-20250219
   split: test
-  tracker: Le3DE2D_Detections
+  tracker: Le3DE2E_Detections
 
 exp13:
   name: exp13
@@ -502,5 +510,5 @@ exp24:
   name: exp24
   LLM: claude-3-5-sonnet-20241022
   split: test
-  tracker: Le3DE2D_Tracking
+  tracker: Le3DE2E_Tracking
 

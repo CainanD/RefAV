@@ -1,3 +1,4 @@
+"""Script to reproduce RefProg results. It may take several hours to complete an experiment, depending on the number of tracks coming from the tracker."""
 import argparse
 import json
 from pathlib import Path
@@ -44,7 +45,7 @@ if tracker not in config["tracker"]:
 if split not in ["train", "test", "val"]:
     print("Experiment must use split train, test, or val")
 
-if split in ["val", "train"]:
+if split in ["train", "val"]:
     sm_feather = paths.SM_DOWNLOAD_DIR / f"scenario_mining_{split}_annotations.feather"
 
     sm_data_split_path = paths.SM_DATA_DIR / split
@@ -60,7 +61,7 @@ tracker_predictions_pkl = Path(f"tracker_downloads/{tracker}_{split}.pkl")
 tracker_predictions_dest = paths.TRACKER_PRED_DIR / tracker / split
 
 if not tracker_predictions_dest.exists():
-    av2_data_split = paths.AV2_DATA_DIR / split
+    av2_data_split = paths.AV2_DATA_DIR
     pickle_to_feather(av2_data_split, tracker_predictions_pkl, tracker_predictions_dest)
 
 log_prompts_path = paths.SM_DOWNLOAD_DIR / f"log_prompt_pairs_{split}.json"
@@ -73,11 +74,13 @@ construct_caches(all_log_dirs)
 
 run_parallel_eval(exp_name, log_prompts_path, args.procs_per_task)
 
-experiment_dir = paths.SM_PRED_DIR / exp_name
-combined_preds = combine_pkls(experiment_dir, log_prompts_path)
+experiment_dir = paths.SM_PRED_DIR / exp_name 
+combined_preds = combine_pkls(sm_data_split_path, log_prompts_path)#combine_pkls(experiment_dir / "scenario_predictions", log_prompts_path, suffix="_predictions")
 
-combined_gt = Path(
-    f"/home/crdavids/Trinity-Sync/RefAV/scenario_mining_downloads/combined_gt_{split}.pkl"
-)
+# Only train and val splits will be evaluated
+# if split in ["train", "val"]:
+combined_gt = Path('/home/crdavids/Trinity-Sync/RefAV/scenario_mining_downloads/combined_gt_val.pkl')#combine_pkls(sm_data_split_path, log_prompts_path)
 metrics = evaluate_pkls(combined_preds, combined_gt, experiment_dir)
 print(metrics)
+#else:
+# print(Only train and val splits can be evaluated)

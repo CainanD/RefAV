@@ -23,6 +23,7 @@ from av2.map.lane_segment import LaneSegment
 from av2.map.pedestrian_crossing import PedestrianCrossing
 from av2.geometry.se3 import SE3
 from av2.utils.io import read_feather, read_city_SE3_ego
+from av2.utils.synchronization_database import SynchronizationDB
 from av2.evaluation.tracking.utils import save, load
 from av2.datasets.sensor.splits import TEST, TRAIN, VAL
 import refAV.paths as paths
@@ -180,7 +181,10 @@ class EasyDataLoader(AV2SensorDataLoader):
             data_dir = paths.NUSCENES_AV2_DATA_DIR / split
             labels_dir = log_dir.parent
 
-        super().__init__(data_dir, labels_dir)
+        self._data_dir = data_dir
+        self._labels_dir = labels_dir
+        self._sdb = SynchronizationDB(str(data_dir), collect_single_log_id=log_dir.name)
+        self._sdb.MAX_LIDAR_RING_CAM_TIMESTAMP_DIFF = 100E6 # 100ms, adjusting for 10hz annotations
 
     def project_ego_to_img_motion_compensated(self, points_lidar_time, cam_name, timestamp_ns, log_id):
         img_path = super().get_closest_img_fpath(log_id, cam_name, timestamp_ns)
@@ -692,7 +696,7 @@ def get_clip_colors(images:list, possible_colors:list[str], pipe=None):
             model="google/siglip2-so400m-patch16-naflex",
             task="zero-shot-image-classification",
             device_map="auto",  # Automatically distributes across available GPUs
-            torch_dtype="auto",
+            dtype="auto",
             batch_size=16
         )
     
@@ -805,7 +809,7 @@ def construct_caches(log_dirs: list[Path], num_processes: int = None):
     Call this before launching parallel eval processes.
     """
     if num_processes is None:
-        num_processes = max(10, 1)
+        num_processes = max(int(.9*os.cpu_count()), 1)
 
     # --- Phase 1: Map caches in parallel (saved to GLOBAL_CACHE_PATH) ---
     logs_needing_map = [
@@ -865,8 +869,8 @@ def construct_caches(log_dirs: list[Path], num_processes: int = None):
                 model="google/siglip2-so400m-patch16-naflex",
                 task="zero-shot-image-classification",
                 device_map="auto",
-                torch_dtype="auto",
-                batch_size=16
+                dtype="auto",
+                batch_size=256
             )
             for image_batch, batch_info in tqdm(
                 zip(image_batches, info_batches),
@@ -1819,8 +1823,7 @@ def post_process_scenario(scenario, log_dir) -> dict:
     if dict_empty(scenario):
         return True
 
-    #filter_by_relationship_distance(scenario, log_dir, max_distance=50)
-    #dilate_timestamps(scenario, log_dir, min_timespan_s=1.5)
+    filter_by_relationship_distance(scenario, log_dir, max_distance=50)
 
     if dict_empty(scenario):
         return False
@@ -2210,7 +2213,7 @@ def get_objects_and_timestamps(scenario_dict: dict) -> dict:
             if uuid not in track_dict:
                 track_dict[uuid] = related_children
             else:
-                track_dict[uuid] = sorted(list(set(track_dict[uuid] + list(related_children))))
+                track_dict[uuid] = sorted(list(set(track_dict[uuid])) + list(related_children))
 
     return track_dict
 

@@ -44,7 +44,6 @@ import refAV.paths as paths
 from refAV.atomic_functions import output_scenario
 from refAV.code_generation import predict_scenario_qwen
 from refAV.eval import (
-    compute_temporal_metrics,
     combine_matching_pkls,
     evaluate,
     combine_pkls,
@@ -864,7 +863,7 @@ def process_query_log_pair(query, log_dir):
     worker_id = mp.current_process()._identity[0] - 1  # 0-indexed
     gpu_id = worker_id % torch.cuda.device_count()
 
-    output_dir = Path(f"baselines/ReferGPT/scenario_predictions/test/Le3DE2D_Tracking")
+    output_dir = Path(f"baselines/ReferGPT/scenario_predictions/test/Le3DE2E_Tracking")
     referred_tracks = get_referred_tracks(query, log_dir, gpu_id=gpu_id)
     output_scenario(
         referred_tracks, query, log_dir, output_dir=output_dir, visualize=False
@@ -885,7 +884,7 @@ if __name__ == "__main__":
     parser.add_argument("--end_log", type=int, required=True)
     args = parser.parse_args()
 
-    pred_base_dir = Path("output/tracker_predictions/Le3DE2D_Tracking")
+    pred_base_dir = Path("output/tracker_predictions/Le3DE2E_Tracking")
     split = Path(args.log_prompt_pairs).stem.split(sep="_")[-1]
     output_dir = Path(
         f"baselines/ReferGPT/scenario_predictions/{split}/{pred_base_dir.stem}"
