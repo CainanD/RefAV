@@ -142,7 +142,7 @@ def evaluate_pkls(pred_pkl, gt_pkl, experiment_dir):
 
     metrics_dict = {
         "HOTA-Temporal": float(metrics[0]),
-        "HOTA": float(metrics[1]),
+        "HOTA-Track": float(metrics[1]),
         "Timestamp BA": float(metrics[2]),
         "Log BA": float(metrics[3]),
         "datetime": str(datetime.datetime.now()),
@@ -183,13 +183,9 @@ def combine_pkls(experiment_dir: Path, lpp_path: Path, suffix=""):
 
             with open(target_pkl, "rb") as file:
                 track_predictions = pickle.load(file)
-                for seq_id, frames in track_predictions.items():
-                    for frame in frames:
-                        frame['score'] = np.ones(len(frame['label']), dtype=np.float32)
-
             combined_predictions.update(track_predictions)
 
-    print(f"Combined pickles files for {len(combined_predictions)} log-prompt pairs.")
+    print(f"Combined pickle files for {len(combined_predictions)} log-prompt pairs.")
 
     split = "_".join(lpp_path.stem.split("_")[3:])
     output_path = experiment_dir / "results" / f"combined_predictions_{split}.pkl"

@@ -19,7 +19,7 @@ parser = argparse.ArgumentParser(description="Example script with arguments")
 parser.add_argument(
     "--exp_name",
     type=str,
-    default="exp4",
+    default="exp71",
     help="Enter the name of the experiment from experiments.yml you would like to run.",
 )
 parser.add_argument(
@@ -45,7 +45,7 @@ if tracker not in config["tracker"]:
 if split not in ["train", "test", "val"]:
     print("Experiment must use split train, test, or val")
 
-if split in ["train", "val"]:
+if split in ["train", "val", "test"]:
     sm_feather = paths.SM_DOWNLOAD_DIR / f"scenario_mining_{split}_annotations.feather"
 
     sm_data_split_path = paths.SM_DATA_DIR / split
@@ -75,12 +75,12 @@ construct_caches(all_log_dirs)
 run_parallel_eval(exp_name, log_prompts_path, args.procs_per_task)
 
 experiment_dir = paths.SM_PRED_DIR / exp_name 
-combined_preds = combine_pkls(sm_data_split_path, log_prompts_path)#combine_pkls(experiment_dir / "scenario_predictions", log_prompts_path, suffix="_predictions")
+combined_preds = combine_pkls(experiment_dir / "scenario_predictions", log_prompts_path, suffix="_predictions")
 
 # Only train and val splits will be evaluated
-# if split in ["train", "val"]:
-combined_gt = Path('/home/crdavids/Trinity-Sync/RefAV/scenario_mining_downloads/combined_gt_val.pkl')#combine_pkls(sm_data_split_path, log_prompts_path)
-metrics = evaluate_pkls(combined_preds, combined_gt, experiment_dir)
-print(metrics)
-#else:
-# print(Only train and val splits can be evaluated)
+if split in ["train", "val", "test"]:
+    combined_gt = combine_pkls(sm_data_split_path, log_prompts_path)
+    metrics = evaluate_pkls(combined_preds, combined_gt, experiment_dir)
+    print(metrics)
+else:
+    print("Only train and val splits can be evaluated. Please make a submission to EvalAI!")
