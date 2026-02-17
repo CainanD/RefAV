@@ -74,7 +74,7 @@ def evaluate_generated_scenarios(
     with mp.Pool(mp.cpu_count()-1) as pool:
         pool.starmap(process_log_predictions, [(description, log_id, scenario_file, experiment_dir, tracker_dir) for description, log_id, scenario_file in files_to_process])
 
-    combined_preds = combine_pkls(experiment_dir, log_prompts_path)
+    combined_preds = combine_pkls(experiment_dir, log_prompts_path, suffix="_predictions")
     combined_gt = Path(
         f"../RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
     )
@@ -291,7 +291,7 @@ if __name__ == "__main__":
     split = "test"
     tracker_path = Path("output/tracker_predictions/Le3DE2E_Tracking") / split
     log_prompts_path = Path(f"scenario_mining_downloads/log_prompt_pairs_{split}.json")
-    experiment_dir = SM_PRED_DIR / "claude-sonnet-4-5"
+    experiment_dir = SM_PRED_DIR / "GPT5-v2"
 
     with open(log_prompts_path, "rb") as file:
         lpp_superset = json.load(file)
@@ -304,7 +304,7 @@ if __name__ == "__main__":
 
     with mp.Pool(20) as pool:
         responses = pool.starmap(
-            mine_scenarios_anthropic, [(log_id, prompts, tracker_path) for log_id, prompts in lpp]
+            mine_scenarios_open_ai, [(log_id, prompts, tracker_path) for log_id, prompts in lpp]
         )
 
     output_path = Path(f"output/black_box/claude-sonnet-4-5")

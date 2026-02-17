@@ -2,15 +2,12 @@
 Processes the scenario mining annotation files downloaded from RefAV.
 Also processes object tracking prediction files in the format Argoverse2 submission format.
 """
-
 import json
 import os
 import pickle
-import threading
 import multiprocessing as mp
-from functools import partial
+from copy import deepcopy
 from pathlib import Path
-import traceback
 
 import numpy as np
 import pandas as pd
@@ -20,6 +17,8 @@ from tqdm import tqdm
 
 from av2.utils.io import read_feather, read_city_SE3_ego
 from av2.evaluation.tracking.utils import save
+from av2.evaluation.tracking.eval import filter_max_dist
+from av2.evaluation.scenario_mining.eval import filter_drivable_area
 from av2.structures.cuboid import CuboidList
 from refAV.paths import AV2_DATA_DIR, SM_DATA_DIR
 from refAV.utils import get_ego_SE3, get_log_split
@@ -512,6 +511,136 @@ def create_gt_mining_pkls_parallel(
     # Print summary
     print(f"Completed processing {len(results)} log-prompt combinations")
     return results
+
+def create_gt_pkl_file(
+    pkl_dir: Path,
+    lpp_path: Path,
+    output_path: Path,
+    max_range_m: int = 50,
+    dataset_dir: str = None,
+):
+    """
+    Combines mining_gt_pkl files created in parallel into a single dictionary
+    and adds an is_positive field to all frames.
+
+    is_positive is determined by applying the same filtering used during
+    evaluation (max range and drivable area ROI) and checking whether any
+    referred objects (label == 0) survive:
+
+        True  - frame contains referred objects that survive filtering
+        False - frame does not contain any referred objects (before or after)
+        None  - frame had referred objects but they were all filtered out (ambiguous)
+
+    Args:
+        pkl_dir: Directory containing individual pkl files
+                 (structure: pkl_dir/<log_id>/<prompt>.pkl)
+        lpp_path: Path to log_prompt_pairs JSON file
+        output_path: Path to save the combined pkl file
+        max_range_m: Maximum evaluation range for filtering (default 50)
+        dataset_dir: Path to dataset split for ROI filtering (None to skip)
+    """
+    if output_path.exists():
+        return output_path
+
+    with open(lpp_path, "r") as file:
+        log_prompt_pairs = json.load(file)
+
+    # Step 1: Combine all individual pkl files
+    combined_gt = {}
+    missing_count = 0
+    for log_id, prompts in tqdm(
+        list(log_prompt_pairs.items()), desc="Combining pkl files"
+    ):
+        for prompt in prompts:
+            target_pkl = pkl_dir / log_id / f"{prompt}.pkl"
+            if not target_pkl.exists():
+                missing_count += 1
+                print(f"Warning: Missing pkl file {target_pkl}")
+                continue
+            with open(target_pkl, "rb") as file:
+                track_data = pickle.load(file)
+            combined_gt.update(track_data)
+
+    if missing_count > 0:
+        print(f"Warning: {missing_count} pkl files were missing")
+
+    print(f"Combined {len(combined_gt)} scenarios")
+
+    # Step 2: Create filtered copy to determine which referred objects survive
+    filtered_gt = deepcopy(combined_gt)
+    filtered_gt = filter_max_dist(filtered_gt, max_range_m)
+    if dataset_dir is not None:
+        filtered_gt = filter_drivable_area(filtered_gt, dataset_dir)
+
+    # Step 3: Assign is_positive to each frame
+    total_positive = 0
+    total_negative = 0
+    total_ambiguous = 0
+    scenarios_became_negative = []
+
+    for seq_id, frames in combined_gt.items():
+        filtered_frames = filtered_gt[seq_id]
+        scenario_had_positive = False
+        scenario_has_positive = False
+
+        for i, frame in enumerate(frames):
+            had_referred = len(frame["label"]) > 0 and 0 in frame["label"]
+            has_referred = (
+                len(filtered_frames[i]["label"]) > 0
+                and 0 in filtered_frames[i]["label"]
+            )
+
+            if has_referred:
+                frame["is_positive"] = True
+                total_positive += 1
+                scenario_has_positive = True
+            elif had_referred:
+                frame["is_positive"] = None
+                total_ambiguous += 1
+            else:
+                frame["is_positive"] = False
+                total_negative += 1
+
+            if had_referred:
+                scenario_had_positive = True
+
+        if scenario_had_positive and not scenario_has_positive:
+            scenarios_became_negative.append(seq_id)
+
+    # Step 4: Print debugging stats
+    total_timestamps = total_positive + total_negative + total_ambiguous
+    print(f"\n{'='*60}")
+    print(f"is_positive statistics:")
+    print(f"  Total timestamps:  {total_timestamps}")
+    print(
+        f"  Positive (True):   {total_positive} "
+        f"({100*total_positive/max(total_timestamps,1):.1f}%)"
+    )
+    print(
+        f"  Negative (False):  {total_negative} "
+        f"({100*total_negative/max(total_timestamps,1):.1f}%)"
+    )
+    print(
+        f"  Ambiguous (None):  {total_ambiguous} "
+        f"({100*total_ambiguous/max(total_timestamps,1):.1f}%)"
+    )
+    print(
+        f"\nScenarios that switched from positive to wholly "
+        f"negative/ambiguous: {len(scenarios_became_negative)}"
+    )
+    for seq_id in scenarios_became_negative:
+        log_id, prompt = seq_id
+        print(f"  {log_id[:8]}... | {prompt}")
+    print(f"{'='*60}\n")
+
+    # Step 5: Save combined gt
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "wb") as file:
+        pickle.dump(combined_gt, file)
+
+    print(f"Combined GT pkl saved to {output_path}")
+    return output_path
 
 if __name__ == "__main__":
 

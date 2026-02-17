@@ -442,7 +442,6 @@ class FunctionInfo:
         # Join the lines
         return "\n".join(output_lines).strip()
 
-
 # --- AST Visitor to extract Function Info ---
 
 
@@ -553,6 +552,32 @@ def display_function_info(
         output_stream.write(formatted_text)
         output_stream.write("\n")  # Ensure a newline after each function block
 
+def generate_all_scenario_definitions(split:str, model_name:str):
+
+    atomic_functions_path = Path("refAV/atomic_functions.py")
+    parse_python_functions_with_docstrings(atomic_functions_path)
+
+    all_descriptions = set()
+    with open(
+        paths.SM_DOWNLOAD_DIR / f"log_prompt_pairs_{split}.json", "rb"
+    ) as file:
+        log_prompt_pairs = json.load(file)
+
+    for prompts in log_prompt_pairs.values():
+        all_descriptions.update(prompts)
+
+    print(len(all_descriptions))
+
+    output_dir = paths.LLM_PRED_DIR / "RefAV"
+    context = build_context(paths.PROMPT_DIR / "RefAV")
+
+    for description in all_descriptions:
+        predict_scenario_from_description(
+            description,
+            output_dir,
+            model_name=model_name,
+            custom_context=context,
+        )
 
 if __name__ == "__main__":
 
