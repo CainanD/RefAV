@@ -163,7 +163,7 @@ def combine_pkls(experiment_dir: Path, lpp_path: Path, suffix=""):
     """
 
     # Create output directory if it doesn't exist
-    output_dir = experiment_dir / "results"
+    output_dir = experiment_dir.parent / "results"
     os.makedirs(output_dir, exist_ok=True)
 
     with open(lpp_path, "rb") as file:
@@ -188,7 +188,7 @@ def combine_pkls(experiment_dir: Path, lpp_path: Path, suffix=""):
     print(f"Combined pickle files for {len(combined_predictions)} log-prompt pairs.")
 
     split = "_".join(lpp_path.stem.split("_")[3:])
-    output_path = experiment_dir / "results" / f"combined_predictions_{split}.pkl"
+    output_path = experiment_dir.parent / "results" / f"combined{suffix}_{split}.pkl"
     with open(output_path, "wb") as file:
         pickle.dump(combined_predictions, file)
 

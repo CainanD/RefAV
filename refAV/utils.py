@@ -1612,7 +1612,7 @@ def dilate_convex_polygon(points, distance):
     
     Args:
         points (numpy.ndarray): Nx2 array of (x, y) coordinates representing the vertices of the convex polygon
-                                in clockwise order. The first and last points are identical.
+                                in counterclockwise order. The first and last points are identical.
         distance (float): Distance to dilate the polygon perimeter. Positive for outward, negative for inward.
 
     Returns:
@@ -1623,6 +1623,11 @@ def dilate_convex_polygon(points, distance):
         """Normalize a vector."""
         norm = np.linalg.norm(v)
         return v / norm if norm != 0 else v
+
+    # Ensure counterclockwise winding for outward dilation
+    shoelace = sum((points[(i+1)%len(points)][0] - points[i][0]) * (points[(i+1)%len(points)][1] + points[i][1]) for i in range(len(points)-1))
+    if shoelace > 0:  # clockwise, flip to counterclockwise
+        points = points[::-1]
 
     n = len(points)  # Account for duplicate closing point
     dilated_points = []
@@ -2457,7 +2462,6 @@ def create_default_frame(frame_infos) -> dict:
 
     frame['translation_m'] = np.zeros((1, 3))
     frame['translation_m'][0] = frame['ego_translation_m']
-    frame['velocity_m_per_s'] = np.zeros((1,3), dtype=np.float32)
     frame['size'] = np.zeros((1,3), dtype=np.float32)
     frame['yaw'] = np.zeros(1, dtype=np.float32)
     frame['label'] = np.array([2], dtype=np.int32)

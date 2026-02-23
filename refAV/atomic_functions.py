@@ -985,9 +985,8 @@ def near_objects(
 
     Returns:
         dict: 
-            A scenario dictionary where:
-            Keys are timestamps when the tracked object is near the required number of related objects.
-            Values are lists of related candidate UUIDs present at those timestamps.
+            A filtered scenario dictionary containing all of the track candidates that are within distance of 
+            at least the minimum number of related candidates.
 
     Example:
         vehicles_near_ped_group = near_objects(vehicles, pedestrians, log_dir, min_objects=3)
@@ -1025,13 +1024,25 @@ def near_objects(
 @composable_relational
 @cache_manager.create_cache('following')
 def following(
-    track_uuid:dict,
-    candidate_uuids:dict,
+    track_candidates:dict,
+    related_candidates:dict,
     log_dir:Path) -> dict:
     """
-    Returns timestamps when the tracked object is following a lead object.
-    Following is defined simultaneously moving in the same direction and lane.
+    Identifies timestamps when a tracked object is following behind a candidate object.
+
+    Args:
+        track_candidates: Tracks to analyze (scenario dictionary).
+        related_candidates: Candidates that are potentially being followed (scenario dictionary).
+        log_dir: Path to scenario logs.
+
+    Returns:
+        A filtered scenario dictionary containing all of the tracked candidates that are likely
+        following one of the related cnadidates.
+
+    Example:
+        car_following_bike = following(cars, bikes, log_dir)
     """
+    track_uuid = track_candidates
 
     lead_timestamps = []
     leads = {}
@@ -1048,7 +1059,7 @@ def following(
     LATERAL_TRHESH = 5 #m
     HEADING_SIMILARITY_THRESH = .5 #cosine similarity
 
-    for j, candidate in enumerate(candidate_uuids):
+    for j, candidate in enumerate(related_candidates):
         if candidate == track_uuid:
             continue
 
@@ -1282,7 +1293,7 @@ def on_road(
         log_dir: Path to scenario logs.
 
     Returns:
-    The subset of the track candidates that are currently on a road.
+        The subset of the track candidates that are currently on a road.
 
     Example:
         animals_on_road = on_road(animals, log_dir)   
