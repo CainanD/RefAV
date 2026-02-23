@@ -1,5 +1,5 @@
 <!-- Link to a paper -->
-[![arXiv](https://img.shields.io/badge/arXiv-2301.00001-b31b1b.svg)](https://arxiv.org/abs/2505.20981)
+[![arXiv](https://img.shields.io/badge/arXiv-2505.20981-b31b1b.svg)](https://arxiv.org/abs/2505.20981)
 [![dataset](https://img.shields.io/badge/HuggingFace-Dataset-FFD21E.svg?logo=huggingface)](https://huggingface.co/datasets/CainanD/RefAV)
 [![competition](https://img.shields.io/badge/EvalAI-Competition-3b82f6.svg)](https://eval.ai/web/challenges/challenge-page/2662/overview)
 
