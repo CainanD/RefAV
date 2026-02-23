@@ -1,7 +1,7 @@
 <!-- Link to a paper -->
 [![arXiv](https://img.shields.io/badge/arXiv-2301.00001-b31b1b.svg)](https://arxiv.org/abs/2505.20981)
-[![dataset](https://img.shields.io/badge/arXiv-2301.00001-b31b1b.svg)](https://huggingface.co/datasets/CainanD/RefAV)
-[![competition](https://img.shields.io/badge/arXiv-2301.00001-b31b1b.svg)](https://eval.ai/web/challenges/challenge-page/2662/overview)
+[![dataset](https://img.shields.io/badge/HuggingFace-Dataset-FFD21E.svg?logo=huggingface)](https://huggingface.co/datasets/CainanD/RefAV)
+[![competition](https://img.shields.io/badge/EvalAI-Competition-3b82f6.svg)](https://eval.ai/web/challenges/challenge-page/2662/overview)
 
 ## RefAV: Mining Referred Scenarios in Autonomous Vehicle Datasets using LLMs
 
@@ -9,7 +9,7 @@
   <img src="figures/pipeline.png" alt="RefAV Method">
 </p>
 
-Update: We are holding a new competition at the CVPR 2026 Workshop on Autonomous Driving. We introduce a new challenge track: temporal scenario mining to encourage broader participation from the VLM/video understanding communities. Uber has generously sponsored $7500 in prizes for top-performing teams. Learn more at the EvalAI competition page. 
+🚨 We are holding a new competition at the CVPR 2026 Workshop on Autonomous Driving. We introduce a new challenge track: temporal scenario mining to encourage broader participation from the VLM/video understanding communities. Uber has generously sponsored $7500 in prizes for top-performing teams. Learn more at the EvalAI competition page. 🚨
 
 A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios -- the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrive and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
 
