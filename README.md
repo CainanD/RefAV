@@ -9,7 +9,7 @@
   <img src="figures/pipeline.png" alt="RefAV Method">
 </p>
 
-🚨 We are holding a new competition at the CVPR 2026 Workshop on Autonomous Driving. We introduce a new challenge track: temporal scenario mining to encourage broader participation from the VLM/video understanding communities. Uber has generously sponsored $7500 in prizes for top-performing teams. Learn more at the EvalAI competition page. 🚨
+🚨 We are holding a new competition for 2026. Top performing teams can win cash prizes, generously sponsored by Uber. 🚨
 
 A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios -- the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrive and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
 
