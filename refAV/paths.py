@@ -1,7 +1,7 @@
 from pathlib import Path
 
 # change to path where the Argoverse2 Sensor dataset is downloaded
-AV2_DATA_DIR = Path('/media/crdavids/SSD/OMNI3D-RAW/AV2')
+AV2_DATA_DIR = Path('/data3/shared/datasets/ArgoVerse2/Sensor')
 TRACKER_DOWNLOAD_DIR = Path('tracker_downloads')
 SM_DOWNLOAD_DIR = Path('scenario_mining_downloads')
 

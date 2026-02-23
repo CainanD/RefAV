@@ -1,8 +1,15 @@
+<!-- Link to a paper -->
+[![arXiv](https://img.shields.io/badge/arXiv-2301.00001-b31b1b.svg)](https://arxiv.org/abs/2505.20981)
+[![dataset](https://img.shields.io/badge/arXiv-2301.00001-b31b1b.svg)](https://huggingface.co/datasets/CainanD/RefAV)
+[![competition](https://img.shields.io/badge/arXiv-2301.00001-b31b1b.svg)](https://eval.ai/web/challenges/challenge-page/2662/overview)
+
 ## RefAV: Mining Referred Scenarios in Autonomous Vehicle Datasets using LLMs
 
 <p align="center">
   <img src="figures/pipeline.png" alt="RefAV Method">
 </p>
+
+Update: We are holding a new competition at the CVPR 2026 Workshop on Autonomous Driving. We introduce a new challenge track: temporal scenario mining to encourage broader participation from the VLM/video understanding communities. Uber has generously sponsored $7500 in prizes for top-performing teams. Learn more at the EvalAI competition page. 
 
 A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios -- the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrive and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
 
@@ -79,7 +86,7 @@ evalai challenge 2469 phase 4899 submit --file /path/to/submission_val.pkl --lar
 evalai challenge 2469 phase 4898 submit --file /path/to/submission_test.pkl --large
 ```
 
-The evaluation expects a dictionary of lists of dictionaries
+The spatio-temporal track expects a dictionary of lists of dictionaries
 ```python
 {
       <(log_id,prompt)>: [
@@ -97,9 +104,22 @@ The evaluation expects a dictionary of lists of dictionaries
 }
 ```
 
+The temporal track expects the same format, but only requires a single boolean entry per timestamp. You may also submit files with the spatio-temporal format.
+```python
+{
+      <(log_id,prompt)>: [
+            {
+                  "timestamp_ns": <timestamp_ns>,
+                  "is_positive": <is_positive>
+            }
+      ]
+}
+```
+
 * log_id: Log id associated with the track, also called seq_id.  
 * prompt: The prompt/description string that describes the scenario associated with the log.  
-* timestamp_ns: Timestamp associated with the detections.  
+* timestamp_ns: Timestamp associated with the detections.
+* is_positive: Whether the video timestamp includes a REFERRED_OBJECT or not.  
 * track_id: Unique id assigned to each track, this is produced by your tracker.  
 * score: Track confidence.  
 * label: Integer index of the object class. This is 0 for REFERRED_OBJECTs, 1 for RELATED_OBJECTs, and 2 for OTHER_OBJECTs  
@@ -109,6 +129,8 @@ The evaluation expects a dictionary of lists of dictionaries
 * yaw: Object heading rotation along the z axis.  
 
 ### Example Submission
+
+Spatio-Temporal Track:
 ```python
 example_tracks = {
   ('02678d04-cc9f-3148-9f95-1ba66347dff9','vehicle turning left at stop sign'): [
@@ -140,6 +162,19 @@ example_tracks = {
 }
 ```
 
+Temporal Track:
+```python
+example_tracks = {
+  ('02678d04-cc9f-3148-9f95-1ba66347dff9','vehicle turning left at stop sign'): [
+    {
+       'timestamp_ns': 315969904359876000,
+       'is_positive': True
+    },
+    ...
+  ],
+  ...
+}
+```
 ### Additional Competition Details
 
 * Language queries are object-centric -- all correspond to some set of objects.
