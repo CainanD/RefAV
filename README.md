@@ -23,9 +23,9 @@ We are hosting a new competition in 2026! We have annotated over 5x the number o
 
 ### About
 
-A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios -- the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrive and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
+A single autonomous vehicle will stream about ~4TB of data per hour with a full stack of camera and lidar sensors. The vast majority of this data comes from uninteresting scenarios - the ego vehicle driving straight down a lane, possibly with another car in front of it. It can be prohibitively expensive to retrieve and label specific scenarios for ego-behaivor evaluation, safety testing, or active learning at scale.
 
-RefAV serves as the baseline for the 2026 Argoverse2 Scenario Mining Challenge. It utilizes an LLM to construct composable function calls from a set of hand-crafted atomic functions such as "turning" or "has_objects_in_front". Given a prompt, the LLM outputs a composable function that narrows down a set of bounding box track predictions to the set that best corresponds to the prompt. Our paper describing the dataset and baseline in detail is available on [arXiv](https://arxiv.org/pdf/2505.20981)  
+RefAV serves as the baseline for the 2026 Argoverse2 Scenario Mining Challenge. It utilizes an LLM to construct composable function calls from a set of hand-crafted atomic functions such as "turning" or "has_objects_in_front". Given a prompt, the LLM outputs a composable function that narrows down a set of bounding box track predictions to the set that best corresponds to the prompt. Our paper describing the dataset and baseline in detail is available on [arXiv](https://arxiv.org/pdf/2505.20981).
 
 ### Installation
 
@@ -52,7 +52,7 @@ export TARGET_DIR="$HOME/data/datasets"  # Target directory on your machine.
 
 s5cmd --no-sign-request cp "s3://argoverse/datasets/av2/$DATASET_NAME/*" $TARGET_DIR
 ```
-It also requies downloading the scenario-mining add on. This can be downloaded from Huggingface using:
+It also requires downloading the scenario-mining add on. This can be downloaded from Huggingface using:
 ```
 pip install huggingface_hub
 hf auth login

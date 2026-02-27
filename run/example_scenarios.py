@@ -12,8 +12,6 @@ output_dir = Path("output/visualization")
 log_id = 'a7c9bb12-322e-3f8e-8798-cf57a4a72f99'
 split = get_log_split(log_id)
 log_dir = dataset_dir / split / log_id
-log_dir = Path('/home/crdavids/Trinity-Sync/RefAV/output/tracker_predictions/StreamPETR_Tracking/nuprompt_val/2ca15f59d656489a8b1a0be4d9bead4e')
-
 scenarios = [0]
 
 if 0 in scenarios:

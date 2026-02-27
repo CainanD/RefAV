@@ -1,7 +1,7 @@
 ## Evaluating on the NuPrompt Dataset
 
 [NuPrompt](https://github.com/wudongming97/Prompt4Driving) is a referring multi-object tracking (RMOT) dataset where the task is predict 
-sequences of 3D bounding boxes from a given text prompt. It is build on top of the NuScenes dataset.
+sequences of 3D bounding boxes from a given text prompt. It is build on top of the NuScenes dataset. This is not code is not as polished as the rest of RefAV, and we don't provide an out-of-the box method for evaluation. Here is broadly how to reproduce our results.
 
 ### Download and Convert NuScenes to the Argoverse2 format.
 
