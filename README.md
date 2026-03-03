@@ -1,10 +1,16 @@
-<!-- Link to a paper -->
-[![arXiv](https://img.shields.io/badge/arXiv-2505.20981-b31b1b.svg)](https://arxiv.org/abs/2505.20981)
-[![dataset](https://img.shields.io/badge/HuggingFace-Dataset-FFD21E.svg?logo=huggingface)](https://huggingface.co/datasets/CainanD/RefAV)
-[![competition](https://img.shields.io/badge/EvalAI-Competition-3b82f6.svg)](https://eval.ai/web/challenges/challenge-page/2662/overview)
-[![website](https://img.shields.io/badge/Project-Website-8A2BE2.svg)](https://cainand.github.io/RefAV/)
+<h2 align="center">RefAV: Towards Planning Centric Scenario Mining</h2>
 
-## RefAV: Mining Referred Scenarios in Autonomous Vehicle Datasets using LLMs
+---
+
+<p align="center"><b>CVPR 2026</b></p>
+
+<!-- Link to a paper -->
+<p align="center">
+  <a href="https://arxiv.org/abs/2505.20981"><img src="https://img.shields.io/badge/arXiv-2505.20981-b31b1b.svg" alt="arXiv"></a>
+  <a href="https://huggingface.co/datasets/CainanD/RefAV"><img src="https://img.shields.io/badge/HuggingFace-Dataset-FFD21E.svg?logo=huggingface" alt="dataset"></a>
+  <a href="https://eval.ai/web/challenges/challenge-page/2662/overview"><img src="https://img.shields.io/badge/EvalAI-Competition-3b82f6.svg" alt="competition"></a>
+  <a href="https://cainand.github.io/RefAV/"><img src="https://img.shields.io/badge/Project-Website-8A2BE2.svg" alt="website"></a>
+</p>
 
 <p align="center">
   <img src="figures/pipeline.png" alt="RefAV Method">
@@ -12,7 +18,7 @@
 
 ### Competition Update
 
-We are hosting a new competition in 2026! We have annotated over 5x the number of visual events (120 → 600), given all scenario descriptions positive and negative instances, and generally improved label quality. Submissions must be made before May 31st, 2026. Top performing teams can win cash prizes, generously sponsored by Uber.
+We are hosting a new competition in 2026! We have annotated over 5x the number of visual events (120 → 600), given all scenario descriptions positive and negative instances, and generally improved label quality. Submissions must be made before May 31st, 2026. Winners will be announced at the CVPR 2026 Workshop on Autonomous Driving. Top performing teams can win cash prizes, generously sponsored by Uber.
 
 ⏱️ Temporal Localization Winner: $2500
 
@@ -210,10 +216,10 @@ Cainan Davidson [crdavids@andrew.cmu.edu]
 ## Citation
 If you find our paper and code repository useful, please cite us:
 ```bib
-@article{davidson2025refav,
+@inproceedings{davidson2026refav,
   title={RefAV: Towards Planning-Centric Scenario Mining},
   author={Davidson, Cainan and Ramanan, Deva and Peri, Neehar},
-  journal={arXiv preprint arXiv:2505.20981},
-  year={2025}
+  journal={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
+  year={2026}
 }
 ```
