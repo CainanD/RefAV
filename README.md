@@ -1,4 +1,4 @@
-<h2 align="center">RefAV: Towards Planning Centric Scenario Mining</h2>
+<h2 align="center">RefAV: Towards Planning-Centric Scenario Mining</h2>
 
 <p align="center"><b>CVPR 2026</b></p>
 
@@ -82,15 +82,6 @@ and evaluating the predictions against the ground truth can be found in the `tut
 It also includes some basic tutorials about how to define and visualize a scenario.
 
 Our experimental results and test/val submissions can be reproduced directly by running `python run_experiment.py --exp_name <exp_name>`. All experiments are found in the `experiments.yml` file.
-
-### Benchmark Evaluation
-
-| **Metric** | **Description** |
-|------------|-----------------|
-| HOTA-Temporal | HOTA on temporally localized tracks |
-| HOTA-Track | HOTA on the full length of a track |
-| Timestamp Balanced Accuracy | Timestamp level classification metric |
-| Log Balanced Accuracy | Data log/scenario level classification metric |
 
 ### Submission Format
 
@@ -191,6 +182,16 @@ example_tracks = {
   ...
 }
 ```
+
+### Benchmark Evaluation
+
+| **Metric** | **Description** |
+|------------|-----------------|
+| HOTA-Temporal | HOTA on temporally localized tracks |
+| HOTA-Track | HOTA on the full length of a track |
+| Timestamp Balanced Accuracy | Timestamp level classification metric |
+| Log Balanced Accuracy | Data log/scenario level classification metric |
+
 ### Additional Competition Details
 
 * Language queries are object-centric -- all correspond to some set of objects.
