@@ -46,8 +46,9 @@ pip install -r requirements.txt
 export PYTHONPATH=.
 ```
 
-Running this code requires downloading the Argoverse2 test and val splits. Run the commands below to download the entire sensor dataset.
-More information can be found in the [Argoverse User Guide](https://argoverse.github.io/user-guide/getting_started.html#downloading-the-data).
+### Downloading the Dataset 
+
+Running this code requires downloading the Argoverse2 test and val splits. Run the commands below to download the entire sensor dataset. The entire dataset is roughly 1TB, but you should be able to avoid downloading the large train split if space is limited. For more information check out [Argoverse User Guide](https://argoverse.github.io/user-guide/getting_started.html#downloading-the-data).
 ```
 conda install s5cmd -c conda-forge
 
@@ -56,7 +57,7 @@ export TARGET_DIR="$HOME/data/datasets"  # Target directory on your machine.
 
 s5cmd --no-sign-request cp "s3://argoverse/datasets/av2/$DATASET_NAME/*" $TARGET_DIR
 ```
-It also requires downloading the scenario-mining add on. This can be downloaded from Huggingface using:
+The RefAV scenario mining dataset can be downloaded from Huggingface using:
 ```
 pip install huggingface_hub
 hf auth login
