@@ -126,8 +126,8 @@ The temporal track expects the same format, but only requires a single boolean e
 
 * log_id: Log id associated with the track, also called seq_id.  
 * prompt: The prompt/description string that describes the scenario associated with the log.  
-* timestamp_ns: Timestamp associated with the detections.
-* is_positive: Whether the video timestamp includes a REFERRED_OBJECT or not.  
+* timestamp_ns: Timestamp associated with the synced lidar/video frames.
+* is_positive: Whether the video timestamp includes a referred object or action.  
 * track_id: Unique id assigned to each track, this is produced by your tracker.  
 * score: Track confidence.  
 * label: Integer index of the object class. This is 0 for REFERRED_OBJECTs, 1 for RELATED_OBJECTs, and 2 for OTHER_OBJECTs  
@@ -198,8 +198,8 @@ All metrics are computed by taking the average value over each of the unique pro
 ### Additional Competition Details
 
 * Language queries are object-centric -- all correspond to some set of objects.
+* A REFERRED_OBJECT is the object referenced first in the prompt (e.g. "pedestrians" for the prompt "pedestrians in front of the ego vehicle"). In this example, "ego vehicle" would be a RELATED_OBJECT.
 * Most language queries are given from the third person persective (such as "ego vehicle turning left"). The language queries given from the first-person perspective (such as "the pedestrian on the right") describe objects from the point of view of the ego vehicle.
-* In the case the language query does not refer to an object (such as "raining"), the track bounding boxes should be drawn around the ego vehicle.
 * Scenarios only involve objects within 50 meters from the ego vehicle and within 5 meters of a mapped road.
 * Interacting objects within a scenario are at most 50 meters away from each other. 
 * All referred object tracks persist for at least 3 evaluation timestamps (1.5s).
