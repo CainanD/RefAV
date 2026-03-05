@@ -86,12 +86,12 @@ Our experimental results and test/val submissions can be reproduced directly by 
 
 ### Submission Format
 
-Submissions can be made through through the [EvalAI](https://eval.ai/) CLI. To submit to the to the validation and test sets respectively, create an EvalAI profile and run
+Submissions can be made through through the [EvalAI](https://eval.ai/) CLI. To submit to the to the temporal and spatiotemporal challenge tracks respectively, create an EvalAI profile and run
 ```bash
 pip install evalai
 evalai set_token <EvalAI_account_token>
-evalai challenge 2469 phase 4899 submit --file /path/to/submission_val.pkl --large
-evalai challenge 2469 phase 4898 submit --file /path/to/submission_test.pkl --large
+evalai challenge 2662 phase 5284 submit --file path/to/temporal_submission_test.pkl --large
+evalai challenge 2662 phase 5282 submit --file path/to/spatiotemporal_submission_test.pkl --large
 ```
 
 The spatio-temporal track expects a dictionary of lists of dictionaries
