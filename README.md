@@ -192,6 +192,8 @@ example_tracks = {
 | Timestamp Balanced Accuracy | Timestamp level classification metric |
 | Log Balanced Accuracy | Data log/scenario level classification metric |
 
+All metrics are computed by taking the average value over each of the unique prompts in the scenario mining dataset. In this way, each prompt can be viewed as its own class. 
+
 ### Additional Competition Details
 
 * Language queries are object-centric -- all correspond to some set of objects.
