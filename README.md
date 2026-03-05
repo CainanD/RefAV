@@ -14,9 +14,9 @@
   <img src="figures/pipeline.png" alt="RefAV Method">
 </p>
 
-### Competition Update
+### 🚨 Competition Update 🚨
 
-We are hosting a new competition in 2026! We have annotated over 5x the number of visual events (120 → 600), given all scenario descriptions positive and negative instances, and generally improved label quality. Submissions must be made before May 31st, 2026. Winners will be announced at the CVPR 2026 Workshop on Autonomous Driving. Top performing teams can win cash prizes, generously sponsored by Uber.
+We are hosting a new competition in 2026! We have annotated over 5x the number of visual events (120 → 600) and given all scenario descriptions positive and negative instances. Submissions must be made before May 31st, 2026. Winners will be announced at the CVPR 2026 Workshop on Autonomous Driving. Top performing teams can win cash prizes, generously sponsored by Uber.
 
 ⏱️ Temporal Localization Winner: $2500
 
