@@ -1,6 +1,6 @@
 <h2 align="center">RefAV: Towards Planning-Centric Scenario Mining</h2>
 
-<p align="center"><b>CVPR 2026</b></p>
+<p align="center"><b>CVPR 2026 (Oral)</b></p>
 
 <!-- Link to a paper -->
 <p align="center">
