@@ -56,6 +56,28 @@ tracker:
 - PFTrack2_Tracking
 - PFTrack_FullRes_Tracking
 
+# v2.0 of RefAV
+exp73:
+  name: exp73
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: Valeo4Cast_Tracking
+  context: RefAV
+
+exp72: 
+  name: exp72
+  LLM: claude-3-7-sonnet-20250219
+  split: test
+  tracker: Le3DE2E_Tracking
+  context: RefAV
+
+exp71: 
+  name: exp71
+  LLM: claude-3-7-sonnet-20250219
+  split: val
+  tracker: VoxelDet_Tracking
+  context: RefAV
+
 # Author Experiments, should probably ignore
 exp0:
   name: exp0
@@ -401,21 +423,6 @@ exp70:
   split: nuprompt_val
   tracker: PFTrack_FullRes_Tracking
   context: NuPrompt
-
-# v2.0 of RefAV
-exp71: 
-  name: exp71
-  LLM: claude-3-7-sonnet-20250219
-  split: val
-  tracker: VoxelDet_Tracking
-  context: RefAV
-
-exp72: 
-  name: exp72
-  LLM: claude-3-7-sonnet-20250219
-  split: test
-  tracker: Le3DE2E_Tracking
-  context: RefAV
 
 # Fixing bugs in dataset conversion and NuPrompt evaluation code
 exp60:

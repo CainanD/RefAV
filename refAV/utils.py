@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import sys
 from pathlib import Path
 from typing import Union, Callable, Any, Literal
 from pathos.multiprocessing import ProcessingPool as Pool
@@ -14,6 +15,9 @@ from tqdm import tqdm
 from transformers import pipeline
 from collections import OrderedDict
 from PIL import Image
+import torch
+import subprocess
+import tempfile
 
 from av2.datasets.sensor.av2_sensor_dataloader import AV2SensorDataLoader
 from av2.datasets.sensor.constants import StereoCameras
@@ -776,8 +780,12 @@ def _collect_crops_for_log(log_dir):
         crop_path = crop_save_dir / f'{uuid_str}.png'
 
         if crop_path.exists():
-            results.append((uuid_str, str(crop_path)))
-            continue
+            try:
+                Image.open(crop_path).verify()
+                results.append((uuid_str, str(crop_path)))
+                continue
+            except Exception:
+                crop_path.unlink()  # remove corrupt file, re-generate below
 
         try:
             best = get_best_crop(uuid_str, log_dir)
@@ -798,6 +806,51 @@ def _collect_crops_for_log(log_dir):
     return str(log_dir), results
 
 
+_GPU_WORKER_SCRIPT = '''
+import sys, pickle, os
+gpu_id = int(sys.argv[1])
+input_file = sys.argv[2]
+output_file = sys.argv[3]
+progress_file = sys.argv[4]
+
+with open(input_file, "rb") as f:
+    image_batches, info_batches, possible_colors = pickle.load(f)
+
+import torch
+from transformers import pipeline as hf_pipeline
+
+device = f"cuda:{gpu_id}"
+pipe = hf_pipeline(
+    model="google/siglip2-so400m-patch16-naflex",
+    task="zero-shot-image-classification",
+    device=device,
+    torch_dtype="auto",
+    batch_size=256,
+)
+texts = [f"a {color} object" for color in possible_colors]
+results = []
+done = 0
+for image_batch, batch_info in zip(image_batches, info_batches):
+    try:
+        outputs = pipe(image_batch, candidate_labels=texts)
+        for output, info in zip(outputs, batch_info):
+            best_label = max(output, key=lambda x: x["score"])["label"].split()[1]
+            results.append((info[0], info[1], best_label))
+    except Exception as e:
+        print(f"GPU {gpu_id}: batch failed ({e}), skipping", flush=True)
+        for info in batch_info:
+            results.append((info[0], info[1], None))
+    done += 1
+    with open(progress_file, "w") as pf:
+        pf.write(str(done))
+del pipe
+torch.cuda.empty_cache()
+
+with open(output_file, "wb") as f:
+    pickle.dump(results, f)
+'''
+
+
 def construct_caches(log_dirs: list[Path], num_processes: int = None):
     """Construct semantic_lane_cache, road_side_cache, and color_cache for all log_dirs.
 
@@ -813,14 +866,17 @@ def construct_caches(log_dirs: list[Path], num_processes: int = None):
 
     # --- Phase 1: Map caches in parallel (saved to GLOBAL_CACHE_PATH) ---
     logs_needing_map = [
-        ld for ld in log_dirs
-        if not (paths.GLOBAL_CACHE_PATH / Path(ld).name / 'semantic_lane_cache.json').exists()
-        or not (paths.GLOBAL_CACHE_PATH / Path(ld).name / 'road_side_cache.json').exists()
+        log_dir for log_dir in log_dirs
+        if not (paths.GLOBAL_CACHE_PATH / Path(log_dir).name / 'semantic_lane_cache.json').exists()
+        or not (paths.GLOBAL_CACHE_PATH / Path(log_dir).name / 'road_side_cache.json').exists()
     ]
     if logs_needing_map:
         print(f"Building map caches for {len(logs_needing_map)} logs using {num_processes} processes...")
         pool = Pool(num_processes)
         pool.map(_build_map_caches_for_log, logs_needing_map)
+        pool.close()
+        pool.join()
+        pool.clear()
         print("Map cache construction complete.")
 
     # --- Phase 2: Color caches ---
@@ -835,6 +891,9 @@ def construct_caches(log_dirs: list[Path], num_processes: int = None):
         print(f"Collecting track crops in parallel using {num_processes} processes...")
         pool = Pool(num_processes)
         crop_results = pool.map(_collect_crops_for_log, logs_needing_color)
+        pool.close()
+        pool.join()
+        pool.clear()
 
         # Phase 2b: Organize saved crop paths into batches for SigLIP
         possible_colors = ["white", "silver", "black", "red", "yellow", "blue"]
@@ -863,23 +922,70 @@ def construct_caches(log_dirs: list[Path], num_processes: int = None):
             image_batches.append(current_batch)
             info_batches.append(current_infos)
 
-        # Phase 2c: Single SigLIP pipeline on batched crop file paths
+        # Phase 2c: Launch one subprocess per GPU, each runs SigLIP independently
         if image_batches:
-            pipe = pipeline(
-                model="google/siglip2-so400m-patch16-naflex",
-                task="zero-shot-image-classification",
-                device_map="auto",
-                dtype="auto",
-                batch_size=256
-            )
-            for image_batch, batch_info in tqdm(
-                zip(image_batches, info_batches),
-                total=len(image_batches),
-                desc="Running color classification"
-            ):
-                colors = get_clip_colors(image_batch, possible_colors, pipe=pipe)
-                for color, (log_dir_str, track_uuid) in zip(colors, batch_info):
+            num_gpus = torch.cuda.device_count()
+            gpu_image_batches = [[] for _ in range(num_gpus)]
+            gpu_info_batches = [[] for _ in range(num_gpus)]
+            for i, (img_batch, inf_batch) in enumerate(zip(image_batches, info_batches)):
+                gpu_idx = i % num_gpus
+                gpu_image_batches[gpu_idx].append(img_batch)
+                gpu_info_batches[gpu_idx].append(inf_batch)
+
+            tmp_dir = tempfile.mkdtemp()
+            subprocesses = []
+            result_files = []
+            active_gpus = [g for g in range(num_gpus) if gpu_image_batches[g]]
+            print(f"Running color classification across {len(active_gpus)} GPUs...")
+
+            progress_files = []
+            threads_per_gpu = max(1, os.cpu_count() // len(active_gpus))
+            worker_env = {
+                **os.environ,
+                "OMP_NUM_THREADS": str(threads_per_gpu),
+                "MKL_NUM_THREADS": str(threads_per_gpu),
+                "TOKENIZERS_PARALLELISM": "false",
+            }
+            for gpu_id in active_gpus:
+                input_file = os.path.join(tmp_dir, f"gpu_{gpu_id}_in.pkl")
+                result_file = os.path.join(tmp_dir, f"gpu_{gpu_id}_out.pkl")
+                progress_file = os.path.join(tmp_dir, f"gpu_{gpu_id}_progress")
+                result_files.append(result_file)
+                progress_files.append(progress_file)
+                with open(input_file, 'wb') as f:
+                    pickle.dump((gpu_image_batches[gpu_id], gpu_info_batches[gpu_id], possible_colors), f)
+                p = subprocess.Popen(
+                    [sys.executable, "-c", _GPU_WORKER_SCRIPT, str(gpu_id), input_file, result_file, progress_file],
+                    env=worker_env,
+                )
+                subprocesses.append(p)
+
+            import time
+            total_batches = len(image_batches)
+            pbar = tqdm(total=total_batches, desc="Running object color classification")
+            while any(p.poll() is None for p in subprocesses):
+                done = 0
+                for pf in progress_files:
+                    try:
+                        with open(pf, 'r') as f:
+                            done += int(f.read().strip())
+                    except (FileNotFoundError, ValueError):
+                        pass
+                pbar.n = done
+                pbar.refresh()
+                time.sleep(0.5)
+            pbar.n = total_batches
+            pbar.refresh()
+            pbar.close()
+
+            for result_file in result_files:
+                with open(result_file, 'rb') as f:
+                    gpu_results = pickle.load(f)
+                for log_dir_str, track_uuid, color in gpu_results:
                     color_caches[log_dir_str][track_uuid] = color
+
+            import shutil
+            shutil.rmtree(tmp_dir)
 
         for log_dir_str, color_cache in color_caches.items():
             cache_dir = Path(log_dir_str) / 'cache'

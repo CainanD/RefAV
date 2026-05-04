@@ -10,6 +10,10 @@ huggingface_hub
 pycocotools
 tabulate
 
+# ReferGPT
+ntlk
+openai
+
 #Needed for visualizations
 #pyvista
 #vtk

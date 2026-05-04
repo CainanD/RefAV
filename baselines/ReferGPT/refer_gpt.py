@@ -1,3 +1,8 @@
+"""
+Re-implementation of ReferGPT (https://arxiv.org/abs/2504.09195) for the RefAV dataset. 
+The code is split into preprocessing and inference portions. Much of the preprocessing is currently commented out.
+You will need to remove the comments to complete the whole pipeline.
+"""
 from openai import OpenAI
 import pandas as pd
 import numpy as np
@@ -19,10 +24,8 @@ from tqdm import tqdm
 import torch
 from PIL import Image
 from pathlib import Path
-from copy import deepcopy
 import json
 import multiprocessing as mp
-import torch.multiprocessing as tmp
 import argparse
 import pickle
 import matplotlib
@@ -30,7 +33,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from av2.evaluation.tracking.eval import filter_max_dist
 from refAV.utils import (
     get_all_crops,
     get_nth_pos_deriv,
@@ -40,11 +42,8 @@ from refAV.utils import (
     get_eval_timestamps,
     get_img_crop,
 )
-import refAV.paths as paths
 from refAV.atomic_functions import output_scenario
-from refAV.code_generation import predict_scenario_qwen
 from refAV.eval import (
-    combine_matching_pkls,
     evaluate,
     combine_pkls,
     evaluate_pkls,
@@ -105,7 +104,8 @@ def clip_similarity(
             print(f"{iter}/{len(texts)}", end="\r")
             batch_texts = texts[iter : min(len(texts), iter + batch_size)]
             inputs = processor(text=batch_texts, return_tensors="pt").to(siglip.device)
-            text_features.append(siglip.get_text_features(**inputs))
+            output = siglip.get_text_features(**inputs)
+            text_features.append(output.pooler_output if hasattr(output, "pooler_output") else output)
             iter += batch_size
 
         text_features = torch.concat(text_features, axis=0)
@@ -712,7 +712,7 @@ def get_query_category(query, model=None, processor=None):
 
     with open("run/llm_prompting/RefAV/categories.txt", "r") as file:
         categories = file.read()
-    with open("run/llm_prompting/query_class_prompt.txt", "r") as file:
+    with open("run/llm_prompting/ReferGPT/query_class_prompt.txt", "r") as file:
         prompt = file.read()
         prompt = prompt.format(query=query, categories=categories)
 
@@ -843,9 +843,6 @@ def get_referred_tracks(query, log_dir, gpu_id=0):
         query, caption_by_object_timestamp, cache_dir=cache_dir, gpu_id=gpu_id
     )
 
-    figure_path = Path(
-        f"baselines/ReferGPT/scenario_predictions/{log_dir.parent.stem}/{log_dir.stem}/{query[:30]}_scores.png"
-    )
     referred_tracks = filter_tracks(
         scores_by_object_timestamp,
         query_category,
@@ -880,8 +877,8 @@ if __name__ == "__main__":
         type=str,
         default=f"scenario_mining_downloads/log_prompt_pairs_{split}.json",
     )
-    parser.add_argument("--start_log", type=int, required=True)
-    parser.add_argument("--end_log", type=int, required=True)
+    parser.add_argument("--start_log", type=int, default=0)
+    parser.add_argument("--end_log", type=int, default=1)
     args = parser.parse_args()
 
     pred_base_dir = Path("output/tracker_predictions/Le3DE2E_Tracking")
@@ -912,7 +909,6 @@ if __name__ == "__main__":
             """
             pkl_path = (
                 output_dir
-                / "scenario_predictions"
                 / log_id
                 / f"{query}_predictions.pkl"
             )
@@ -932,9 +928,9 @@ if __name__ == "__main__":
             chunksize=1,
         )
 
-    combined_preds = combine_pkls(output_dir, Path(args.log_prompt_pairs))
+    combined_preds = combine_pkls(output_dir, Path(args.log_prompt_pairs), suffix="_predictions")
     combined_gt = Path(
-        f"../RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
+        f"/home/crdavids/Trinity-Sync/scenario-mining-evalai-cvpr26/annotations/annotations_testsplit.pkl"
     )
     metrics = evaluate_pkls(combined_preds, combined_gt, output_dir)
     print(metrics)

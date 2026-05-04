@@ -78,7 +78,7 @@ if not tracker_predictions_dest.exists():
 with open(log_prompts_path, 'rb') as f:
     log_prompts = json.load(f)
 all_log_dirs = [paths.TRACKER_PRED_DIR / tracker / split / log_id for log_id in log_prompts.keys()]
-construct_caches(all_log_dirs)
+construct_caches(all_log_dirs, num_processes=max(1, int(0.5 * os.cpu_count())))
 
 run_parallel_eval(exp_name, log_prompts_path, args.procs_per_task)
 
