@@ -161,10 +161,17 @@
             text-align: center;
         }
 
-        .figure-container img {
+        .figure-container img,
+        .figure-container video {
             max-width: 100%;
             border-radius: 8px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .figure-container video {
+            display: block;
+            margin: 0 auto;
+            background: #000;
         }
 
         /* Grids */
@@ -328,7 +335,7 @@
                 Carnegie Mellon University
             </div>
             <div class="venue">
-                CVPR 2026
+                CVPR 2026 Oral
             </div>
 
             <div class="link-buttons">
@@ -348,7 +355,9 @@
             </div>
 
             <div class="figure-container">
-                <img src="figures/refav_teaser.png" alt="Teaser figure displaying RefAV capabilities">
+                <video src="figures/showcase_1080p.mp4" controls autoplay loop muted playsinline preload="auto">
+                    Your browser does not support the video tag.
+                </video>
             </div>
         </div>
 
@@ -363,7 +372,7 @@
             <p>
                 In this work, we revisit spatio-temporal scenario mining through the lens of recent vision-language
                 models (VLMs) to detect whether a described scenario occurs in a driving log and, if so, precisely
-                localize it in both time and space. To address this problem, we introduce <strong>RefAV</strong>, a
+                localize it in both time and space. To address this problem, we introduce RefAV, a
                 large-scale dataset of 10,000 diverse natural language queries that describe complex multi-agent
                 interactions relevant to motion planning derived from 1000 driving logs in the Argoverse 2 Sensor
                 dataset. We evaluate several referential multi-object trackers and present an empirical analysis of our
@@ -533,7 +542,6 @@
   year={2026}
 }</code></pre>
         </div>
-
     </div>
 </body>
 
