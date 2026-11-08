@@ -1,3 +1,4 @@
+from refAV.prediction_json import write_predictions
 import numpy as np
 import os
 import sys
@@ -2393,9 +2394,9 @@ def get_uuids_of_prompt(log_dir, prompt):
     return uuids
 
 
-def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
+def create_mining_json(description, scenario, log_dir:Path, output_dir:Path):
     """
-    Generates both a pkl file for evaluation and annotations for the scenario mining challenge.
+    Writes referred scenario predictions in the leaderboard JSON format.
     """
 
     log_id = log_dir.name
@@ -2469,8 +2470,8 @@ def create_mining_pkl(description, scenario, log_dir:Path, output_dir:Path):
         frames.append(frame)
 
     sequences = {(log_id, description): frames}
-    save(sequences, output_dir / log_id / f'{description}_predictions.pkl')
-    print(f'Scenario pkl file for {description}_{log_id[:8]} saved successfully.')
+    write_predictions(sequences, output_dir / log_id / f'{description}_predictions.json.gz')
+    print(f'Scenario JSON file for {description}_{log_id[:8]} saved successfully.')
 
     return True
 

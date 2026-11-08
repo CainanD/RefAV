@@ -45,8 +45,8 @@ from refAV.utils import (
 from refAV.atomic_functions import output_scenario
 from refAV.eval import (
     evaluate,
-    combine_pkls,
-    evaluate_pkls,
+    combine_predictions,
+    evaluate_predictions,
 )
 
 client = OpenAI()
@@ -910,7 +910,7 @@ if __name__ == "__main__":
             pkl_path = (
                 output_dir
                 / log_id
-                / f"{query}_predictions.pkl"
+                / f"{query}_predictions.json.gz"
             )
             if pkl_path.exists():
                 continue
@@ -928,11 +928,11 @@ if __name__ == "__main__":
             chunksize=1,
         )
 
-    combined_preds = combine_pkls(output_dir, Path(args.log_prompt_pairs), suffix="_predictions")
+    combined_preds = combine_predictions(output_dir, Path(args.log_prompt_pairs), suffix="_predictions")
     combined_gt = Path(
         f"/home/crdavids/Trinity-Sync/scenario-mining-evalai-cvpr26/annotations/annotations_testsplit.pkl"
     )
-    metrics = evaluate_pkls(combined_preds, combined_gt, output_dir)
+    metrics = evaluate_predictions(combined_preds, combined_gt, output_dir)
     print(metrics)
 
     """
@@ -947,7 +947,7 @@ if __name__ == "__main__":
     with open(output_dir / "combined_gt.pkl", "rb") as file:
         ground_truth = pickle.load(file)
         filter_max_dist(ground_truth, 50)
-    with open(output_dir / "ReferGPT_predictions.pkl", "rb") as file:
+    with open(output_dir / "ReferGPT_predictions.json.gz", "rb") as file:
         predictions = pickle.load(file)
         filter_max_dist(predictions, 50)
 

@@ -13,7 +13,7 @@ from refAV.dataset_conversion import (
     create_gt_pkl_file
 )
 from refAV.parallel_scenario_prediction import run_parallel_eval
-from refAV.eval import evaluate_pkls, combine_pkls
+from refAV.eval import evaluate_predictions, combine_predictions
 from refAV.utils import construct_caches
 
 parser = argparse.ArgumentParser(description="Example script with arguments")
@@ -83,16 +83,12 @@ construct_caches(all_log_dirs, num_processes=max(1, int(0.5 * os.cpu_count())))
 run_parallel_eval(exp_name, log_prompts_path, args.procs_per_task)
 
 experiment_dir = paths.SM_PRED_DIR / exp_name 
-combined_preds_path = combine_pkls(experiment_dir / "scenario_predictions", log_prompts_path, suffix="_predictions")
+combined_preds_path = combine_predictions(experiment_dir / "scenario_predictions", log_prompts_path, suffix="_predictions")
 
 # Only train and val splits will be evaluated
 if split in ["train", "val"]:
-    metrics = evaluate_pkls(combined_preds_path, combined_gt_path, experiment_dir)
+    metrics = evaluate_predictions(combined_preds_path, combined_gt_path, experiment_dir)
     print(metrics)
 
-if split == "val":
-    print("Nice work! A submission to EvalAI can be made with")
-    print(f"evalai challenge 2662 phase 5283 submit --file {combined_preds_path} --large")
-elif split == "test":
-    print("Only train and val splits can be evaluated. Please make a submission to EvalAI!")
-    print(f"evalai challenge 2662 phase 5282 submit --file {combined_preds_path} --large")
+if split in ["val", "test"]:
+    print(f"Upload {combined_preds_path} to https://scenario-mining.argoverse.org/")

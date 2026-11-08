@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://arxiv.org/abs/2505.20981"><img src="https://img.shields.io/badge/arXiv-2505.20981-b31b1b.svg" alt="arXiv"></a>
   <a href="https://huggingface.co/datasets/CainanD/RefAV"><img src="https://img.shields.io/badge/HuggingFace-Dataset-FFD21E.svg?logo=huggingface" alt="dataset"></a>
-  <a href="https://eval.ai/web/challenges/challenge-page/2662/overview"><img src="https://img.shields.io/badge/EvalAI-Competition-3b82f6.svg" alt="competition"></a>
+  <a href="https://scenario-mining.argoverse.org/"><img src="https://img.shields.io/badge/Argoverse-Leaderboard-3b82f6.svg" alt="leaderboard"></a>
   <a href="https://cainand.github.io/RefAV/"><img src="https://img.shields.io/badge/Project-Website-8A2BE2.svg" alt="website"></a>
 </p>
 
@@ -14,16 +14,19 @@
   <img src="figures/pipeline.png" alt="RefAV Method">
 </p>
 
-### 🚨 Competition Update 🚨
+### Dataset versions and leaderboards
 
-We are hosting a new competition in 2026! We have annotated over 5x the number of visual events (120 → 600) and given all scenario descriptions positive and negative instances. Submissions must be made before May 31st, 2026. Winners will be announced at the CVPR 2026 Workshop on Autonomous Driving. Top performing teams can win cash prizes, generously sponsored by Uber.
+The [leaderboard](https://scenario-mining.argoverse.org/) defaults to V3 and lets visitors select V1, V2, or V3.
 
-⏱️ Temporal Localization Winner: $2500
+| Version | Immutable Hugging Face dataset | Evaluation data |
+|---|---|---|
+| V1 (2025) | [2025 snapshot](https://huggingface.co/datasets/CainanD/RefAV/tree/a2a8e2348661408f304ab205c62ff3ff3dcf194e) | Original 2025 scenarios |
+| V2 (2026) | [2026 snapshot](https://huggingface.co/datasets/CainanD/RefAV/tree/3bc556d1d8b6b52484596d3b097675d3684c5074) | Original 2026 scenarios |
+| V3 | [Manual evaluation subset](https://huggingface.co/datasets/CainanD/RefAV/tree/c662efb5e2add2e7b0eeeb4bd3c22b016b858101) | 307 validation and 326 test scenarios |
 
-📍 Spatio-Temporal Localization Winner: $2500
+V3 retains V2's training feather and training log/prompt JSON unchanged. Only validation and test are filtered to `generation_type == "manual"`; scenario identities, timestamps, and splits are preserved. The manual subset and track-free option reduce evaluation computation and address organizer-reported concerns about generated 3D tracks. Historical scores remain separate.
 
-💡 Efficiency Innovation Award: $2500
-
+V3 accepts tracking and track-free predictions, ranked by **HOTA-Temporal**, then **Timestamp BA**. Track-free submissions receive zero HOTA-Temporal and HOTA-Track. Submissions are hidden by default; public display requires both submitter opt-in and administrator approval. Submitters can always hide their own results.
 
 ### About
 
@@ -63,7 +66,7 @@ pip install huggingface_hub
 hf auth login
 
 export TARGET_DIR="$(pwd)/scenario_mining_downloads"
-hf download CainanD/RefAV --repo-type dataset --local-dir=$TARGET_DIR
+hf download CainanD/RefAV --repo-type dataset --revision c662efb5e2add2e7b0eeeb4bd3c22b016b858101 --local-dir=$TARGET_DIR
 ```
 Alternatively, you may download the scenario-mining add on from Argoverse without having to sign-in to Huggingface with:
 ```
@@ -79,110 +82,30 @@ We provide additional tracking outputs from previous winning Argoverse submissio
 ### Running the Code
 
 All of the code necessary for unpacking the dataset, generating referred track predictions,
-and evaluating the predictions against the ground truth can be found in the `tutorial.ipynb` file.
+and evaluating the predictions against the ground truth can be found in the `run/tutorial.ipynb` file.
 It also includes some basic tutorials about how to define and visualize a scenario.
 
-Our experimental results and test/val submissions can be reproduced directly by running `python run_experiment.py --exp_name <exp_name>`. All experiments are found in the `experiments.yml` file.
+Our experimental results and test/val submissions can be reproduced directly by running `PYTHONPATH=. python run/run_experiment.py --exp_name <exp_name>`. All experiments are found in the `run/experiment_configs/experiments.yml` file.
 
 ### Submission Format
 
-Submissions can be made through through the [EvalAI](https://eval.ai/) CLI. To submit to the to the temporal and spatiotemporal challenge tracks respectively, create an EvalAI profile and run
-```bash
-pip install evalai
-evalai set_token <EvalAI_account_token>
-evalai challenge 2662 phase 5284 submit --file path/to/temporal_submission_test.pkl --large
-evalai challenge 2662 phase 5282 submit --file path/to/spatiotemporal_submission_test.pkl --large
-```
+The prediction harness writes `.json.gz` files directly, including per-scenario files and the combined submission. Upload the combined file to the [leaderboard](https://scenario-mining.argoverse.org/); pickle submissions are not accepted. Tracker inputs and organizer ground-truth files retain their existing formats.
 
-The spatio-temporal track expects a dictionary of lists of dictionaries
-```python
+Use log IDs and prompts as nested keys, without a wrapper. A track-free submission contains only exact integer timestamps and booleans:
+
+```json
 {
-      <(log_id,prompt)>: [
-            {
-                  "timestamp_ns": <timestamp_ns>,
-                  "track_id": <track_id>
-                  "score": <score>,
-                  "label": <label>,
-                  "name": <name>,
-                  "translation_m": <translation_m>,
-                  "size": <size>,
-                  "yaw": <yaw>,
-            }
-      ]
+  "02678d04-cc9f-3148-9f95-1ba66347dff9": {
+    "a car turning left": [
+      {"timestamp_ns": 315969904359876000, "is_positive": true}
+    ]
+  }
 }
 ```
 
-The temporal track expects the same format, but only requires a single boolean entry per timestamp. You may also submit files with the spatio-temporal format.
-```python
-{
-      <(log_id,prompt)>: [
-            {
-                  "timestamp_ns": <timestamp_ns>,
-                  "is_positive": <is_positive>
-            }
-      ]
-}
-```
+Tracking frames instead contain equal-length `track_id`, `score`, `label`, `name`, `translation_m`, `size`, and `yaw` arrays. The exporter records numeric `dtypes` to preserve precision. Coordinates and dimensions have shape `(N, 3)`; the remaining arrays have shape `(N,)`. Labels 0, 1, and 2 correspond to REFERRED_OBJECT, RELATED_OBJECT, and OTHER_OBJECT. Do not submit ego poses, `seq_id`, or descriptions inside frames; the server derives them from trusted annotations and the nested keys.
 
-* log_id: Log id associated with the track, also called seq_id.  
-* prompt: The prompt/description string that describes the scenario associated with the log.  
-* timestamp_ns: Timestamp associated with the synced lidar/video frames.
-* is_positive: Whether the video timestamp includes a referred object or action.  
-* track_id: Unique id assigned to each track, this is produced by your tracker.  
-* score: Track confidence.  
-* label: Integer index of the object class. This is 0 for REFERRED_OBJECTs, 1 for RELATED_OBJECTs, and 2 for OTHER_OBJECTs  
-* name: Object class name.  
-* translation_m: xyz-components of the object translation in the city reference frame, in meters.  
-* size: Object extent along the x,y,z axes in meters.  
-* yaw: Object heading rotation along the z axis.  
-
-### Example Submission
-
-Spatio-Temporal Track:
-```python
-example_tracks = {
-  ('02678d04-cc9f-3148-9f95-1ba66347dff9','vehicle turning left at stop sign'): [
-    {
-       'timestamp_ns': 315969904359876000,
-       'translation_m': array([[6759.51786422, 1596.42662849,   57.90987307],
-             [6757.01580393, 1601.80434654,   58.06088218],
-             [6761.8232099 , 1591.6432147 ,   57.66341136],
-             ...,
-             [6735.5776378 , 1626.72694938,   59.12224152],
-             [6790.59603472, 1558.0159741 ,   55.68706682],
-             [6774.78130127, 1547.73853494,   56.55294184]]),
-       'size': array([[4.315736  , 1.7214599 , 1.4757565 ],
-             [4.3870926 , 1.7566483 , 1.4416479 ],
-             [4.4788623 , 1.7604711 , 1.4735452 ],
-             ...,
-             [1.6218852 , 0.82648355, 1.6104599 ],
-             [1.4323177 , 0.79862624, 1.5229694 ],
-             [0.7979312 , 0.6317313 , 1.4602867 ]], dtype=float32),
-      'yaw': array([-1.1205611 , ... , -1.1305285 , -1.1272993], dtype=float32),
-      'name': array(['REFERRED_OBJECT', ..., 'REFERRED_OBJECT', 'RELATED_OBJECT'], dtype='<U31'),
-      'label': array([ 0, 0, ... 0,  1], dtype=int32),
-      'score': array([0.54183, ..., 0.47720736, 0.4853499], dtype=float32),
-      'track_id': array([0, ... , 11, 12], dtype=int32),
-    },
-    ...
-  ],
-  ...
-}
-```
-
-Temporal Track:
-```python
-example_tracks = {
-  ('02678d04-cc9f-3148-9f95-1ba66347dff9','vehicle turning left at stop sign'): [
-    {
-       'timestamp_ns': 315969904359876000,
-       'is_positive': True
-    },
-    ...
-  ],
-  ...
-}
-```
+Every required log/prompt pair and exact evaluation timestamp must be present, including negative frames. Partial submissions, mixed tracking/temporal frames, duplicate keys/timestamps, unknown fields, and non-finite numbers are rejected. Keep timestamps as integers, using a lossless parser if handling submissions in JavaScript.
 
 ### Benchmark Evaluation
 
@@ -208,6 +131,14 @@ The ego vehicle has the following bounding box across all logs and timestamps
 'translation_m': [1.422, 0, 0.25]
 'size': [4.877, 2, 1.473]
 'yaw': [0]
+
+### 2026 Leaderboard
+
+[View the 2026 leaderboard (V2)](https://scenario-mining.argoverse.org/versions/v2/).
+
+### 2025 Leaderboard
+
+[View the 2025 leaderboard (V1)](https://scenario-mining.argoverse.org/versions/v1/).
 
 ### Contact 
 

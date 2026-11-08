@@ -9,13 +9,13 @@ import time
 
 from refAV.paths import AV2_DATA_DIR, SM_PRED_DIR
 from refAV.atomic_functions import output_scenario
-from refAV.eval import combine_pkls, evaluate_pkls
+from refAV.eval import combine_predictions, evaluate_predictions
 from refAV.utils import get_log_split
 
 def process_log_predictions(description, log_id,  scenario_file, experiment_dir, tracker_dir):
 
     tracker_log_dir = tracker_dir / log_id
-    pkl_path = experiment_dir / 'scenario_predictions' / log_id / f'{description}_predictions.pkl'
+    pkl_path = experiment_dir / 'scenario_predictions' / log_id / f'{description}_predictions.json.gz'
     if pkl_path.exists():
         return
     try:
@@ -74,11 +74,11 @@ def evaluate_generated_scenarios(
     with mp.Pool(mp.cpu_count()-1) as pool:
         pool.starmap(process_log_predictions, [(description, log_id, scenario_file, experiment_dir, tracker_dir) for description, log_id, scenario_file in files_to_process])
 
-    combined_preds = combine_pkls(experiment_dir, log_prompts_path, suffix="_predictions")
+    combined_preds = combine_predictions(experiment_dir, log_prompts_path, suffix="_predictions")
     combined_gt = Path(
         f"../RefAV-Construction/output/eval/{split}/latest/combined_gt_{split}.pkl"
     )
-    metrics = evaluate_pkls(combined_preds, combined_gt, experiment_dir)
+    metrics = evaluate_predictions(combined_preds, combined_gt, experiment_dir)
     print(metrics)
 
 

@@ -27,7 +27,7 @@ from refAV.utils import (
     get_semantic_lane, cuboid_distance, to_scenario_dict,
     unwrap_func, dilate_convex_polygon, polygons_overlap, is_point_in_polygon,
     swap_keys_and_listed_values, has_free_will, at_stop_sign_, remove_empty_branches,
-    scenario_at_timestamps, reconstruct_track_dict, create_mining_pkl,
+    scenario_at_timestamps, reconstruct_track_dict, create_mining_json,
     post_process_scenario, get_object, get_img_crops, get_best_crop)
 
 
@@ -1632,7 +1632,7 @@ def output_scenario(
         print('Scenario identification flipped from positive to negative after filtering!')
 
     Path(output_dir/log_dir.name).mkdir(parents=True, exist_ok=True)
-    create_mining_pkl(description, scenario, log_dir, output_dir)
+    create_mining_json(description, scenario, log_dir, output_dir)
 
     if visualize:
         # PyVista and VTK can be a headache to set up on your machine. If this is the case,

@@ -1,3 +1,4 @@
+from refAV.prediction_json import read_predictions, write_predictions
 import pickle
 import yaml
 import json
@@ -43,7 +44,7 @@ def create_refprog_prediction(
     log_dir: Path = paths.TRACKER_PRED_DIR / tracker_name / split / log_id
     output_dir: Path = paths.SM_PRED_DIR / experiment_name / "scenario_predictions"
 
-    pred_path = (output_dir / log_id / f"{description}_predictions.pkl").resolve()
+    pred_path = (output_dir / log_id / f"{description}_predictions.json.gz").resolve()
     if pred_path.exists():
         print(f"Cached scenario prediction exists.")
         return pred_path
@@ -109,7 +110,7 @@ def create_default_prediction(description: str, log_dir: Path, output_dir: Path)
     empty_set = {}
     output_scenario(empty_set, description, log_dir, output_dir, visualize=False)
 
-    pred_path = output_dir / log_id / f"{description}_predictions.pkl"
+    pred_path = output_dir / log_dir.name / f"{description}_predictions.json.gz"
     if pred_path.exists():
         print("Default scenario prediction correctly generated.")
     else:
@@ -118,13 +119,17 @@ def create_default_prediction(description: str, log_dir: Path, output_dir: Path)
     return pred_path
 
 
-def evaluate_pkls(pred_pkl, gt_pkl, experiment_dir):
+def evaluate_predictions(pred_json, gt_pkl, experiment_dir):
 
-    with open(pred_pkl, "rb") as f:
-        predictions:dict = pickle.load(f)
+    predictions = read_predictions(pred_json)
 
     with open(gt_pkl, "rb") as f:
         labels:dict = pickle.load(f)
+
+    for key, frames in predictions.items():
+        references = {frame["timestamp_ns"]: frame for frame in labels[key]}
+        for frame in frames:
+            frame["ego_translation_m"] = references[frame["timestamp_ns"]]["ego_translation_m"]
 
     for log_id, prompt in labels.keys():
         split = get_log_split(Path(log_id))
@@ -157,11 +162,11 @@ def evaluate_pkls(pred_pkl, gt_pkl, experiment_dir):
     return metrics_dict
 
 
-def combine_pkls(experiment_dir: Path, lpp_path: Path, suffix=""):
+def combine_predictions(experiment_dir: Path, lpp_path: Path, suffix=""):
     """
-    Combines all generated pkl files in a directory with structure
-    experiment_dir/scenario_predictions/<log>/<prompt>_predictions.pkl
-    for a given set of <log>-<prompt> pairs. Returns the path of the combined pkl file.
+    Combines generated prediction JSON files in a directory with structure
+    experiment_dir/scenario_predictions/<log>/<prompt>_predictions.json.gz
+    for a given set of <log>-<prompt> pairs. Returns the combined JSON path.
     """
 
     # Create output directory if it doesn't exist
@@ -175,24 +180,22 @@ def combine_pkls(experiment_dir: Path, lpp_path: Path, suffix=""):
     for log_id, prompts in tqdm(list(log_prompt_pairs.items())):
         for prompt in prompts:
             
-            filename = prompt + suffix + ".pkl"
+            filename = prompt + suffix + ".json.gz"
 
-            target_pkl = (
+            target_json = (
                 experiment_dir
                 / log_id
                 / filename
             )
 
-            with open(target_pkl, "rb") as file:
-                track_predictions = pickle.load(file)
+            track_predictions = read_predictions(target_json)
             combined_predictions.update(track_predictions)
 
-    print(f"Combined pickle files for {len(combined_predictions)} log-prompt pairs.")
+    print(f"Combined JSON files for {len(combined_predictions)} log-prompt pairs.")
 
     split = "_".join(lpp_path.stem.split("_")[3:])
-    output_path = experiment_dir.parent / "results" / f"combined{suffix}_{split}.pkl"
-    with open(output_path, "wb") as file:
-        pickle.dump(combined_predictions, file)
+    output_path = experiment_dir.parent / "results" / f"combined{suffix}_{split}.json.gz"
+    write_predictions(combined_predictions, output_path)
 
     return output_path
 
@@ -207,7 +210,7 @@ def compile_results(experiment_dir: Path):
             # dest.mkdir(parents=True, exist_ok=True)
 
             shutil.copytree(
-                results_folder, dest, ignore=shutil.ignore_patterns("*.pkl", "*.pdf")
+                results_folder, dest, ignore=shutil.ignore_patterns("*.json.gz", "*.pkl", "*.pdf")
             )
 
 
