@@ -8,17 +8,23 @@ A single autonomous vehicle will stream about ~4TB of data per hour with a full 
 
 RefAV serves as the baseline for the 2025 Argoverse2 Scenario Mining Challenge. It utilizes an LLM to construct composable function calls from a set of hand-crafted atomic functions such as "turning" or "has_objects_in_front". Given a prompt, the LLM outputs a composable function that narrows down a set of bounding box track predictions to the set that best corresponds to the prompt. Our paper describing the dataset and baseline in detail is available on [arXiv](https://arxiv.org/pdf/2505.20981)  
 
-:rotating_light: Top performing teams can win cash prizes! :rotating_light:
+The ongoing [leaderboard](https://scenario-mining.argoverse.org/) supports versioned results. Past prize competitions are closed.
 
-:1st_place_medal: 1st Place: $5,000
+### Dataset versions
 
-:2nd_place_medal: 2nd Place: $3,000
+| Version | Dataset | Evaluation split |
+|---|---|---|
+| V1 (2025) | [Frozen HF revision](https://huggingface.co/datasets/CainanD/RefAV/tree/a2a8e2348661408f304ab205c62ff3ff3dcf194e) | Original 2025 scenarios |
+| V2 (2026) | [Frozen HF revision](https://huggingface.co/datasets/CainanD/RefAV/tree/3bc556d1d8b6b52484596d3b097675d3684c5074) | Original 2026 scenarios |
+| V3 | V2 training files unchanged; validation/test restricted to `generation_type == "manual"` | 307 validation and 326 test scenarios in the verified local source |
 
-:3rd_place_medal: 3rd Place: $2,000
+V3 keeps scenario identities, timestamps, and splits. Procedural scenarios are excluded only from validation and test, including procedural annotations subsequently reviewed by humans. The release manifest records the immutable HF dataset revision and RefAV code revision; publication is pending until those artifacts are verified.
 
-To be eligible for prizes, teams must submit a technical report, open source their code, and provide instructions on how to reproduce their results. Teams must also beat our best performing official baseline and make their submission visible by the end of the competition to be eligible for prizes.
+V3 accepts tracking and track-free submissions. Results rank by **HOTA-Temporal**, then **Timestamp BA**, then submission date and ID. Track-free submissions receive zero HOTA-Temporal and HOTA-Track; their temporal balanced accuracies are evaluated normally. Tracking remains necessary for nonzero HOTA scores.
 
-The scenario mining test split and EvalAI leaderboard will both open on May 7th, 2025. The scenario mining train and val split are available for download now. You may test your method using the available val leaderboard. The val split results are not factored into the competition. 
+The manual evaluation subset and track-free option reduce evaluation work and address organizer-reported reliability concerns about generated 3D tracks. Historical datasets and scores remain available.
+
+Submissions are hidden by default. Public display requires both the submitter's opt-in and administrator approval; submitters can always hide their own results. Approval controls public display, not ordinary submission or evaluation.
 
 ### Installation
 
@@ -75,74 +81,34 @@ Our experimental results and test/val submissions can be reproduced directly by 
 
 ### Submission Format
 
-Submissions can be made through through the [EvalAI](https://eval.ai/) CLI. To submit to the to the validation and test sets respectively, create an EvalAI profile and run
-```bash
-pip install evalai
-evalai set_token <EvalAI_account_token>
-evalai challenge 2469 phase 4899 submit --file /path/to/submission_val.pkl --large
-evalai challenge 2469 phase 4898 submit --file /path/to/submission_test.pkl --large
-```
+Upload `.json` or `.json.gz` to the [leaderboard](https://scenario-mining.argoverse.org/). Pickle is an internal cache format and is not accepted by the website.
 
-The evaluation expects a dictionary of lists of dictionaries
-```python
+```json
 {
-      <(log_id,prompt)>: [
-            {
-                  "timestamp_ns": <timestamp_ns>,
-                  "track_id": <track_id>
-                  "score": <score>,
-                  "label": <label>,
-                  "name": <name>,
-                  "translation_m": <translation_m>,
-                  "size": <size>,
-                  "yaw": <yaw>,
-            }
-      ]
+  "02678d04-cc9f-3148-9f95-1ba66347dff9": {
+    "a car turning left": [
+      {"timestamp_ns": 315969904359876000, "is_positive": true}
+    ]
+  }
 }
 ```
 
-log_id: Log id associated with the track, also called seq_id.  
-prompt: The prompt/description string that describes the scenario associated with the log.  
-timestamp_ns: Timestamp associated with the detections.  
-track_id: Unique id assigned to each track, this is produced by your tracker.  
-score: Track confidence.  
-label: Integer index of the object class. This is 0 for REFERRED_OBJECTs, 1 for RELATED_OBJECTs, and 2 for OTHER_OBJECTs  
-name: Object class name.  
-translation_m: xyz-components of the object translation in the city reference frame, in meters.  
-size: Object extent along the x,y,z axes in meters.  
-yaw: Object heading rotation along the z axis.  
+Include every required log/prompt and exact timestamp, including negative frames. There is no wrapper. Keep nanosecond timestamps as exact integers. Tracking frames instead contain equal-length `track_id`, `score`, `label`, `name`, `translation_m`, `size`, and `yaw` arrays; optional `dtypes` preserves numeric precision. Do not include ego poses; the server supplies trusted poses. Mixed tracking/temporal frames and incomplete submissions are rejected.
 
-### Example Submission
-```python
-example_tracks = {
-  ('02678d04-cc9f-3148-9f95-1ba66347dff9','vehicle turning left at stop sign'): [
-    {
-       'timestamp_ns': 315969904359876000,
-       'translation_m': array([[6759.51786422, 1596.42662849,   57.90987307],
-             [6757.01580393, 1601.80434654,   58.06088218],
-             [6761.8232099 , 1591.6432147 ,   57.66341136],
-             ...,
-             [6735.5776378 , 1626.72694938,   59.12224152],
-             [6790.59603472, 1558.0159741 ,   55.68706682],
-             [6774.78130127, 1547.73853494,   56.55294184]]),
-       'size': array([[4.315736  , 1.7214599 , 1.4757565 ],
-             [4.3870926 , 1.7566483 , 1.4416479 ],
-             [4.4788623 , 1.7604711 , 1.4735452 ],
-             ...,
-             [1.6218852 , 0.82648355, 1.6104599 ],
-             [1.4323177 , 0.79862624, 1.5229694 ],
-             [0.7979312 , 0.6317313 , 1.4602867 ]], dtype=float32),
-      'yaw': array([-1.1205611 , ... , -1.1305285 , -1.1272993], dtype=float32),
-      'name': array(['REFERRED_OBJECT', ..., 'REFERRED_OBJECT', 'RELATED_OBJECT'], dtype='<U31'),
-      'label': array([ 0, 0, ... 0,  1], dtype=int32),
-      'score': array([0.54183, ..., 0.47720736, 0.4853499], dtype=float32),
-      'track_id': array([0, ... , 11, 12], dtype=int32),
-    },
-    ...
-  ],
-  ...
-}
+```bash
+PYTHONPATH=. python run/run_experiment.py --exp_name YOUR_EXPERIMENT \
+  --dataset-root /path/to/v3 --sensor-root /path/to/av2 \
+  --submission-format json.gz --predictions-only
+python -m refAV.submission_format.cli validate /path/to/predictions.json.gz
 ```
+
+Add `--temporal-only` to export timestamp booleans. The RefAV baseline may still use tracks internally. This projection means a timestamp is positive when the baseline marks it positive or predicts a referred object; it does not reproduce historical tracking-derived BA after confidence tuning. For local tracking evaluation, omit `--predictions-only` and pass `--ground-truth /path/to/trusted/annotations.pkl`. The experiment name must exist in `run/experiments.yml` and use available model/tracker inputs.
+
+### Leaderboards
+
+- [Current V3 leaderboard](https://scenario-mining.argoverse.org/)
+- [2026 leaderboard (V2)](https://scenario-mining.argoverse.org/versions/v2/)
+- [2025 leaderboard (V1)](https://scenario-mining.argoverse.org/versions/v1/)
 
 ### Additional Competition Details
 
