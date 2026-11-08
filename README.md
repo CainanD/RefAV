@@ -65,14 +65,16 @@ The RefAV scenario mining dataset can be downloaded from Huggingface using:
 pip install huggingface_hub
 hf auth login
 
-export TARGET_DIR="$(pwd)/scenario_mining_downloads"
+export TARGET_DIR="$(pwd)/scenario_mining_downloads/v3"
 hf download CainanD/RefAV --repo-type dataset --revision 475534fa97304a653f9655a3b9ce8bc7dc36f9cf --local-dir=$TARGET_DIR
 ```
 The original V2 add-on is also available from Argoverse without signing in to Hugging Face. Use the pinned HF revision above for V3:
 ```
-export TARGET_DIR="$(pwd)/scenario_mining_downloads"
+export TARGET_DIR="$(pwd)/scenario_mining_downloads/v2"
 s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
 ```
+
+Set `SM_DOWNLOAD_DIR` in `refAV/paths.py` to the selected dataset directory. Keep each version’s `SM_DATA_DIR` and `SM_PRED_DIR` caches separate so older datasets and results are retained.
 
 ### Generating Detections and Tracks
 See the [LT3D repository](https://github.com/neeharperi/LT3D) for information on training a baseline detector and tracker on the Argoverse 2 dataset.
