@@ -32,8 +32,8 @@ def run_parallel_eval(exp_name: str, log_prompts_path: Path, procs_per_task: int
     for log_id, prompts in lpp.items():
         for prompt in prompts:
             # Construct the expected prediction file path
-            # Assuming SM_PRED_DIR / exp_name / split_name / log_id / prompt_predictions.json.gz
-            pred_path = paths.SM_PRED_DIR / exp_name / 'scenario_predictions' / log_id / f'{prompt}_predictions.json.gz'
+            # Assuming SM_PRED_DIR / exp_name / split_name / log_id / prompt_predictions.json
+            pred_path = paths.SM_PRED_DIR / exp_name / 'scenario_predictions' / log_id / f'{prompt}_predictions.json'
             if not pred_path.exists():
                 lpp_to_complete.append((log_id, prompt))
 

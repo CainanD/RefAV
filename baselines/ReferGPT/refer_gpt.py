@@ -910,7 +910,7 @@ if __name__ == "__main__":
             pkl_path = (
                 output_dir
                 / log_id
-                / f"{query}_predictions.json.gz"
+                / f"{query}_predictions.json"
             )
             if pkl_path.exists():
                 continue
@@ -947,7 +947,7 @@ if __name__ == "__main__":
     with open(output_dir / "combined_gt.pkl", "rb") as file:
         ground_truth = pickle.load(file)
         filter_max_dist(ground_truth, 50)
-    with open(output_dir / "ReferGPT_predictions.json.gz", "rb") as file:
+    with open(output_dir / "ReferGPT_predictions.json", "rb") as file:
         predictions = pickle.load(file)
         filter_max_dist(predictions, 50)
 

@@ -1,6 +1,5 @@
 """Leaderboard prediction JSON; tracking inputs and organizer labels keep their existing formats."""
 
-import gzip
 import json
 
 import numpy as np
@@ -41,14 +40,14 @@ def write_predictions(predictions, path):
                 record["dtypes"] = dtypes
             records.append(record)
         document.setdefault(log_id, {})[prompt] = records
-    with gzip.open(path, "wt", encoding="utf-8") as stream:
+    with open(path, "w", encoding="utf-8") as stream:
         json.dump(
             document, stream, ensure_ascii=False, allow_nan=False, separators=(",", ":")
         )
 
 
 def read_predictions(path):
-    with gzip.open(path, "rt", encoding="utf-8") as stream:
+    with open(path, "r", encoding="utf-8") as stream:
         document = json.load(stream)
     predictions = {}
     for log_id, prompts in document.items():

@@ -89,7 +89,7 @@ Our experimental results and test/val submissions can be reproduced directly by 
 
 ### Submission Format
 
-The prediction harness writes `.json.gz` files directly, including per-scenario files and the combined submission. Upload the combined file to the [leaderboard](https://scenario-mining.argoverse.org/); pickle submissions are not accepted. Tracker inputs and organizer ground-truth files retain their existing formats.
+The prediction harness writes `.json` files directly, including per-scenario files and the combined submission. Upload the combined file to the [leaderboard](https://scenario-mining.argoverse.org/); pickle submissions are not accepted. Tracker inputs and organizer ground-truth files retain their existing formats.
 
 Use log IDs and prompts as nested keys, without a wrapper. A track-free submission contains only exact integer timestamps and booleans:
 

@@ -2470,7 +2470,7 @@ def create_mining_json(description, scenario, log_dir:Path, output_dir:Path):
         frames.append(frame)
 
     sequences = {(log_id, description): frames}
-    write_predictions(sequences, output_dir / log_id / f'{description}_predictions.json.gz')
+    write_predictions(sequences, output_dir / log_id / f'{description}_predictions.json')
     print(f'Scenario JSON file for {description}_{log_id[:8]} saved successfully.')
 
     return True

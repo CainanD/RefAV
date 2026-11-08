@@ -15,7 +15,7 @@ from refAV.utils import get_log_split
 def process_log_predictions(description, log_id,  scenario_file, experiment_dir, tracker_dir):
 
     tracker_log_dir = tracker_dir / log_id
-    pkl_path = experiment_dir / 'scenario_predictions' / log_id / f'{description}_predictions.json.gz'
+    pkl_path = experiment_dir / 'scenario_predictions' / log_id / f'{description}_predictions.json'
     if pkl_path.exists():
         return
     try:

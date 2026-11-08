@@ -44,7 +44,7 @@ def create_refprog_prediction(
     log_dir: Path = paths.TRACKER_PRED_DIR / tracker_name / split / log_id
     output_dir: Path = paths.SM_PRED_DIR / experiment_name / "scenario_predictions"
 
-    pred_path = (output_dir / log_id / f"{description}_predictions.json.gz").resolve()
+    pred_path = (output_dir / log_id / f"{description}_predictions.json").resolve()
     if pred_path.exists():
         print(f"Cached scenario prediction exists.")
         return pred_path
@@ -110,7 +110,7 @@ def create_default_prediction(description: str, log_dir: Path, output_dir: Path)
     empty_set = {}
     output_scenario(empty_set, description, log_dir, output_dir, visualize=False)
 
-    pred_path = output_dir / log_dir.name / f"{description}_predictions.json.gz"
+    pred_path = output_dir / log_dir.name / f"{description}_predictions.json"
     if pred_path.exists():
         print("Default scenario prediction correctly generated.")
     else:
@@ -165,7 +165,7 @@ def evaluate_predictions(pred_json, gt_pkl, experiment_dir):
 def combine_predictions(experiment_dir: Path, lpp_path: Path, suffix=""):
     """
     Combines generated prediction JSON files in a directory with structure
-    experiment_dir/scenario_predictions/<log>/<prompt>_predictions.json.gz
+    experiment_dir/scenario_predictions/<log>/<prompt>_predictions.json
     for a given set of <log>-<prompt> pairs. Returns the combined JSON path.
     """
 
@@ -180,7 +180,7 @@ def combine_predictions(experiment_dir: Path, lpp_path: Path, suffix=""):
     for log_id, prompts in tqdm(list(log_prompt_pairs.items())):
         for prompt in prompts:
             
-            filename = prompt + suffix + ".json.gz"
+            filename = prompt + suffix + ".json"
 
             target_json = (
                 experiment_dir
@@ -194,7 +194,7 @@ def combine_predictions(experiment_dir: Path, lpp_path: Path, suffix=""):
     print(f"Combined JSON files for {len(combined_predictions)} log-prompt pairs.")
 
     split = "_".join(lpp_path.stem.split("_")[3:])
-    output_path = experiment_dir.parent / "results" / f"combined{suffix}_{split}.json.gz"
+    output_path = experiment_dir.parent / "results" / f"combined{suffix}_{split}.json"
     write_predictions(combined_predictions, output_path)
 
     return output_path
@@ -210,7 +210,7 @@ def compile_results(experiment_dir: Path):
             # dest.mkdir(parents=True, exist_ok=True)
 
             shutil.copytree(
-                results_folder, dest, ignore=shutil.ignore_patterns("*.json.gz", "*.pkl", "*.pdf")
+                results_folder, dest, ignore=shutil.ignore_patterns("*predictions*.json", "*.pkl", "*.pdf")
             )
 
 
