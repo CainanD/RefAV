@@ -22,7 +22,7 @@ The [leaderboard](https://scenario-mining.argoverse.org/) defaults to V3 and let
 |---|---|---|
 | V1 (2025) | [2025 snapshot](https://huggingface.co/datasets/CainanD/RefAV/tree/a2a8e2348661408f304ab205c62ff3ff3dcf194e) | Original 2025 scenarios |
 | V2 (2026) | [2026 snapshot](https://huggingface.co/datasets/CainanD/RefAV/tree/3bc556d1d8b6b52484596d3b097675d3684c5074) | Original 2026 scenarios |
-| V3 | [Manual evaluation subset](https://huggingface.co/datasets/CainanD/RefAV/tree/c662efb5e2add2e7b0eeeb4bd3c22b016b858101) | 307 validation and 326 test scenarios |
+| V3 | [Manual evaluation subset](https://huggingface.co/datasets/CainanD/RefAV/tree/475534fa97304a653f9655a3b9ce8bc7dc36f9cf) | 307 validation and 326 test scenarios |
 
 V3 retains V2's training feather and training log/prompt JSON unchanged. Only validation and test are filtered to `generation_type == "manual"`; scenario identities, timestamps, and splits are preserved. The manual subset and track-free option reduce evaluation computation and address organizer-reported concerns about generated 3D tracks. Historical scores remain separate.
 
@@ -66,9 +66,9 @@ pip install huggingface_hub
 hf auth login
 
 export TARGET_DIR="$(pwd)/scenario_mining_downloads"
-hf download CainanD/RefAV --repo-type dataset --revision c662efb5e2add2e7b0eeeb4bd3c22b016b858101 --local-dir=$TARGET_DIR
+hf download CainanD/RefAV --repo-type dataset --revision 475534fa97304a653f9655a3b9ce8bc7dc36f9cf --local-dir=$TARGET_DIR
 ```
-Alternatively, you may download the scenario-mining add on from Argoverse without having to sign-in to Huggingface with:
+The original V2 add-on is also available from Argoverse without signing in to Hugging Face. Use the pinned HF revision above for V3:
 ```
 export TARGET_DIR="$(pwd)/scenario_mining_downloads"
 s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
