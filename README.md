@@ -16,17 +16,17 @@
 
 ### Dataset versions and leaderboards
 
-The [leaderboard](https://scenario-mining.argoverse.org/) defaults to V3 and lets visitors select V1, V2, or V3.
+The [leaderboard](https://scenario-mining.argoverse.org/) defaults to the latest dataset and lets visitors select a release by date.
 
 | Version | Immutable Hugging Face dataset | Evaluation data |
 |---|---|---|
-| V1 (2025) | [2025 snapshot](https://huggingface.co/datasets/CainanD/RefAV/tree/a2a8e2348661408f304ab205c62ff3ff3dcf194e) | Original 2025 scenarios |
-| V2 (2026) | [2026 snapshot](https://huggingface.co/datasets/CainanD/RefAV/tree/3bc556d1d8b6b52484596d3b097675d3684c5074) | Original 2026 scenarios |
-| V3 | [Manual evaluation subset](https://huggingface.co/datasets/CainanD/RefAV/tree/475534fa97304a653f9655a3b9ce8bc7dc36f9cf) | 307 validation and 326 test scenarios |
+| 2025.5.19 (deprecated) | [2025 snapshot](https://huggingface.co/datasets/CainanD/RefAV/tree/a2a8e2348661408f304ab205c62ff3ff3dcf194e) | Original 2025 scenarios |
+| 2026.2.17 (deprecated) | [2026 snapshot](https://huggingface.co/datasets/CainanD/RefAV/tree/3bc556d1d8b6b52484596d3b097675d3684c5074) | Original 2026 scenarios |
+| 2026.11.8 | [Manual evaluation subset](https://huggingface.co/datasets/CainanD/RefAV/tree/475534fa97304a653f9655a3b9ce8bc7dc36f9cf) | 307 validation and 326 test scenarios |
 
-V3 retains V2's training feather and training log/prompt JSON unchanged. Only validation and test are filtered to `generation_type == "manual"`; scenario identities, timestamps, and splits are preserved. The manual subset and track-free option reduce evaluation computation and address organizer-reported concerns about generated 3D tracks. Historical scores remain separate.
+The latest release retains the 2026.2.17 dataset’s training feather and training log/prompt JSON unchanged. Only validation and test are filtered to `generation_type == "manual"`; scenario identities, timestamps, and splits are preserved. The latest evaluation dataset is the human-labeled subset of the 2026.2.17 dataset. Procedural annotations were removed from validation and test due to noisy annotations and saturating performance. Historical scores remain separate.
 
-V3 accepts tracking and track-free predictions, ranked by **HOTA-Temporal**, then **Timestamp BA**. Track-free submissions receive zero HOTA-Temporal and HOTA-Track. Submissions are hidden by default; public display requires both submitter opt-in and administrator approval. Submitters can always hide their own results.
+The latest release accepts tracking and track-free predictions, ranked by **HOTA-Temporal**, then **Timestamp BA**. Track-free submissions receive zero HOTA-Temporal and HOTA-Track. Submissions are hidden by default; public display requires both submitter opt-in and administrator approval. Submitters can always hide their own results.
 
 ### About
 
@@ -65,12 +65,12 @@ The RefAV scenario mining dataset can be downloaded from Huggingface using:
 pip install huggingface_hub
 hf auth login
 
-export TARGET_DIR="$(pwd)/scenario_mining_downloads/v3"
+export TARGET_DIR="$(pwd)/scenario_mining_downloads/2026.11.8"
 hf download CainanD/RefAV --repo-type dataset --revision 475534fa97304a653f9655a3b9ce8bc7dc36f9cf --local-dir=$TARGET_DIR
 ```
-The original V2 add-on is also available from Argoverse without signing in to Hugging Face. Use the pinned HF revision above for V3:
+The original 2026.2.17 add-on is also available from Argoverse without signing in to Hugging Face. Use the pinned HF revision above for the latest dataset:
 ```
-export TARGET_DIR="$(pwd)/scenario_mining_downloads/v2"
+export TARGET_DIR="$(pwd)/scenario_mining_downloads/2026.2.17"
 s5cmd --no-sign-request cp "s3://argoverse/tasks/scenario_mining/*" $TARGET_DIR
 ```
 
@@ -91,7 +91,7 @@ Our experimental results and test/val submissions can be reproduced directly by 
 
 ### Submission Format
 
-The prediction harness writes `.json` files directly, including per-scenario files and the combined submission. Upload the combined file to the [leaderboard](https://scenario-mining.argoverse.org/); pickle submissions are not accepted. Tracker inputs and organizer ground-truth files retain their existing formats.
+The prediction harness writes `.json` files directly, including per-scenario files and the combined submission. Upload the combined file to the [leaderboard](https://scenario-mining.argoverse.org/). Tracker inputs and organizer ground-truth files retain their existing formats.
 
 Use log IDs and prompts as nested keys, without a wrapper. A track-free submission contains only exact integer timestamps and booleans:
 
@@ -136,11 +136,11 @@ The ego vehicle has the following bounding box across all logs and timestamps
 
 ### 2026 Leaderboard
 
-[View the 2026 leaderboard (V2)](https://scenario-mining.argoverse.org/versions/v2/).
+[View the 2026 leaderboard (2026.2.17)](https://scenario-mining.argoverse.org/versions/v2/).
 
 ### 2025 Leaderboard
 
-[View the 2025 leaderboard (V1)](https://scenario-mining.argoverse.org/versions/v1/).
+[View the 2025 leaderboard (2025.5.19)](https://scenario-mining.argoverse.org/versions/v1/).
 
 ### Contact 
 
